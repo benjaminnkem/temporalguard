@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
 import { configuration } from './config';
 import { DatabaseModule } from './database';
 import {
@@ -18,6 +19,15 @@ import {
       isGlobal: true,
       load: [configuration],
       envFilePath: ['.env', '../../.env'],
+    }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get<string>('redis.host'),
+          port: configService.get<number>('redis.port'),
+        },
+      }),
     }),
     DatabaseModule,
     HealthModule,
