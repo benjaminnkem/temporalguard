@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   trace,
   metrics,
@@ -38,9 +39,8 @@ import {
 export class TelemetryService {
   private readonly tracer: Tracer;
   private readonly meter: Meter;
-  private readonly serviceName =
-    process.env.OTEL_SERVICE_NAME || 'temporalguard-api';
-  private readonly environment = process.env.NODE_ENV || 'development';
+  private readonly serviceName: string;
+  private readonly environment: string;
 
   private readonly workflowsStartedCounter: Counter;
   private readonly workflowsCompletedCounter: Counter;
@@ -50,7 +50,12 @@ export class TelemetryService {
   private readonly workflowDurationHistogram: Histogram;
   private readonly ruleMatchesCounter: Counter;
 
-  constructor() {
+  constructor(private readonly configService: ConfigService) {
+    this.serviceName =
+      this.configService.get<string>('telemetry.serviceName') ?? 'temporalguard-api';
+    this.environment =
+      this.configService.get<string>('nodeEnv') ?? 'development';
+
     this.tracer = trace.getTracer('temporalguard-api');
     this.meter = metrics.getMeter('temporalguard-api');
 

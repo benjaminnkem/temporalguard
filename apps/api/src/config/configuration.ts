@@ -12,4 +12,9 @@ export default () => ({
     port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
   },
   nodeEnv: process.env.NODE_ENV ?? 'development',
+  telemetry: {
+    serviceName: process.env.OTEL_SERVICE_NAME ?? 'temporalguard-api',
+    exporterEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    exporterProtocol: process.env.OTEL_EXPORTER_OTLP_PROTOCOL ?? 'http/json',
+  },
 });
