@@ -7,6 +7,7 @@ import { RulesService } from '../../rules/services/rules.service';
 import { WorkflowQueueService } from './workflow-queue.service';
 import { WorkflowStatus } from '../enums/workflow-status.enum';
 import { TimeoutUnit } from '../../rules/enums/timeout-unit.enum';
+import { TelemetryService } from '../../telemetry/services/telemetry.service';
 
 @Injectable()
 export class WorkflowsService {
@@ -15,6 +16,7 @@ export class WorkflowsService {
     private readonly workflowsRepository: Repository<Workflow>,
     private readonly rulesService: RulesService,
     private readonly workflowQueueService: WorkflowQueueService,
+    private readonly telemetryService: TelemetryService,
   ) {}
 
   async create(createWorkflowDto: CreateWorkflowDto): Promise<Workflow> {
@@ -24,7 +26,6 @@ export class WorkflowsService {
       rule.timeoutValue,
       rule.timeoutUnit,
     );
-
     const workflow = this.workflowsRepository.create({
       ...createWorkflowDto,
       deadline,
@@ -42,6 +43,11 @@ export class WorkflowsService {
       rule.id,
       saved.deadline,
     );
+
+    try {
+      this.telemetryService.workflowStarted(saved.id, rule.id, rule.name, saved.status);
+    } catch (e) {}
+
     return saved;
   }
 
@@ -70,14 +76,28 @@ export class WorkflowsService {
     updateWorkflowDto: UpdateWorkflowDto,
   ): Promise<Workflow> {
     const workflow = await this.findOne(id);
+    const oldStatus = workflow.status;
     Object.assign(workflow, updateWorkflowDto);
-    return this.workflowsRepository.save(workflow);
+    const saved = await this.workflowsRepository.save(workflow);
+
+    if (oldStatus !== saved.status) {
+      this.handleStatusChangeTelemetry(saved, oldStatus);
+    }
+
+    return saved;
   }
 
   async updateStatus(id: string, status: WorkflowStatus): Promise<Workflow> {
     const workflow = await this.findOne(id);
+    const oldStatus = workflow.status;
     workflow.status = status;
-    return this.workflowsRepository.save(workflow);
+    const saved = await this.workflowsRepository.save(workflow);
+
+    if (oldStatus !== saved.status) {
+      this.handleStatusChangeTelemetry(saved, oldStatus);
+    }
+
+    return saved;
   }
 
   async remove(id: string): Promise<void> {
@@ -96,7 +116,35 @@ export class WorkflowsService {
       data.ruleId,
       saved.deadline,
     );
+
+    try {
+      const rule = await this.rulesService.findOne(data.ruleId);
+      this.telemetryService.workflowStarted(saved.id, rule.id, rule.name, saved.status);
+    } catch (e) {}
+
     return saved;
+  }
+
+  private handleStatusChangeTelemetry(workflow: Workflow, _oldStatus: WorkflowStatus): void {
+    const durationMs = Date.now() - workflow.createdAt.getTime();
+    try {
+      if (workflow.status === WorkflowStatus.COMPLETED) {
+        this.telemetryService.workflowCompleted(
+          workflow.id,
+          workflow.ruleId,
+          workflow.rule?.name || '',
+          workflow.status,
+          durationMs,
+        );
+      } else if (workflow.status === WorkflowStatus.OVERDUE) {
+        this.telemetryService.workflowExpired(
+          workflow.id,
+          workflow.ruleId,
+          workflow.rule?.name || '',
+          workflow.status,
+        );
+      }
+    } catch (e) {}
   }
 
   private calculateDeadline(

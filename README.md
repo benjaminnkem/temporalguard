@@ -58,6 +58,10 @@ DB_PASSWORD=postgres
 DB_DATABASE=temporalguard
 REDIS_HOST=localhost
 REDIS_PORT=6379
+OTEL_SERVICE_NAME=temporalguard-api
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+OTEL_EXPORTER_OTLP_PROTOCOL=http/json
+NODE_ENV=development
 ```
 
 ### 3. Install Dependencies

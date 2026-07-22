@@ -3,21 +3,34 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
 import { CreateViolationDto, UpdateViolationDto } from '../dto';
 import { Violation } from '../entities';
+import { TelemetryService } from '../../telemetry/services/telemetry.service';
 
 @Injectable()
 export class ViolationsService {
   constructor(
     @InjectRepository(Violation)
     private readonly violationsRepository: Repository<Violation>,
+    private readonly telemetryService: TelemetryService,
   ) {}
 
-  async create(
-    createViolationDto: CreateViolationDto | Partial<Violation>,
-  ): Promise<Violation> {
-    const violation = this.violationsRepository.create(
-      createViolationDto as DeepPartial<Violation>,
-    );
-    return this.violationsRepository.save(violation);
+  async create(createViolationDto: CreateViolationDto | Partial<Violation>): Promise<Violation> {
+    const violation = this.violationsRepository.create(createViolationDto as DeepPartial<Violation>);
+    const saved = await this.violationsRepository.save(violation);
+
+    try {
+      const fullViolation = await this.findOne(saved.id);
+      this.telemetryService.violationCreated(
+        fullViolation.id,
+        fullViolation.workflowId,
+        fullViolation.ruleId,
+        fullViolation.rule?.name || '',
+        fullViolation.severity,
+      );
+    } catch (e) {
+      // Ignore telemetry errors
+    }
+
+    return saved;
   }
 
   async findAll(): Promise<Violation[]> {

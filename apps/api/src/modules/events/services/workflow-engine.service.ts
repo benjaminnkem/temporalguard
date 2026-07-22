@@ -6,6 +6,11 @@ import { WorkflowStatus } from '../../workflows/enums/workflow-status.enum';
 import { WorkflowsService } from '../../workflows/services/workflows.service';
 import { Workflow } from '../../workflows/entities';
 import { BusinessEvent } from '../entities';
+import { TelemetryService } from '../../telemetry/services/telemetry.service';
+import {
+  SPAN_RULE_EVALUATION,
+  ATTR_EVENT_NAME,
+} from '../../telemetry/constants/telemetry.constants';
 
 @Injectable()
 export class WorkflowEngineService {
@@ -14,32 +19,43 @@ export class WorkflowEngineService {
   constructor(
     private readonly rulesService: RulesService,
     private readonly workflowsService: WorkflowsService,
+    private readonly telemetryService: TelemetryService,
   ) {}
 
   async processEvent(event: BusinessEvent): Promise<Workflow[]> {
-    const matchingRules = await this.rulesService.findEnabledByTriggerEvent(
-      event.eventName,
+    return this.telemetryService.trace(
+      SPAN_RULE_EVALUATION,
+      { [ATTR_EVENT_NAME]: event.eventName },
+      async () => {
+        const matchingRules = await this.rulesService.findEnabledByTriggerEvent(
+          event.eventName,
+        );
+
+        if (matchingRules.length === 0) {
+          this.logger.debug(
+            `No matching rules found for event "${event.eventName}"`,
+          );
+          return [];
+        }
+
+        this.logger.log(
+          `Found ${matchingRules.length} matching rule(s) for event "${event.eventName}"`,
+        );
+
+        const workflows: Workflow[] = [];
+
+        for (const rule of matchingRules) {
+          try {
+            this.telemetryService.ruleMatched(rule.id, rule.name, event.eventName);
+          } catch (e) {}
+
+          const workflow = await this.createWorkflowForRule(rule, event);
+          workflows.push(workflow);
+        }
+
+        return workflows;
+      },
     );
-
-    if (matchingRules.length === 0) {
-      this.logger.debug(
-        `No matching rules found for event "${event.eventName}"`,
-      );
-      return [];
-    }
-
-    this.logger.log(
-      `Found ${matchingRules.length} matching rule(s) for event "${event.eventName}"`,
-    );
-
-    const workflows: Workflow[] = [];
-
-    for (const rule of matchingRules) {
-      const workflow = await this.createWorkflowForRule(rule, event);
-      workflows.push(workflow);
-    }
-
-    return workflows;
   }
 
   private async createWorkflowForRule(
