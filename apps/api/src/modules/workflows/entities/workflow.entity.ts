@@ -20,6 +20,12 @@ export class Workflow extends BaseEntity {
   })
   status: WorkflowStatus;
 
+  @Column({ type: 'timestamptz' })
+  deadline: Date;
+
+  @Column({ type: 'jsonb', default: {} })
+  currentState: Record<string, unknown>;
+
   @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, unknown>;
 

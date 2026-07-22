@@ -13,11 +13,13 @@ import {
 import {
   ApiCreatedResponse,
   ApiNoContentResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateRuleDto, UpdateRuleDto } from '../dto';
+import { Rule } from '../entities';
 import { RulesService } from '../services/rules.service';
 
 @ApiTags('rules')
@@ -27,32 +29,34 @@ export class RulesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a rule' })
-  @ApiCreatedResponse({ description: 'Rule created' })
-  create(@Body() createRuleDto: CreateRuleDto) {
+  @ApiCreatedResponse({ description: 'Rule created', type: Rule })
+  create(@Body() createRuleDto: CreateRuleDto): Promise<Rule> {
     return this.rulesService.create(createRuleDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'List all rules' })
-  @ApiOkResponse({ description: 'List of rules' })
-  findAll() {
+  @ApiOkResponse({ description: 'List of rules', type: [Rule] })
+  findAll(): Promise<Rule[]> {
     return this.rulesService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a rule by id' })
-  @ApiOkResponse({ description: 'Rule found' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiOkResponse({ description: 'Rule found', type: Rule })
+  @ApiNotFoundResponse({ description: 'Rule not found' })
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Rule> {
     return this.rulesService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a rule' })
-  @ApiOkResponse({ description: 'Rule updated' })
+  @ApiOkResponse({ description: 'Rule updated', type: Rule })
+  @ApiNotFoundResponse({ description: 'Rule not found' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateRuleDto: UpdateRuleDto,
-  ) {
+  ): Promise<Rule> {
     return this.rulesService.update(id, updateRuleDto);
   }
 
@@ -60,7 +64,8 @@ export class RulesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a rule' })
   @ApiNoContentResponse({ description: 'Rule deleted' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiNotFoundResponse({ description: 'Rule not found' })
+  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.rulesService.remove(id);
   }
 }

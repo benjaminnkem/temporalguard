@@ -1,159 +1,184 @@
-# Turborepo starter
+# TemporalGuard
 
-This Turborepo starter is maintained by the Turborepo core team.
+Business process observability engine for monitoring temporal invariants. Define rules that specify expected event sequences and timeouts, then track workflows to detect violations in real time.
 
-## Using this example
+## Architecture
 
-Run the following command:
+Monorepo powered by [Turborepo](https://turborepo.dev/) + [pnpm](https://pnpm.io/).
 
-```sh
-npx create-turbo@latest
+```
+temporalguard/
+├── apps/
+│   └── api/            # NestJS REST API
+├── packages/
+│   ├── eslint-config/  # Shared ESLint configuration
+│   └── typescript-config/ # Shared tsconfig
+├── docker-compose.yml  # PostgreSQL + Redis
+└── turbo.json
 ```
 
-## What's inside?
+## Tech Stack
 
-This Turborepo includes the following packages/apps:
+- **Runtime**: Node.js ≥ 18
+- **Framework**: NestJS
+- **Database**: PostgreSQL 16 (TypeORM)
+- **Cache**: Redis 7
+- **Language**: TypeScript 5.9
 
-### Apps and Packages
+## Getting Started
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+### Prerequisites
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+- Node.js ≥ 18
+- pnpm 9
+- Docker & Docker Compose
 
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+### 1. Start Infrastructure
 
 ```sh
-cd my-turborepo
-turbo build
+docker compose up -d
 ```
 
-Without global `turbo`, use your package manager:
+This starts PostgreSQL (port `5434`) and Redis (port `6379`).
+
+### 2. Configure Environment
 
 ```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
+cp .env.example apps/api/.env
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+Fill in your `.env`:
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+```env
+PORT=3000
+DB_HOST=localhost
+DB_PORT=5434
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_DATABASE=temporalguard
+REDIS_HOST=localhost
+REDIS_PORT=6379
+```
+
+### 3. Install Dependencies
 
 ```sh
-turbo build --filter=docs
+pnpm install
 ```
 
-Without global `turbo`:
+### 4. Run the API
 
 ```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+pnpm --filter api start:dev
 ```
 
-### Develop
+The API will be available at `http://localhost:3000` with Swagger docs at `http://localhost:3000/docs`.
 
-To develop all apps and packages, run the following command:
+## Data Model
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+### Entities
+
+```
+Rule ──< Workflow ──< BusinessEvent
+  │         │
+  │         └──< Violation
+  └──────────────< Violation
+```
+
+| Entity | Table | Description |
+|--------|-------|-------------|
+| **Rule** | `rules` | Defines a temporal invariant — a trigger event, expected events, operator, timeout, and severity |
+| **Workflow** | `workflows` | A tracked instance of a rule being evaluated |
+| **BusinessEvent** | `business_events` | An event received against a workflow |
+| **Violation** | `violations` | A recorded breach when a workflow fails to meet its rule |
+
+### Enums
+
+| Enum | Values |
+|------|--------|
+| `RuleSeverity` | `low`, `medium`, `high`, `critical` |
+| `RuleOperator` | `any`, `all` |
+| `TimeoutUnit` | `seconds`, `minutes`, `hours`, `days` |
+| `WorkflowStatus` | `waiting`, `completed`, `overdue`, `cancelled` |
+| `EventType` | `business`, `system` |
+| `ViolationSeverity` | `low`, `medium`, `high`, `critical` |
+
+## API Reference
+
+Base path: `/api`
+
+### Rules
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/rules` | Create a rule |
+| `GET` | `/api/rules` | List all rules |
+| `GET` | `/api/rules/:id` | Get a rule by ID |
+| `PATCH` | `/api/rules/:id` | Update a rule |
+| `DELETE` | `/api/rules/:id` | Delete a rule |
+
+#### Create Rule — Example Payload
+
+```json
+{
+  "name": "payment-must-resolve-within-15m",
+  "description": "Payment must be captured or reversed within 15 minutes",
+  "triggerEvent": "payment.authorized",
+  "expectedEvents": ["payment.captured", "payment.reversed"],
+  "operator": "any",
+  "timeoutValue": 15,
+  "timeoutUnit": "minutes",
+  "severity": "high",
+  "enabled": true
+}
+```
+
+**Required fields**: `name`, `triggerEvent`, `expectedEvents`, `timeoutValue`
+
+**Optional fields** (with defaults): `description`, `operator` (`all`), `timeoutUnit` (`minutes`), `severity` (`medium`), `enabled` (`true`)
+
+### Workflows
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/workflows` | Create a workflow |
+| `GET` | `/api/workflows` | List all workflows |
+| `GET` | `/api/workflows/:id` | Get a workflow by ID |
+| `PATCH` | `/api/workflows/:id` | Update a workflow |
+| `DELETE` | `/api/workflows/:id` | Delete a workflow |
+
+### Events
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/events` | Ingest a business event |
+
+### Violations
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/violations` | Create a violation |
+| `GET` | `/api/violations` | List all violations |
+| `GET` | `/api/violations/:id` | Get a violation by ID |
+| `PATCH` | `/api/violations/:id` | Update a violation |
+| `DELETE` | `/api/violations/:id` | Delete a violation |
+
+## Development
 
 ```sh
-cd my-turborepo
-turbo dev
+# Run the API in watch mode
+pnpm --filter api start:dev
+
+# Type check
+pnpm check-types
+
+# Lint
+pnpm lint
+
+# Format
+pnpm format
 ```
 
-Without global `turbo`, use your package manager:
+## License
 
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+Private

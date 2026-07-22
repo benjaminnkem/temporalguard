@@ -11,8 +11,8 @@ export class RulesService {
     private readonly rulesRepository: Repository<Rule>,
   ) {}
 
-  async create(_createRuleDto: CreateRuleDto): Promise<Rule> {
-    const rule = this.rulesRepository.create();
+  async create(createRuleDto: CreateRuleDto): Promise<Rule> {
+    const rule = this.rulesRepository.create(createRuleDto);
     return this.rulesRepository.save(rule);
   }
 
@@ -32,13 +32,21 @@ export class RulesService {
     return rule;
   }
 
-  async update(id: string, _updateRuleDto: UpdateRuleDto): Promise<Rule> {
+  async update(id: string, updateRuleDto: UpdateRuleDto): Promise<Rule> {
     const rule = await this.findOne(id);
+    Object.assign(rule, updateRuleDto);
+
     return this.rulesRepository.save(rule);
   }
 
   async remove(id: string): Promise<void> {
     const rule = await this.findOne(id);
     await this.rulesRepository.remove(rule);
+  }
+
+  async findEnabledByTriggerEvent(eventName: string): Promise<Rule[]> {
+    return this.rulesRepository.find({
+      where: { triggerEvent: eventName, enabled: true },
+    });
   }
 }

@@ -11,9 +11,9 @@ export class CreateEventDto {
   @ApiProperty({ example: 'payment.authorized' })
   @IsString()
   @IsNotEmpty()
-  event: string;
+  eventName: string;
 
-  @ApiProperty({ example: 'pay_123' })
+  @ApiProperty({ example: 'payment_123' })
   @IsString()
   @IsNotEmpty()
   workflowId: string;

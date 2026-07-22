@@ -10,7 +10,7 @@ export class EventsController {
 
   @Post()
   @ApiOperation({ summary: 'Ingest a business event' })
-  @ApiCreatedResponse({ description: 'Event accepted and returned as-is' })
+  @ApiCreatedResponse({ description: 'Event ingested and workflows created' })
   create(@Body() createEventDto: CreateEventDto) {
     return this.eventsService.ingest(createEventDto);
   }

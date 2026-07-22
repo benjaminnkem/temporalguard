@@ -11,19 +11,23 @@ export class WorkflowsService {
     private readonly workflowsRepository: Repository<Workflow>,
   ) {}
 
-  async create(_createWorkflowDto: CreateWorkflowDto): Promise<Workflow> {
-    const workflow = this.workflowsRepository.create();
+  async create(createWorkflowDto: CreateWorkflowDto): Promise<Workflow> {
+    const workflow = this.workflowsRepository.create(createWorkflowDto);
     return this.workflowsRepository.save(workflow);
   }
 
   async findAll(): Promise<Workflow[]> {
     return this.workflowsRepository.find({
       order: { createdAt: 'DESC' },
+      relations: { rule: true },
     });
   }
 
   async findOne(id: string): Promise<Workflow> {
-    const workflow = await this.workflowsRepository.findOne({ where: { id } });
+    const workflow = await this.workflowsRepository.findOne({
+      where: { id },
+      relations: { rule: true },
+    });
 
     if (!workflow) {
       throw new NotFoundException(`Workflow with id "${id}" not found`);
@@ -34,14 +38,20 @@ export class WorkflowsService {
 
   async update(
     id: string,
-    _updateWorkflowDto: UpdateWorkflowDto,
+    updateWorkflowDto: UpdateWorkflowDto,
   ): Promise<Workflow> {
     const workflow = await this.findOne(id);
+    Object.assign(workflow, updateWorkflowDto);
     return this.workflowsRepository.save(workflow);
   }
 
   async remove(id: string): Promise<void> {
     const workflow = await this.findOne(id);
     await this.workflowsRepository.remove(workflow);
+  }
+
+  async createFromRule(data: Partial<Workflow>): Promise<Workflow> {
+    const workflow = this.workflowsRepository.create(data);
+    return this.workflowsRepository.save(workflow);
   }
 }

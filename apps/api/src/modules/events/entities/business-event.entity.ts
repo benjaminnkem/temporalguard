@@ -6,7 +6,7 @@ import { EventType } from '../enums/event-type.enum';
 @Entity('business_events')
 export class BusinessEvent extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
-  event: string;
+  eventName: string;
 
   @Column({ type: 'enum', enum: EventType, default: EventType.BUSINESS })
   type: EventType;
@@ -17,11 +17,15 @@ export class BusinessEvent extends BaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   payload: Record<string, unknown>;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'varchar', length: 255 })
+  externalWorkflowId: string;
+
+  @Column({ type: 'uuid', nullable: true })
   workflowId: string;
 
   @ManyToOne(() => Workflow, (workflow) => workflow.businessEvents, {
     onDelete: 'CASCADE',
+    nullable: true,
   })
   @JoinColumn({ name: 'workflowId' })
   workflow: Workflow;
