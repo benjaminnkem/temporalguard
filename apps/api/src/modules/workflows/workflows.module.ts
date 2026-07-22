@@ -5,6 +5,7 @@ import { WorkflowsController } from './controllers/workflows.controller';
 import { Workflow } from './entities';
 import { WorkflowsService } from './services/workflows.service';
 import { RulesModule } from '../rules/rules.module';
+import { ViolationsModule } from '../violations/violations.module';
 import { WorkflowQueueService } from './services/workflow-queue.service';
 import { WorkflowQueueProcessor } from './services/workflow-queue.processor';
 
@@ -14,6 +15,7 @@ import { WORKFLOWS_QUEUE } from './constants/queue.constants';
   imports: [
     TypeOrmModule.forFeature([Workflow]),
     RulesModule,
+    ViolationsModule,
     BullModule.registerQueue({
       name: WORKFLOWS_QUEUE,
     }),

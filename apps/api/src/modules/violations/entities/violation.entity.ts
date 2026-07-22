@@ -13,8 +13,11 @@ export class Violation extends BaseEntity {
   })
   severity: ViolationSeverity;
 
-  @Column({ type: 'text', nullable: true })
-  message: string;
+  @Column({ type: 'text' })
+  reason: string;
+
+  @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  occurredAt: Date;
 
   @Column({ type: 'jsonb', nullable: true })
   details: Record<string, unknown>;

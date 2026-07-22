@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 import { CreateViolationDto, UpdateViolationDto } from '../dto';
 import { Violation } from '../entities';
 
@@ -11,20 +11,26 @@ export class ViolationsService {
     private readonly violationsRepository: Repository<Violation>,
   ) {}
 
-  async create(_createViolationDto: CreateViolationDto): Promise<Violation> {
-    const violation = this.violationsRepository.create();
+  async create(
+    createViolationDto: CreateViolationDto | Partial<Violation>,
+  ): Promise<Violation> {
+    const violation = this.violationsRepository.create(
+      createViolationDto as DeepPartial<Violation>,
+    );
     return this.violationsRepository.save(violation);
   }
 
   async findAll(): Promise<Violation[]> {
     return this.violationsRepository.find({
-      order: { createdAt: 'DESC' },
+      order: { occurredAt: 'DESC' },
+      relations: { workflow: true, rule: true },
     });
   }
 
   async findOne(id: string): Promise<Violation> {
     const violation = await this.violationsRepository.findOne({
       where: { id },
+      relations: { workflow: true, rule: true },
     });
 
     if (!violation) {
@@ -36,9 +42,10 @@ export class ViolationsService {
 
   async update(
     id: string,
-    _updateViolationDto: UpdateViolationDto,
+    updateViolationDto: UpdateViolationDto,
   ): Promise<Violation> {
     const violation = await this.findOne(id);
+    Object.assign(violation, updateViolationDto);
     return this.violationsRepository.save(violation);
   }
 
