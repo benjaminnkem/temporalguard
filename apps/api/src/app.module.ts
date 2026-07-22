@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { configuration } from './config';
 import { DatabaseModule } from './database';
 import {
@@ -20,6 +21,7 @@ import {
       load: [configuration],
       envFilePath: ['.env', '../../.env'],
     }),
+    EventEmitterModule.forRoot(),
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

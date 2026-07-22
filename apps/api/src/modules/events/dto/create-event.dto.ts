@@ -18,7 +18,7 @@ export class CreateEventDto {
   @IsNotEmpty()
   workflowId: string;
 
-  @ApiProperty({ example: '2026-07-22T12:00:00.000Z' })
+  @ApiProperty({ example: new Date().toISOString() })
   @IsDateString()
   timestamp: string;
 

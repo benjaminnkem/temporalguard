@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { CreateWorkflowDto, UpdateWorkflowDto } from '../dto';
 import { Workflow } from '../entities';
@@ -7,7 +8,11 @@ import { RulesService } from '../../rules/services/rules.service';
 import { WorkflowQueueService } from './workflow-queue.service';
 import { WorkflowStatus } from '../enums/workflow-status.enum';
 import { TimeoutUnit } from '../../rules/enums/timeout-unit.enum';
-import { TelemetryService } from '../../telemetry/services/telemetry.service';
+import {
+  EVENT_WORKFLOW_CREATED,
+  EVENT_WORKFLOW_COMPLETED,
+  EVENT_WORKFLOW_OVERDUE,
+} from '../../../common/constants/event.constants';
 
 @Injectable()
 export class WorkflowsService {
@@ -16,7 +21,7 @@ export class WorkflowsService {
     private readonly workflowsRepository: Repository<Workflow>,
     private readonly rulesService: RulesService,
     private readonly workflowQueueService: WorkflowQueueService,
-    private readonly telemetryService: TelemetryService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(createWorkflowDto: CreateWorkflowDto): Promise<Workflow> {
@@ -45,7 +50,12 @@ export class WorkflowsService {
     );
 
     try {
-      this.telemetryService.workflowStarted(saved.id, rule.id, rule.name, saved.status);
+      this.eventEmitter.emit(EVENT_WORKFLOW_CREATED, {
+        workflowId: saved.id,
+        ruleId: rule.id,
+        ruleName: rule.name,
+        status: saved.status,
+      });
     } catch (e) {}
 
     return saved;
@@ -81,7 +91,7 @@ export class WorkflowsService {
     const saved = await this.workflowsRepository.save(workflow);
 
     if (oldStatus !== saved.status) {
-      this.handleStatusChangeTelemetry(saved, oldStatus);
+      this.handleStatusChangeEvents(saved, oldStatus);
     }
 
     return saved;
@@ -94,7 +104,7 @@ export class WorkflowsService {
     const saved = await this.workflowsRepository.save(workflow);
 
     if (oldStatus !== saved.status) {
-      this.handleStatusChangeTelemetry(saved, oldStatus);
+      this.handleStatusChangeEvents(saved, oldStatus);
     }
 
     return saved;
@@ -119,30 +129,35 @@ export class WorkflowsService {
 
     try {
       const rule = await this.rulesService.findOne(data.ruleId);
-      this.telemetryService.workflowStarted(saved.id, rule.id, rule.name, saved.status);
+      this.eventEmitter.emit(EVENT_WORKFLOW_CREATED, {
+        workflowId: saved.id,
+        ruleId: rule.id,
+        ruleName: rule.name,
+        status: saved.status,
+      });
     } catch (e) {}
 
     return saved;
   }
 
-  private handleStatusChangeTelemetry(workflow: Workflow, _oldStatus: WorkflowStatus): void {
+  private handleStatusChangeEvents(workflow: Workflow, _oldStatus: WorkflowStatus): void {
     const durationMs = Date.now() - workflow.createdAt.getTime();
     try {
       if (workflow.status === WorkflowStatus.COMPLETED) {
-        this.telemetryService.workflowCompleted(
-          workflow.id,
-          workflow.ruleId,
-          workflow.rule?.name || '',
-          workflow.status,
+        this.eventEmitter.emit(EVENT_WORKFLOW_COMPLETED, {
+          workflowId: workflow.id,
+          ruleId: workflow.ruleId,
+          ruleName: workflow.rule?.name || '',
+          status: workflow.status,
           durationMs,
-        );
+        });
       } else if (workflow.status === WorkflowStatus.OVERDUE) {
-        this.telemetryService.workflowExpired(
-          workflow.id,
-          workflow.ruleId,
-          workflow.rule?.name || '',
-          workflow.status,
-        );
+        this.eventEmitter.emit(EVENT_WORKFLOW_OVERDUE, {
+          workflowId: workflow.id,
+          ruleId: workflow.ruleId,
+          ruleName: workflow.rule?.name || '',
+          status: workflow.status,
+        });
       }
     } catch (e) {}
   }

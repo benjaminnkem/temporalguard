@@ -1,16 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DeepPartial, Repository } from 'typeorm';
 import { CreateViolationDto, UpdateViolationDto } from '../dto';
 import { Violation } from '../entities';
-import { TelemetryService } from '../../telemetry/services/telemetry.service';
+import { EVENT_VIOLATION_CREATED } from '../../../common/constants/event.constants';
 
 @Injectable()
 export class ViolationsService {
   constructor(
     @InjectRepository(Violation)
     private readonly violationsRepository: Repository<Violation>,
-    private readonly telemetryService: TelemetryService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(createViolationDto: CreateViolationDto | Partial<Violation>): Promise<Violation> {
@@ -19,16 +20,14 @@ export class ViolationsService {
 
     try {
       const fullViolation = await this.findOne(saved.id);
-      this.telemetryService.violationCreated(
-        fullViolation.id,
-        fullViolation.workflowId,
-        fullViolation.ruleId,
-        fullViolation.rule?.name || '',
-        fullViolation.severity,
-      );
-    } catch (e) {
-      // Ignore telemetry errors
-    }
+      this.eventEmitter.emit(EVENT_VIOLATION_CREATED, {
+        violationId: fullViolation.id,
+        workflowId: fullViolation.workflowId,
+        ruleId: fullViolation.ruleId,
+        ruleName: fullViolation.rule?.name || '',
+        severity: fullViolation.severity,
+      });
+    } catch (e) {}
 
     return saved;
   }

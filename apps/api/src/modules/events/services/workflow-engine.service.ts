@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Rule } from '../../rules/entities';
 import { TimeoutUnit } from '../../rules/enums/timeout-unit.enum';
 import { RulesService } from '../../rules/services/rules.service';
@@ -6,11 +7,7 @@ import { WorkflowStatus } from '../../workflows/enums/workflow-status.enum';
 import { WorkflowsService } from '../../workflows/services/workflows.service';
 import { Workflow } from '../../workflows/entities';
 import { BusinessEvent } from '../entities';
-import { TelemetryService } from '../../telemetry/services/telemetry.service';
-import {
-  SPAN_RULE_EVALUATION,
-  ATTR_EVENT_NAME,
-} from '../../telemetry/constants/telemetry.constants';
+import { EVENT_RULE_MATCHED } from '../../../common/constants/event.constants';
 
 @Injectable()
 export class WorkflowEngineService {
@@ -19,43 +16,41 @@ export class WorkflowEngineService {
   constructor(
     private readonly rulesService: RulesService,
     private readonly workflowsService: WorkflowsService,
-    private readonly telemetryService: TelemetryService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async processEvent(event: BusinessEvent): Promise<Workflow[]> {
-    return this.telemetryService.trace(
-      SPAN_RULE_EVALUATION,
-      { [ATTR_EVENT_NAME]: event.eventName },
-      async () => {
-        const matchingRules = await this.rulesService.findEnabledByTriggerEvent(
-          event.eventName,
-        );
-
-        if (matchingRules.length === 0) {
-          this.logger.debug(
-            `No matching rules found for event "${event.eventName}"`,
-          );
-          return [];
-        }
-
-        this.logger.log(
-          `Found ${matchingRules.length} matching rule(s) for event "${event.eventName}"`,
-        );
-
-        const workflows: Workflow[] = [];
-
-        for (const rule of matchingRules) {
-          try {
-            this.telemetryService.ruleMatched(rule.id, rule.name, event.eventName);
-          } catch (e) {}
-
-          const workflow = await this.createWorkflowForRule(rule, event);
-          workflows.push(workflow);
-        }
-
-        return workflows;
-      },
+    const matchingRules = await this.rulesService.findEnabledByTriggerEvent(
+      event.eventName,
     );
+
+    if (matchingRules.length === 0) {
+      this.logger.debug(
+        `No matching rules found for event "${event.eventName}"`,
+      );
+      return [];
+    }
+
+    this.logger.log(
+      `Found ${matchingRules.length} matching rule(s) for event "${event.eventName}"`,
+    );
+
+    const workflows: Workflow[] = [];
+
+    for (const rule of matchingRules) {
+      try {
+        this.eventEmitter.emit(EVENT_RULE_MATCHED, {
+          ruleId: rule.id,
+          ruleName: rule.name,
+          eventName: event.eventName,
+        });
+      } catch (e) {}
+
+      const workflow = await this.createWorkflowForRule(rule, event);
+      workflows.push(workflow);
+    }
+
+    return workflows;
   }
 
   private async createWorkflowForRule(
