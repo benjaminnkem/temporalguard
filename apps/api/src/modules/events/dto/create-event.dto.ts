@@ -1,0 +1,33 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsDateString,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+} from 'class-validator';
+
+export class CreateEventDto {
+  @ApiProperty({ example: 'payment.authorized' })
+  @IsString()
+  @IsNotEmpty()
+  event: string;
+
+  @ApiProperty({ example: 'pay_123' })
+  @IsString()
+  @IsNotEmpty()
+  workflowId: string;
+
+  @ApiProperty({ example: '2026-07-22T12:00:00.000Z' })
+  @IsDateString()
+  timestamp: string;
+
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    example: { amount: 1000, currency: 'USD' },
+  })
+  @IsOptional()
+  @IsObject()
+  payload?: Record<string, unknown>;
+}
