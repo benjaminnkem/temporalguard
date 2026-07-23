@@ -1,36 +1,316 @@
+# TemporalGuard local development stack
+# Application → OTEL SDK → OpenTelemetry Collector → SigNoz → ClickHouse
+#
+# Start everything:  docker compose up -d
+# Stop:              docker compose down
+# Wipe data:         docker compose down -v
+
+name: temporalguard
+
+x-logging: &default-logging
+  options:
+    max-size: '50m'
+    max-file: '3'
+
 services:
+  # ---------------------------------------------------------------------------
+  # TemporalGuard application dependencies
+  # ---------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: temporalguard-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: temporalguard
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-temporalguard}
     ports:
-      - '5434:5432'
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - temporalguard_pg_data:/var/lib/postgresql/data
+    networks:
+      - temporalguard
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d temporalguard']
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
+    logging: *default-logging
 
   redis:
     image: redis:7-alpine
     container_name: temporalguard-redis
     restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - '6379:6379'
+      - '${REDIS_PORT:-6379}:6379'
     volumes:
       - temporalguard_redis_data:/data
+    networks:
+      - temporalguard
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 5s
+    logging: *default-logging
+
+  # ---------------------------------------------------------------------------
+  # TemporalGuard API
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: temporalguard-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${API_PORT:-3000}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_DATABASE: ${POSTGRES_DB:-temporalguard}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      OTEL_SERVICE_NAME: temporalguard-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+    ports:
+      - '${API_HOST_PORT:-3000}:3000'
+    networks:
+      - temporalguard
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--spider',
+          '-q',
+          'http://localhost:3000/api/health',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    logging: *default-logging
+
+  # ---------------------------------------------------------------------------
+  # Self-hosted SigNoz (official Docker deployment layout)
+  # Based on SigNoz deploy/docker (v0.128.x family)
+  # ---------------------------------------------------------------------------
+  init-clickhouse:
+    image: clickhouse/clickhouse-server:25.5.6
+    container_name: temporalguard-init-clickhouse
+    restart: on-failure
+    command:
+      - bash
+      - -c
+      - |
+        version="v0.0.1"
+        node_os=$$(uname -s | tr '[:upper:]' '[:lower:]')
+        node_arch=$$(uname -m | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
+        echo "Fetching histogram-binary for $${node_os}/$${node_arch}"
+        cd /tmp
+        wget -O histogram-quantile.tar.gz "https://github.com/SigNoz/signoz/releases/download/histogram-quantile%2F$${version}/histogram-quantile_$${node_os}_$${node_arch}.tar.gz"
+        tar -xvzf histogram-quantile.tar.gz
+        mv histogram-quantile /var/lib/clickhouse/user_scripts/histogramQuantile
+    volumes:
+      - ./deploy/signoz/clickhouse/user_scripts:/var/lib/clickhouse/user_scripts/
+    networks:
+      - temporalguard
+    logging: *default-logging
+
+  zookeeper-1:
+    image: signoz/zookeeper:3.7.1
+    container_name: temporalguard-zookeeper
+    restart: unless-stopped
+    user: root
+    environment:
+      ZOO_SERVER_ID: 1
+      ALLOW_ANONYMOUS_LOGIN: 'yes'
+      ZOO_AUTOPURGE_INTERVAL: 1
+      ZOO_ENABLE_PROMETHEUS_METRICS: 'yes'
+      ZOO_PROMETHEUS_METRICS_PORT_NUMBER: 9141
+    volumes:
+      - temporalguard_zookeeper_data:/bitnami/zookeeper
+    networks:
+      - temporalguard
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'curl -s -m 2 http://localhost:8080/commands/ruok | grep error | grep null',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *default-logging
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.5.6
+    container_name: temporalguard-clickhouse
+    restart: unless-stopped
+    tty: true
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: 1
+    depends_on:
+      init-clickhouse:
+        condition: service_completed_successfully
+      zookeeper-1:
+        condition: service_healthy
+    volumes:
+      - ./deploy/signoz/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro
+      - ./deploy/signoz/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro
+      - ./deploy/signoz/clickhouse/custom-function.xml:/etc/clickhouse-server/custom-function.xml:ro
+      - ./deploy/signoz/clickhouse/user_scripts:/var/lib/clickhouse/user_scripts/
+      - ./deploy/signoz/clickhouse/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
+      - temporalguard_clickhouse_data:/var/lib/clickhouse/
+    networks:
+      - temporalguard
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', '0.0.0.0:8123/ping']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+
+  signoz-telemetrystore-migrator:
+    image: signoz/signoz-otel-collector:${OTELCOL_TAG:-v0.144.5}
+    container_name: temporalguard-signoz-migrator
+    restart: on-failure
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN: tcp://clickhouse:9000
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_CLUSTER: cluster
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_REPLICATION: 'true'
+      SIGNOZ_OTEL_COLLECTOR_TIMEOUT: 10m
+    entrypoint: ['/bin/sh']
+    command:
+      - -c
+      - |
+        /signoz-otel-collector migrate bootstrap &&
+        /signoz-otel-collector migrate sync up &&
+        /signoz-otel-collector migrate async up
+    networks:
+      - temporalguard
+    logging: *default-logging
+
+  signoz:
+    image: signoz/signoz:${SIGNOZ_VERSION:-v0.128.0}
+    container_name: temporalguard-signoz
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      signoz-telemetrystore-migrator:
+        condition: service_completed_successfully
+    environment:
+      SIGNOZ_ALERTMANAGER_PROVIDER: signoz
+      SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN: tcp://clickhouse:9000
+      SIGNOZ_SQLSTORE_SQLITE_PATH: /var/lib/signoz/signoz.db
+      SIGNOZ_TOKENIZER_JWT_SECRET: ${SIGNOZ_JWT_SECRET:-temporalguard-local-dev-secret}
+    ports:
+      # Host 3301 → container 8080 (classic SigNoz UI port for local dev)
+      - '${SIGNOZ_UI_PORT:-3301}:8080'
+    volumes:
+      - temporalguard_signoz_data:/var/lib/signoz/
+    networks:
+      - temporalguard
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--spider',
+          '-q',
+          'localhost:8080/api/v1/health',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+
+  # OpenTelemetry Collector (SigNoz distribution) — receives OTLP from the API
+  otel-collector:
+    image: signoz/signoz-otel-collector:${OTELCOL_TAG:-v0.144.5}
+    container_name: temporalguard-otel-collector
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      signoz:
+        condition: service_healthy
+      signoz-telemetrystore-migrator:
+        condition: service_completed_successfully
+    entrypoint: ['/bin/sh']
+    command:
+      - -c
+      - |
+        /signoz-otel-collector migrate sync check &&
+        /signoz-otel-collector --config=/etc/otel-collector-config.yaml --manager-config=/etc/manager-config.yaml --copy-path=/var/tmp/collector-config.yaml
+    environment:
+      OTEL_RESOURCE_ATTRIBUTES: host.name=temporalguard,os.type=linux
+      LOW_CARDINAL_EXCEPTION_GROUPING: 'false'
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN: tcp://clickhouse:9000
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_CLUSTER: cluster
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_REPLICATION: 'true'
+      SIGNOZ_OTEL_COLLECTOR_TIMEOUT: 10m
+    volumes:
+      - ./deploy/signoz/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+      - ./deploy/signoz/otel-collector-opamp-config.yaml:/etc/manager-config.yaml:ro
+    ports:
+      - '${OTEL_GRPC_PORT:-4317}:4317'
+      - '${OTEL_HTTP_PORT:-4318}:4318'
+    networks:
+      - temporalguard
+    healthcheck:
+      test:
+        [
+          'CMD',
+          '/bin/sh',
+          '-c',
+          'exec 3<>/dev/tcp/127.0.0.1/13133',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    logging: *default-logging
+
+networks:
+  temporalguard:
+    name: temporalguard-net
+    driver: bridge
 
 volumes:
   temporalguard_pg_data:
+    name: temporalguard_pg_data
   temporalguard_redis_data:
+    name: temporalguard_redis_data
+  temporalguard_clickhouse_data:
+    name: temporalguard_clickhouse_data
+  temporalguard_signoz_data:
+    name: temporalguard_signoz_data
+  temporalguard_zookeeper_data:
+    name: temporalguard_zookeeper_data

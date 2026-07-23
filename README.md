@@ -1,6 +1,30 @@
 # TemporalGuard
 
-Business process observability engine for monitoring temporal invariants. Define rules that specify expected event sequences and timeouts, then track workflows to detect violations in real time.
+Business process observability engine for monitoring **business invariants**.
+
+Unlike traditional observability tools that monitor infrastructure (CPU, memory, latency, errors), TemporalGuard watches business events and detects workflows that never reach a valid ending.
+
+**Example invariant**
+
+> When a payment is authorized, it must either be captured or reversed within 15 minutes.
+
+TemporalGuard does **not** replace SigNoz. SigNoz is the observability platform; TemporalGuard is a rule engine that sits on top of OpenTelemetry and self-hosted SigNoz.
+
+```
+Application
+    ↓
+Business Events
+    ↓
+TemporalGuard API
+    ↓
+OpenTelemetry SDK
+    ↓
+OpenTelemetry Collector
+    ↓
+SigNoz
+    ↓
+ClickHouse
+```
 
 ## Architecture
 
@@ -9,76 +33,158 @@ Monorepo powered by [Turborepo](https://turborepo.dev/) + [pnpm](https://pnpm.io
 ```
 temporalguard/
 ├── apps/
-│   └── api/            # NestJS REST API
+│   └── api/                 # NestJS REST API
 ├── packages/
-│   ├── eslint-config/  # Shared ESLint configuration
-│   └── typescript-config/ # Shared tsconfig
-├── docker-compose.yml  # PostgreSQL + Redis
+│   ├── eslint-config/
+│   └── typescript-config/
+├── deploy/
+│   └── signoz/              # Self-hosted SigNoz configs (official Docker layout)
+├── docker-compose.yml       # Full local stack
 └── turbo.json
 ```
 
 ## Tech Stack
 
-- **Runtime**: Node.js ≥ 18
-- **Framework**: NestJS
-- **Database**: PostgreSQL 16 (TypeORM)
-- **Cache**: Redis 7
-- **Language**: TypeScript 5.9
+| Layer | Technology |
+|-------|------------|
+| Runtime | Node.js ≥ 18 |
+| API | NestJS |
+| Database | PostgreSQL 16 (TypeORM) |
+| Queue / cache | Redis 7 (BullMQ) |
+| Telemetry | OpenTelemetry SDK → OTLP/HTTP |
+| Observability | Self-hosted SigNoz + ClickHouse |
+| Language | TypeScript 5.9 |
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- **Docker** Engine 20.10+ and **Docker Compose** v2
+- At least **4 GB** RAM allocated to Docker (SigNoz + ClickHouse)
+- **Node.js ≥ 18** and **pnpm 9** (only if running the API on the host)
 
-- Node.js ≥ 18
-- pnpm 9
-- Docker & Docker Compose
+No SigNoz Cloud account, ingestion keys, or external credentials are required.
 
-### 1. Start Infrastructure
+## Quick start (full stack)
+
+Start the entire development environment with a single command:
 
 ```sh
 docker compose up -d
 ```
 
-This starts PostgreSQL (port `5434`) and Redis (port `6379`).
+This starts:
 
-### 2. Configure Environment
+| Service | Role |
+|---------|------|
+| `api` | TemporalGuard NestJS API |
+| `postgres` | Application database |
+| `redis` | Cache / BullMQ |
+| `otel-collector` | OpenTelemetry Collector (SigNoz distribution) |
+| `signoz` | SigNoz UI + query service |
+| `clickhouse` | Telemetry store |
+| `zookeeper-1` | ClickHouse coordination |
+| `init-clickhouse` / migrator | One-shot SigNoz schema setup |
+
+### Service URLs
+
+| Service | URL |
+|---------|-----|
+| **API** | http://localhost:3000 |
+| **API Swagger** | http://localhost:3000/docs |
+| **API health** | http://localhost:3000/api/health |
+| **SigNoz** | http://localhost:3301 |
+| **PostgreSQL** | localhost:5432 |
+| **Redis** | localhost:6379 |
+| **OTLP gRPC** | localhost:4317 |
+| **OTLP HTTP** | localhost:4318 |
+
+On first visit to SigNoz (`http://localhost:3301`), complete the local admin signup. There is no cloud login.
+
+Once the API receives traffic, the **temporalguard-api** service appears under Services / Traces in the SigNoz UI.
+
+## Docker commands
 
 ```sh
-cp .env.example apps/api/.env
+# Start (detached)
+docker compose up -d
+
+# Follow logs
+docker compose logs -f
+
+# Follow API + collector only
+docker compose logs -f api otel-collector
+
+# Status / health
+docker compose ps
+
+# Rebuild API image after code changes
+docker compose up -d --build api
+
+# Stop containers (keep volumes)
+docker compose down
+
+# Stop and remove named volumes (full reset)
+docker compose down -v
 ```
 
-Fill in your `.env`:
+## Environment
+
+Copy the root example for Compose variables:
+
+```sh
+cp .env.example .env
+```
+
+Key variables (self-hosted only — **no** SigNoz Cloud keys):
 
 ```env
-PORT=3000
-DB_HOST=localhost
-DB_PORT=5434
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_DATABASE=temporalguard
-REDIS_HOST=localhost
-REDIS_PORT=6379
-OTEL_SERVICE_NAME=temporalguard-api
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-OTEL_EXPORTER_OTLP_PROTOCOL=http/json
 NODE_ENV=development
+
+OTEL_SERVICE_NAME=temporalguard-api
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+
+# SigNoz images (pinned)
+SIGNOZ_VERSION=v0.128.0
+OTELCOL_TAG=v0.144.5
+SIGNOZ_UI_PORT=3301
 ```
 
-### 3. Install Dependencies
+Inside Docker, the API talks to other services by **service name**:
+
+| Variable | Docker value | Host-local value |
+|----------|--------------|------------------|
+| `DB_HOST` | `postgres` | `localhost` |
+| `REDIS_HOST` | `redis` | `localhost` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | `http://localhost:4318` |
+
+## Hybrid mode (API on host)
+
+If you prefer hot-reload on the host while infrastructure runs in Docker:
 
 ```sh
+# Infrastructure only (exclude the API container)
+docker compose up -d postgres redis clickhouse zookeeper-1 init-clickhouse \
+  signoz-telemetrystore-migrator signoz otel-collector
+
+cp apps/api/.env.example apps/api/.env
 pnpm install
-```
-
-### 4. Run the API
-
-```sh
 pnpm --filter api start:dev
 ```
 
-The API will be available at `http://localhost:3000` with Swagger docs at `http://localhost:3000/docs`.
+`apps/api/.env` should point at published ports (`localhost:5432`, `localhost:6379`, `http://localhost:4318`).
 
-## Data Model
+## OpenTelemetry
+
+The NestJS process loads `instrumentation.ts` **before** the application boots (`import './instrumentation'` in `main.ts`).
+
+- **Traces** → `POST {OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`
+- **Metrics** → `POST {OTEL_EXPORTER_OTLP_ENDPOINT}/v1/metrics`
+- Protocol: **OTLP/HTTP protobuf** (`http/protobuf`)
+- Collector service name: `otel-collector` (Docker network)
+
+Business-level spans and metrics (workflows, violations, rules) are emitted by the in-app `TelemetryService` on top of auto-instrumentation.
+
+## Data model
 
 ### Entities
 
@@ -91,10 +197,10 @@ Rule ──< Workflow ──< BusinessEvent
 
 | Entity | Table | Description |
 |--------|-------|-------------|
-| **Rule** | `rules` | Defines a temporal invariant — a trigger event, expected events, operator, timeout, and severity |
-| **Workflow** | `workflows` | A tracked instance of a rule being evaluated |
-| **BusinessEvent** | `business_events` | An event received against a workflow |
-| **Violation** | `violations` | A recorded breach when a workflow fails to meet its rule |
+| **Rule** | `rules` | Temporal invariant — trigger, expected events, operator, timeout, severity |
+| **Workflow** | `workflows` | Tracked instance of a rule under evaluation |
+| **BusinessEvent** | `business_events` | Event received against a workflow |
+| **Violation** | `violations` | Recorded breach when a workflow fails its rule |
 
 ### Enums
 
@@ -107,7 +213,7 @@ Rule ──< Workflow ──< BusinessEvent
 | `EventType` | `business`, `system` |
 | `ViolationSeverity` | `low`, `medium`, `high`, `critical` |
 
-## API Reference
+## API reference
 
 Base path: `/api`
 
@@ -121,7 +227,7 @@ Base path: `/api`
 | `PATCH` | `/api/rules/:id` | Update a rule |
 | `DELETE` | `/api/rules/:id` | Delete a rule |
 
-#### Create Rule — Example Payload
+#### Create rule — example payload
 
 ```json
 {
@@ -167,10 +273,10 @@ Base path: `/api`
 | `PATCH` | `/api/violations/:id` | Update a violation |
 | `DELETE` | `/api/violations/:id` | Delete a violation |
 
-## Development
+## Development scripts
 
 ```sh
-# Run the API in watch mode
+# API watch mode (host)
 pnpm --filter api start:dev
 
 # Type check
@@ -182,6 +288,16 @@ pnpm lint
 # Format
 pnpm format
 ```
+
+## Troubleshooting
+
+| Symptom | What to check |
+|---------|----------------|
+| SigNoz UI not loading | `docker compose ps` — wait until `signoz` is healthy; allow ~1–2 minutes on first start |
+| No `temporalguard-api` in SigNoz | Hit any API endpoint, then refresh Services; confirm collector is up: `docker compose logs otel-collector` |
+| API unhealthy | `docker compose logs api` — usually waiting on Postgres/Redis |
+| Out of memory / restarts | Give Docker ≥ 4 GB RAM |
+| Port already in use | Change `API_HOST_PORT`, `POSTGRES_PORT`, `SIGNOZ_UI_PORT`, etc. in `.env` |
 
 ## License
 

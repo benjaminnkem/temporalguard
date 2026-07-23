@@ -1,0 +1,32 @@
+# Dependencies & build artifacts
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+coverage
+**/*.tsbuildinfo
+
+# Git / IDE
+.git
+.gitignore
+.DS_Store
+**/.DS_Store
+.idea
+.vscode
+
+# Env & secrets (injected via Compose)
+.env
+.env.*
+!**/.env.example
+apps/api/.env
+
+# Docs & tests (not needed in image)
+**/*.md
+**/test
+**/__tests__
+**/*.spec.ts
+**/*.e2e-spec.ts
+
+# Deploy data that is mounted at runtime, not baked into the API image
+deploy

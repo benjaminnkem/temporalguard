@@ -15,6 +15,7 @@ export default () => ({
   telemetry: {
     serviceName: process.env.OTEL_SERVICE_NAME ?? 'temporalguard-api',
     exporterEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
-    exporterProtocol: process.env.OTEL_EXPORTER_OTLP_PROTOCOL ?? 'http/json',
+    exporterProtocol:
+      process.env.OTEL_EXPORTER_OTLP_PROTOCOL ?? 'http/protobuf',
   },
 });

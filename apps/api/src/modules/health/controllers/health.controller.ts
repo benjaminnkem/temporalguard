@@ -1,25 +1,27 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { HealthService } from '../services/health.service';
+import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator } from '@nestjs/terminus';
+import { RedisHealthIndicator } from '../indicators/redis-health.indicator';
 
 @ApiTags('health')
 @Controller('health')
 export class HealthController {
-  constructor(private readonly healthService: HealthService) {}
+  constructor(
+    private readonly health: HealthCheckService,
+    private readonly db: TypeOrmHealthIndicator,
+    private readonly redis: RedisHealthIndicator,
+  ) {}
 
   @Get()
+  @HealthCheck()
   @ApiOperation({ summary: 'Health check' })
   @ApiOkResponse({
     description: 'Service health status',
-    schema: {
-      type: 'object',
-      properties: {
-        status: { type: 'string', example: 'ok' },
-        service: { type: 'string', example: 'TemporalGuard API' },
-      },
-    },
   })
   check() {
-    return this.healthService.check();
+    return this.health.check([
+      () => this.db.pingCheck('database'),
+      () => this.redis.isHealthy('redis'),
+    ]);
   }
 }
