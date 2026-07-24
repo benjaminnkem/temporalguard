@@ -1,15 +1,15 @@
 export default () => ({
-  port: parseInt(process.env.PORT ?? '3000', 10),
+  port: Number(process.env.PORT ?? 3000),
   database: {
     host: process.env.DB_HOST ?? 'localhost',
-    port: parseInt(process.env.DB_PORT ?? '5432', 10),
+    port: Number(process.env.DB_PORT ?? 5432),
     username: process.env.DB_USERNAME ?? 'postgres',
     password: process.env.DB_PASSWORD ?? 'postgres',
     database: process.env.DB_DATABASE ?? 'temporalguard',
   },
   redis: {
     host: process.env.REDIS_HOST ?? 'localhost',
-    port: parseInt(process.env.REDIS_PORT ?? '6379', 10),
+    port: Number(process.env.REDIS_PORT ?? 6379),
   },
   nodeEnv: process.env.NODE_ENV ?? 'development',
   telemetry: {
@@ -19,15 +19,13 @@ export default () => ({
       process.env.OTEL_EXPORTER_OTLP_PROTOCOL ?? 'http/protobuf',
   },
   signoz: {
+    mode: process.env.SIGNOZ_MODE ?? 'self_hosted',
     apiUrl: process.env.SIGNOZ_API_URL?.replace(/\/+$/, ''),
     apiKey: process.env.SIGNOZ_API_KEY,
     uiUrl: (
       process.env.SIGNOZ_UI_URL ?? process.env.NEXT_PUBLIC_SIGNOZ_UI_URL
     )?.replace(/\/+$/, ''),
-    queryTimeoutMs: parseInt(
-      process.env.SIGNOZ_QUERY_TIMEOUT_MS ?? '10000',
-      10,
-    ),
+    queryTimeoutMs: Number(process.env.SIGNOZ_QUERY_TIMEOUT_MS ?? 10_000),
   },
   auth: {
     accessSecret: process.env.JWT_ACCESS_SECRET ?? 'development-access-secret',
@@ -45,5 +43,15 @@ export default () => ({
     apiKey: process.env.CLOUDINARY_API_KEY,
     apiSecret: process.env.CLOUDINARY_API_SECRET,
     folder: process.env.CLOUDINARY_FOLDER ?? 'temporalguard/workspaces',
+  },
+  features: {
+    investigations: process.env.FEATURE_INVESTIGATIONS === 'true',
+    comparisons: process.env.FEATURE_COMPARISONS === 'true',
+    ruleSimulation: process.env.FEATURE_RULE_SIMULATION === 'true',
+    deploymentAnalysis: process.env.FEATURE_DEPLOYMENT_ANALYSIS === 'true',
+    telemetryQuality: process.env.FEATURE_TELEMETRY_QUALITY === 'true',
+    signozAssetProvisioning:
+      process.env.FEATURE_SIGNOZ_ASSET_PROVISIONING === 'true',
+    demoSystem: process.env.FEATURE_DEMO_SYSTEM === 'true',
   },
 });

@@ -4,8 +4,9 @@ import { BullModule } from '@nestjs/bullmq';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { configuration } from './config';
+import { configuration, validateEnvironment } from './config';
 import { DatabaseModule } from './database';
+import { FeatureFlagsModule } from './common';
 import {
   DashboardModule,
   AuthModule,
@@ -25,8 +26,10 @@ import {
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+      validate: validateEnvironment,
       envFilePath: ['../../.env', '.env'],
     }),
+    FeatureFlagsModule,
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([
       {

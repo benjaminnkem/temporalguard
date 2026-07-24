@@ -10,8 +10,12 @@
   `packages/typescript-config`.
 - Local observability: `docker-compose.yml` plus `deploy/signoz`.
 - Product and engineering requirements: `docs/PRD.md`,
-  `docs/ARCHITECTURE.md`, `docs/API_AND_DATA_CONTRACTS.md`,
-  `docs/ENVIRONMENT_TESTING_AND_DOCKER.md`, and `docs/SKILLS_AND_MCP.md`.
+  `docs/SYSTEM_ARCHITECTURE.md`, `docs/API_AND_DATA_CONTRACTS.md`,
+  `docs/ENVIRONMENT_OPERATIONS_AND_TESTING.md`,
+  `docs/LOCAL_DOCKER_AND_RENDER.md`,
+  `docs/SIGNOZ_AND_OTEL_INTEGRATION.md`,
+  `docs/REALTIME_AND_AGENT_PROCESSING.md`, and
+  `docs/SKILLS_AND_TOOLING.md`.
 - Design source of truth: `docs/DESIGN.MD` (the tracked filename is uppercase).
 
 ## Setup and common commands
@@ -45,6 +49,10 @@ pnpm --filter api test:e2e -- --runInBand
 pnpm --filter api migration:run
 pnpm --filter api migration:revert
 ```
+
+The current public API prefix is `/api`. The upgrade contract targets
+`/api/v1`; introduce that transition with an explicit compatibility period
+rather than silently breaking the web HTTP adapters or event producers.
 
 The existing API `lint` script includes `--fix`. When auditing a dirty
 worktree, use the following non-mutating equivalent and report failures:
@@ -108,6 +116,31 @@ local data reset.
   contracts. Adapt or migrate existing backend product entities explicitly;
   do not expose legacy entity shapes directly to the frontend.
 
+## Foundation conventions
+
+- Validate API configuration through
+  `apps/api/src/config/environment.ts`. New environment variables must be
+  added to the typed schema, the mapped configuration, and the applicable
+  `.env.example`; browser-exposed variables must never contain secrets.
+- HTTP failures use the stable `{ error: { code, message, details, requestId } }`
+  envelope. Add domain-specific codes at the exception boundary instead of
+  returning ad hoc controller shapes.
+- New collection endpoints use the opaque cursor contract
+  `{ data, page: { nextCursor, hasMore } }`. Use deterministic
+  `(createdAt, id)` ordering and request one extra row to determine `hasMore`.
+  Existing array endpoints require a compatibility migration before changing
+  their response shape.
+- Upgrade features are opt-in through the typed `FEATURE_*` flags. A disabled
+  feature must not register a partially working route, worker, or destructive
+  side effect. Do not use flags to fork core product-domain behavior.
+- PostgreSQL is authoritative for product and investigation state; Redis is
+  for queues, fan-out, locks, and bounded caches; SigNoz is the technical
+  telemetry store. The browser never receives SigNoz credentials or submits
+  raw telemetry SQL.
+- Prefer additive migrations, dual-read compatibility where needed, bounded
+  backfills, and delayed removal. Never repurpose or delete legacy columns in
+  the same milestone that introduces their replacement.
+
 ## Verification expectations
 
 After each coherent milestone, run the narrow checks first, then the root
@@ -127,5 +160,5 @@ docker compose config --quiet
 
 The two web test commands become available when the implementation plan adds
 the Vitest and Playwright scripts. Record commands and results in
-`docs/IMPLEMENTATION_REPORT.md`. Visual QA must cover 390x844, 768x1024,
+the active implementation report. Visual QA must cover 390x844, 768x1024,
 1440x900, and 1920x1080 in light and dark themes.

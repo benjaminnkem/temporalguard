@@ -1,442 +1,598 @@
-# TemporalGuard API and Data Contracts
+# API and Data Contracts
 
-These contracts define the shape the frontend should target. Existing backend conventions take precedence for envelope naming and IDs, but the semantic fields should remain stable.
+## 1. Conventions
 
-## 1. Authentication Endpoints
+- Base path: `/api/v1`.
+- ISO-8601 UTC timestamps.
+- Cursor pagination.
+- Company scope from authentication.
+- Shared Zod-compatible schemas where practical.
+- Stable error codes.
+- Request correlation ID.
+- No SigNoz credentials returned to the browser.
 
-### `POST /auth/register`
-
-Content type: `multipart/form-data`
-
-Fields:
-
-```text
-firstName: string
-lastName: string
-email: string
-password: string
-businessName: string
-logo: image file, optional if product allows a generated default
-```
-
-Success response:
+Error:
 
 ```json
 {
-  "user": {
-    "id": "usr_...",
-    "firstName": "Ada",
-    "lastName": "Okafor",
-    "email": "ada@example.com"
-  },
-  "workspace": {
-    "id": "wsp_...",
-    "name": "Northstar Labs",
-    "logoUrl": "https://res.cloudinary.com/..."
+  "error": {
+    "code": "INVESTIGATION_ALREADY_RUNNING",
+    "message": "An investigation is already running.",
+    "details": {},
+    "requestId": "req_01"
   }
 }
 ```
 
-If auth uses cookies, tokens must not be returned unnecessarily in the body.
+---
 
-Stable error codes:
+## 2. Entities
+
+### SigNozConnection
 
 ```text
-AUTH_EMAIL_ALREADY_EXISTS
-AUTH_WEAK_PASSWORD
-AUTH_INVALID_LOGO
-AUTH_LOGO_UPLOAD_FAILED
-AUTH_REGISTRATION_FAILED
-VALIDATION_ERROR
-RATE_LIMITED
+id
+companyId nullable for platform connection
+mode self_hosted|cloud
+name
+apiUrl
+uiUrl
+encryptedApiKey
+ingestionEndpoint nullable
+status
+lastValidatedAt
+lastValidationErrorCode
+createdBy
+createdAt
+updatedAt
 ```
 
-### `POST /auth/login`
+### Investigation
+
+```text
+id
+companyId
+violationId
+workflowId
+ruleId
+status
+trigger
+configurationHash
+requestedBy
+startedAt
+completedAt
+cancelledAt
+confidence
+summary
+topContributor
+dataGapCount
+evidenceCount
+errorCode
+errorMessage
+createdAt
+updatedAt
+```
+
+### InvestigationStep
+
+```text
+id
+investigationId
+sequence
+type
+name
+status
+inputRedacted
+outputSummary
+startedAt
+completedAt
+errorCode
+```
+
+### Evidence
+
+```text
+id
+companyId
+investigationId
+type
+signal
+sourceSystem
+queryId
+title
+summary
+timeRangeStart
+timeRangeEnd
+serviceName
+serviceVersion
+traceId
+spanId
+measuredValue
+unit
+confidence
+reference
+redactedSnapshot
+createdAt
+```
+
+### AgentRun
+
+```text
+id
+investigationId
+provider
+model
+policyVersion
+maxSteps
+status
+inputTokenCount nullable
+outputTokenCount nullable
+startedAt
+completedAt
+errorCode
+```
+
+### AgentToolCall
+
+```text
+id
+agentRunId
+sequence
+toolName
+inputRedacted
+outputEvidenceIds
+status
+durationMs
+errorCode
+createdAt
+```
+
+### WorkflowComparison
+
+```text
+id
+companyId
+name
+status
+configuration
+cohortASize
+cohortBSize
+resultSummary
+requestedBy
+startedAt
+completedAt
+errorCode
+createdAt
+```
+
+### RuleSimulation
+
+```text
+id
+companyId
+ruleId nullable
+draftSnapshot
+draftHash
+from
+to
+status
+workflowsEvaluated
+wouldComplete
+wouldViolate
+wouldCompleteLate
+result
+requestedBy
+startedAt
+completedAt
+errorCode
+createdAt
+```
+
+### DeploymentObservation
+
+```text
+id
+companyId
+serviceName
+environment
+version
+firstObservedAt
+lastObservedAt
+source
+createdAt
+updatedAt
+```
+
+### TelemetryQualitySnapshot
+
+```text
+id
+companyId
+scopeType
+scopeKey
+from
+to
+score
+dimensions
+criticalGaps
+createdAt
+```
+
+---
+
+## 3. Investigation endpoints
+
+```text
+GET    /investigations
+POST   /violations/:violationId/investigations
+GET    /investigations/:id
+POST   /investigations/:id/cancel
+POST   /investigations/:id/rerun
+GET    /investigations/:id/steps
+GET    /investigations/:id/evidence
+GET    /investigations/:id/graph
+GET    /investigations/:id/export
+GET    /investigations/:id/stream
+```
+
+Start:
 
 ```json
 {
-  "email": "ada@example.com",
-  "password": "..."
+  "mode": "full",
+  "comparison": {
+    "enabled": true,
+    "successfulSampleSize": 100,
+    "violatedSampleSize": 100
+  },
+  "includeDeploymentAnalysis": true,
+  "includeTelemetryQuality": true
 }
 ```
 
-Stable errors:
+---
+
+## 4. Investigation response
+
+```json
+{
+  "data": {
+    "id": "inv_01",
+    "status": "completed",
+    "brokenPromise": {
+      "ruleName": "Documents must be verified",
+      "triggerEvent": "document.uploaded",
+      "expectedEvents": [
+        "document.scan_completed",
+        "document.verification_completed"
+      ],
+      "missingEvents": ["document.scan_completed"],
+      "deadlineAt": "2026-07-24T20:10:00Z"
+    },
+    "report": {
+      "summary": "The strongest correlation is scanner-worker 2.7.1.",
+      "confidence": "high",
+      "facts": [],
+      "contributors": [],
+      "dataGaps": [],
+      "recommendedChecks": [],
+      "recommendedAction": "Pause the rollout and inspect timeout handling.",
+      "automaticRemediationPerformed": false
+    }
+  }
+}
+```
+
+---
+
+## 5. Evidence Graph
+
+```json
+{
+  "data": {
+    "nodes": [
+      {
+        "id": "event_1",
+        "type": "business_event",
+        "label": "document.uploaded",
+        "status": "completed",
+        "occurredAt": "2026-07-24T20:00:00Z",
+        "metadata": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge_1",
+        "source": "event_1",
+        "target": "trace_1",
+        "type": "linked",
+        "confidence": 1
+      }
+    ],
+    "truncated": false
+  }
+}
+```
+
+---
+
+## 6. Comparison endpoints
 
 ```text
-AUTH_INVALID_CREDENTIALS
-AUTH_ACCOUNT_DISABLED
-RATE_LIMITED
+GET    /comparisons
+POST   /comparisons
+GET    /comparisons/:id
+POST   /comparisons/:id/cancel
+GET    /comparisons/:id/stream
 ```
 
-### `POST /auth/refresh`
+Request:
 
-Rotates refresh session and returns/sets a new access session.
+```json
+{
+  "name": "Successful vs violated documents",
+  "scope": {
+    "ruleId": "rule_01",
+    "environment": "production",
+    "from": "2026-07-23T00:00:00Z",
+    "to": "2026-07-24T00:00:00Z"
+  },
+  "cohortA": {
+    "type": "workflow_status",
+    "status": "completed"
+  },
+  "cohortB": {
+    "type": "workflow_status",
+    "status": "violated"
+  },
+  "dimensions": [
+    "service_version",
+    "trace_duration",
+    "error_span_rate",
+    "log_pattern",
+    "external_call_duration",
+    "telemetry_completeness"
+  ]
+}
+```
 
-### `POST /auth/logout`
+Result difference:
 
-Revokes the current refresh session and clears cookies.
-
-### `GET /auth/me`
-
-Returns safe user and workspace information.
+```json
+{
+  "dimension": "service_version",
+  "key": "scanner-worker@2.7.1",
+  "cohortAValue": 0.12,
+  "cohortBValue": 0.84,
+  "absoluteDifference": 0.72,
+  "relativeRatio": 7,
+  "interpretation": "correlation",
+  "evidenceIds": ["evi_01"]
+}
+```
 
 ---
 
-## 2. Core Frontend Types
-
-### Event definition
-
-```ts
-type EventAttributeType =
-  | "string"
-  | "number"
-  | "boolean"
-  | "timestamp"
-  | "enum"
-  | "identifier";
-
-type EventAttributeDefinition = {
-  key: string;
-  label: string;
-  type: EventAttributeType;
-  description?: string;
-  required: boolean;
-  sensitive: boolean;
-  enumValues?: string[];
-};
-
-type EventDefinition = {
-  id: string;
-  canonicalName: string;
-  displayName: string;
-  domain: string;
-  description: string;
-  sourceService?: string;
-  suggestedCorrelationKeys: string[];
-  attributes: EventAttributeDefinition[];
-  firstSeenAt?: string;
-  lastSeenAt?: string;
-  usageCount: number;
-  origin: "seed" | "user" | "discovered";
-  createdAt: string;
-  updatedAt: string;
-};
-```
-
-### Create event input
-
-```ts
-type CreateEventInput = {
-  canonicalName: string;
-  displayName: string;
-  domain: string;
-  description: string;
-  sourceService?: string;
-  suggestedCorrelationKeys: string[];
-  attributes: EventAttributeDefinition[];
-};
-```
-
-### Rule
-
-```ts
-type RuleOperator = "any" | "all" | "sequence" | "forbid";
-type RuleSeverity = "info" | "warning" | "critical";
-
-type DurationUnit = "seconds" | "minutes" | "hours" | "days";
-
-type DurationValue = {
-  value: number;
-  unit: DurationUnit;
-};
-
-type EventReference = {
-  eventId: string;
-  canonicalName: string;
-  displayName: string;
-};
-
-type EventFilter = {
-  attribute: string;
-  operator:
-    | "equals"
-    | "not_equals"
-    | "contains"
-    | "exists"
-    | "greater_than"
-    | "less_than";
-  value?: string | number | boolean;
-};
-
-type RuleDraft = {
-  id?: string;
-  name: string;
-  description?: string;
-  trigger: EventReference | null;
-  triggerFilters: EventFilter[];
-  operator: RuleOperator;
-  outcomes: EventReference[];
-  correlationKey: string;
-  window: DurationValue;
-  severity: RuleSeverity;
-  environments: string[];
-  status: "draft" | "active" | "paused";
-};
-```
-
-Authenticated lifecycle operations:
+## 7. Simulation endpoints
 
 ```text
-GET    /api/rules/:id
-PATCH  /api/rules/:id         RuleDraft fields
-PATCH  /api/rules/:id/status  { "enabled": true | false }
-DELETE /api/rules/:id
+POST   /rules/:ruleId/simulations
+POST   /rules/simulations
+GET    /simulations/:id
+POST   /simulations/:id/cancel
+GET    /simulations/:id/stream
 ```
 
-When `/explore?rule=:id` is open, the client loads the persisted rule and uses
-`PATCH` when saving. A newly created rule replaces the URL with its persisted
-ID so subsequent saves remain updates.
+Draft:
 
-`DELETE` is a soft delete. The API atomically disables the rule and records
-`deletedAt`; ordinary rule reads exclude it, while existing workflow and
-violation history may still resolve the deleted rule relation.
-
-### Historical test result
-
-```ts
-type RuleTestResult = {
-  evaluatedCount: number;
-  completedCount: number;
-  violatedCount: number;
-  openCount: number;
-  completionRate: number;
-  medianCompletionMs: number | null;
-  p95CompletionMs: number | null;
-  samples: Array<{
-    workflowId: string;
-    state: "completed" | "violated" | "open";
-    startedAt: string;
-    completedAt?: string;
-    violatedAt?: string;
-  }>;
-  dataMode: "api";
-};
+```json
+{
+  "draft": {
+    "name": "Documents must finish",
+    "triggerEventId": "evt_01",
+    "queryType": "sequence",
+    "expectedEventIds": ["evt_02", "evt_03"],
+    "withinSeconds": 600,
+    "correlationProperty": "workflow.id"
+  },
+  "from": "2026-06-24T00:00:00Z",
+  "to": "2026-07-24T00:00:00Z",
+  "includeTechnicalEnrichment": true
+}
 ```
 
 ---
 
-## 3. Workflow Contracts
-
-```ts
-type WorkflowState =
-  | "waiting"
-  | "near_deadline"
-  | "completed"
-  | "violated"
-  | "recovered";
-
-type WorkflowEventInstance = {
-  id: string;
-  eventId: string;
-  canonicalName: string;
-  displayName: string;
-  occurredAt: string;
-  serviceName?: string;
-  traceId?: string;
-  spanId?: string;
-  attributes: Record<string, string | number | boolean | null>;
-};
-
-type ExpectedWorkflowStep = {
-  eventId: string;
-  canonicalName: string;
-  displayName: string;
-  state: "completed" | "current" | "expected" | "missed" | "forbidden_seen";
-  occurredAt?: string;
-  deadlineAt?: string;
-};
-
-type WorkflowSummary = {
-  id: string;
-  workflowType: string;
-  entityId: string;
-  ruleId: string;
-  ruleName: string;
-  state: WorkflowState;
-  startedAt: string;
-  deadlineAt?: string;
-  completedAt?: string;
-  lastEventName?: string;
-  serviceName?: string;
-  environment: string;
-  deploymentVersion?: string;
-};
-
-type WorkflowDetail = WorkflowSummary & {
-  correlationKey: string;
-  correlationValue: string;
-  operator: RuleOperator;
-  events: WorkflowEventInstance[];
-  expectedSteps: ExpectedWorkflowStep[];
-  traceId?: string;
-  attributes: Record<string, string | number | boolean | null>;
-};
-
-type WorkflowObservabilityPreview = {
-  configured: boolean;
-  signal: "traces" | "logs" | "metrics";
-  start: string;
-  end: string;
-  explorerUrl?: string;
-  items: Array<Record<string, unknown>>;
-  message?: string;
-};
-```
-
-Authenticated workflow observability endpoints:
+## 8. Deployment endpoints
 
 ```text
-GET /api/workflows/:id/observability/traces
-GET /api/workflows/:id/observability/logs
-GET /api/workflows/:id/observability/metrics
-```
-
-The API verifies workspace ownership before querying SigNoz. It sends the
-server-only `SIGNOZ_API_KEY` to SigNoz `/api/v5/query_range`; neither the key
-nor the raw upstream error body is returned to the browser.
-
----
-
-## 4. Violation Contracts
-
-```ts
-type ViolationType =
-  | "missing_expected_event"
-  | "missing_required_events"
-  | "out_of_order_event"
-  | "forbidden_event_observed"
-  | "deadline_exceeded";
-
-type ViolationSummary = {
-  id: string;
-  workflowId: string;
-  ruleId: string;
-  ruleName: string;
-  type: ViolationType;
-  severity: RuleSeverity;
-  status: "open" | "acknowledged" | "resolved";
-  explanation: string;
-  triggerEventName: string;
-  affectedEventNames: string[];
-  lastObservedEventName?: string;
-  occurredAt: string;
-  overdueMs?: number;
-  serviceName?: string;
-  environment: string;
-  deploymentVersion?: string;
-};
-
-type ViolationDetail = ViolationSummary & {
-  expectedCondition: string;
-  observedCondition: string;
-  correlationKey: string;
-  correlationValue: string;
-  workflow: WorkflowDetail;
-  relatedEvidence: Array<{
-    kind: "trace" | "log" | "metric" | "deployment";
-    title: string;
-    description: string;
-    reference?: string;
-    confidence?: "low" | "medium" | "high";
-  }>;
-};
+GET    /deployments
+GET    /deployments/:id
+POST   /deployments/:id/analyze
+GET    /deployments/:id/analysis
+GET    /deployments/:id/stream
 ```
 
 ---
 
-## 5. Dashboard Contracts
-
-```ts
-type MetricSummary = {
-  value: number;
-  formattedValue: string;
-  deltaPercent?: number;
-  direction?: "up" | "down" | "flat";
-  trend: Array<{ timestamp: string; value: number }>;
-};
-
-type DashboardOverview = {
-  health: "healthy" | "degraded" | "critical";
-  completionRate: MetricSummary;
-  activeWorkflows: MetricSummary;
-  nearDeadline: MetricSummary;
-  violations: MetricSummary;
-  medianCompletionMs: MetricSummary;
-  p95CompletionMs: MetricSummary;
-  reliabilitySeries: Array<{
-    timestamp: string;
-    started: number;
-    completed: number;
-    violated: number;
-    waiting: number;
-    completionRate: number;
-    p95DurationMs: number;
-  }>;
-  deadlineBuckets: Array<{
-    bucket: "lt_5m" | "lt_15m" | "lt_1h" | "overdue";
-    count: number;
-  }>;
-  recentViolations: ViolationSummary[];
-};
-```
-
----
-
-## 6. Pagination and Query Contracts
-
-Use cursor-ready API results:
-
-```ts
-type Paginated<T> = {
-  items: T[];
-  nextCursor: string | null;
-  total?: number;
-};
-```
-
-Common analytical query:
-
-```ts
-type AnalyticsContext = {
-  environment: string;
-  from: string;
-  to: string;
-  compareFrom?: string;
-  compareTo?: string;
-  filters: Array<{
-    field: string;
-    operator: string;
-    value: unknown;
-  }>;
-};
-```
-
----
-
-## 7. Client Persistence and Server Ownership
-
-Use browser storage only for local UI drafts and preferences through a typed adapter:
+## 9. Telemetry quality
 
 ```text
-temporalguard.ruleDrafts.v1
-temporalguard.preferences.v1
+GET    /observability/telemetry-quality
+POST   /observability/telemetry-quality/analyze
+GET    /observability/telemetry-quality/services/:serviceName
+GET    /observability/telemetry-quality/events/:eventId
 ```
 
-Requirements:
+---
 
-- Parse with Zod.
-- Migrate or discard invalid versions safely.
-- Never read local storage during server rendering.
-- Events and saved rules are persisted by the API and scoped to the authenticated workspace.
-- Draft rules must survive refresh without being confused with server-saved rules.
-- Deterministic seeds and reset behavior belong to test databases and test harnesses only.
+## 10. SigNoz connection
+
+```text
+GET    /observability/connection
+PUT    /observability/connection
+POST   /observability/connection/validate
+GET    /observability/connection/health
+```
+
+Secrets are write-only and masked.
+
+---
+
+## 11. Explorer
+
+```text
+POST   /explorer/traces/search
+POST   /explorer/logs/search
+POST   /explorer/metrics/query
+GET    /explorer/attributes
+POST   /explorer/signoz-link
+```
+
+Safe trace search:
+
+```json
+{
+  "from": "2026-07-24T19:00:00Z",
+  "to": "2026-07-24T20:00:00Z",
+  "filters": [
+    {
+      "field": "service.name",
+      "operator": "eq",
+      "value": "scanner-worker"
+    }
+  ],
+  "sort": {
+    "field": "duration",
+    "direction": "desc"
+  },
+  "limit": 50,
+  "cursor": null
+}
+```
+
+---
+
+## 12. Observability assets
+
+```text
+GET    /observability/assets/status
+POST   /observability/assets/validate
+POST   /observability/assets/plan
+POST   /observability/assets/apply
+GET    /observability/assets/runs/:id
+```
+
+Apply requires explicit authorization.
+
+---
+
+## 13. SSE event types
+
+```text
+investigation.queued
+investigation.started
+investigation.plan.created
+investigation.tool.started
+investigation.tool.completed
+investigation.tool.failed
+investigation.analysis.completed
+investigation.synthesis.started
+investigation.completed
+investigation.failed
+investigation.cancelled
+
+simulation.started
+simulation.progress
+simulation.completed
+simulation.failed
+
+comparison.started
+comparison.progress
+comparison.completed
+comparison.failed
+```
+
+SSE envelope:
+
+```json
+{
+  "id": "stream_01",
+  "type": "investigation.tool.completed",
+  "occurredAt": "2026-07-24T20:00:00Z",
+  "entityId": "inv_01",
+  "sequence": 18,
+  "data": {}
+}
+```
+
+---
+
+## 14. Internal agent tools
+
+### Query traces
+
+```json
+{
+  "workflowId": "wf_01",
+  "traceIds": [],
+  "services": [],
+  "from": "2026-07-24T19:55:00Z",
+  "to": "2026-07-24T20:15:00Z",
+  "limit": 200
+}
+```
+
+### Query logs
+
+```json
+{
+  "workflowId": "wf_01",
+  "traceIds": [],
+  "services": [],
+  "severity": ["ERROR", "WARN"],
+  "from": "2026-07-24T19:55:00Z",
+  "to": "2026-07-24T20:15:00Z",
+  "limit": 300
+}
+```
+
+### Compare cohorts
+
+```json
+{
+  "ruleId": "rule_01",
+  "from": "2026-07-23T00:00:00Z",
+  "to": "2026-07-24T00:00:00Z",
+  "dimensions": ["service_version", "error_span_rate"]
+}
+```
+
+---
+
+## 15. Pagination
+
+```json
+{
+  "data": [],
+  "page": {
+    "nextCursor": "opaque",
+    "hasMore": true
+  }
+}
+```
+
+---
+
+## 16. Default limits
+
+```text
+Explorer range: 24 hours
+Investigation range: workflow window plus 30 minutes
+Comparison range: 30 days
+Trace rows: 500
+Log rows: 1000
+Grouped series: 100
+Agent tool calls: 10
+Concurrent investigations per company: 3
+```

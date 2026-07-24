@@ -1,888 +1,786 @@
-# TemporalGuard Product Requirements Document
+# Product Requirements Document
 
-**Document status:** Implementation-ready  
-**Release:** Frontend Foundation + Authentication  
-**Product category:** Business workflow observability  
-**Primary interface inspiration:** Dense product analytics plus technical observability, without copying another product's visual identity  
-**Backend context:** Existing NestJS + TypeORM application in the monorepo
+## TemporalGuard: SigNoz-Native Business Workflow Observability
 
----
-
-## 1. Product Summary
-
-TemporalGuard is a business-process reliability platform. It lets teams define time-bound promises over events and detect when real workflows do not reach an acceptable outcome.
-
-A rule may say:
-
-> When `document.uploaded` occurs, `document.scan_completed` and `document.verification_completed` must occur within ten minutes for the same `document.id`.
-
-Traditional observability may show healthy servers and successful HTTP responses while the actual business process remains unfinished. TemporalGuard provides a product-analytics experience for discovering failed or slow workflows and an observability experience for investigating the technical evidence behind them.
-
-The release covered by this PRD delivers a polished frontend backed by the NestJS API. Authentication and product-domain data must use typed, validated HTTP contracts; deterministic fixtures remain limited to automated tests and local test seeding.
+**Status:** Implementation specification  
+**Project type:** Upgrade to an existing monorepo  
+**Primary hackathon positioning:** Build Your Own — observe temporal business
+promises with SigNoz.
 
 ---
 
-## 2. Problem
+## 1. Executive summary
 
-Distributed workflows fail in ways that ordinary uptime, request-error, and resource dashboards do not capture:
+TemporalGuard already lets companies create business event definitions, receive
+event occurrences, define temporal rules, track workflows, and detect
+violations.
 
-- A process starts but never reaches a terminal event.
-- Required steps complete in the wrong order.
-- Only some required steps happen.
-- A forbidden event occurs after a policy change.
-- A workflow finishes, but only after its business deadline.
-- A user sees a successful request while an asynchronous worker silently stops.
-- Engineers know a workflow violated a promise but cannot quickly connect it to relevant traces, logs, services, or deployments.
-
-Teams need a clear interface for expressing workflow expectations, measuring their reliability, inspecting affected instances, and eventually linking violations to SigNoz evidence.
-
----
-
-## 3. Product Vision
-
-TemporalGuard should feel like:
-
-- A product-analytics application when users explore events, funnels, completion rates, durations, segments, and paths.
-- An observability application when users inspect workflow timelines, violations, services, trace references, logs, and deployment context.
-- A policy builder when users define rules visually.
-
-The experience should move naturally through:
-
-`health summary → analysis → affected cohort → individual workflow → violation explanation → technical evidence`
-
----
-
-## 4. Target Users
-
-### 4.1 Platform and backend engineers
-
-They need to verify that asynchronous and distributed operations complete correctly.
-
-### 4.2 SRE and reliability engineers
-
-They need alerts and investigation context for failures that are invisible to service-level health checks.
-
-### 4.3 Product and operations teams
-
-They need to understand where real business processes stall and which users, customers, regions, or versions are affected.
-
-### 4.4 Compliance and security teams
-
-They need to verify time-bound obligations such as access revocation, account deletion, consent enforcement, or document scanning.
-
----
-
-## 5. Goals
-
-### 5.1 Product goals
-
-- Present workflow health in a clear, advanced analytics interface.
-- Allow users to define rules from known events.
-- Allow users to create missing event definitions inline while building a rule.
-- Support the four initial operators: `any`, `all`, `sequence`, and `forbid`.
-- Make the frontend realistic, responsive, accessible, and visually deliberate.
-- Provide detailed loading, empty, success, partial, error, and retry states.
-- Integrate product features with versioned, validated NestJS APIs.
-- Add secure authentication and product-domain endpoints to the existing NestJS backend.
-- Support workspace/business logo upload through Cloudinary during signup.
-- Preserve the existing local SigNoz setup and document a clean cloud/local switch.
-
-### 5.2 Engineering goals
-
-- Use established module boundaries rather than page-local business logic.
-- Keep server state in TanStack Query and UI state in Zustand.
-- Use React Hook Form and Zod for all forms.
-- Centralize themes, chart tokens, spacing, status colors, and motion.
-- Make test fixtures deterministic and scenario-driven.
-- Keep testable data-source interfaces so HTTP transport details do not leak into components.
-- Avoid unnecessary client components and excessive animation.
-- Maintain strict TypeScript and avoid `any` except at external library boundaries with explicit narrowing.
-
----
-
-## 6. Non-goals for This Release
-
-The following are explicitly outside this phase:
-
-- Connecting dashboard, workflow, event, violation, or rule pages to live backend endpoints.
-- Querying SigNoz Cloud or self-hosted SigNoz from the frontend.
-- Implementing the complete TemporalGuard event-ingestion or rule-evaluation engine.
-- Implementing Monnify. Monnify is unrelated to the current product slice and must remain deferred.
-- Implementing Telegram delivery. The UI may reserve a future notification-channel placeholder, but no Telegram package or API is required.
-- Billing, subscriptions, invitations, multi-role authorization, SSO, audit exports, or organisation administration.
-- Automatic remediation.
-
----
-
-## 7. Scope Overview
-
-### 7.1 Frontend pages
-
-- Login.
-- Signup.
-- Authenticated application shell.
-- Overview dashboard.
-- Live workflows.
-- Workflow list and workflow detail drawer/page.
-- Violations explorer.
-- Violation detail drawer/page.
-- Explore / Query Builder.
-- Rules list and Rule Studio entry points needed by the Query Builder.
-
-### 7.2 Backend work
-
-Authentication, signup, and product API foundations:
-
-- Register workspace owner.
-- Login.
-- Refresh session.
-- Logout.
-- Current-user endpoint.
-- Cloudinary-backed business logo upload.
-- Secure password handling.
-- Required TypeORM migrations and entities, adapted to existing repository conventions.
-- Event catalogue creation and listing.
-- Rule creation, listing, and historical evaluation.
-- Workflow listing and detail.
-- Violation listing and detail.
-- Dashboard analytics and reliability summaries.
-
-### 7.3 Data mode
-
-- Auth and product backend endpoints are real.
-- Frontend auth screens use the `AuthClient` boundary with the HTTP adapter active.
-- Observability/product data is loaded through `HttpTemporalGuardDataSource`.
-- Test doubles may be used only in unit, component, and E2E tests.
-
----
-
-## 8. Authentication Requirements
-
-### 8.1 Signup fields
-
-- First name.
-- Last name.
-- Email.
-- Password.
-- Business/workspace name.
-- Business logo image.
-- Terms checkbox if the repository already has legal routes; otherwise display a non-blocking placeholder link.
-
-### 8.2 Signup behavior
-
-- Use `multipart/form-data` on the backend endpoint because a logo may be included.
-- Validate logo MIME type, file size, and dimensions where practical.
-- Upload through a backend Cloudinary service; never expose the Cloudinary API secret to the browser.
-- Create the business/workspace and owner user in one database transaction.
-- Normalize email and enforce case-insensitive uniqueness.
-- Hash passwords with the repository's secure existing choice; if absent, use Argon2id.
-- Return a safe user and workspace representation without password or token hashes.
-- Handle duplicate email, rejected file, upload failure, partial transaction failure, weak password, and database conflict clearly.
-
-### 8.3 Login behavior
-
-- Email and password.
-- Show password control.
-- Remember-me presentation may exist, but it must not imply insecure permanent tokens.
-- Support access and rotating refresh tokens on the backend.
-- Prefer secure, HTTP-only, same-site cookies if consistent with existing deployment topology.
-- Rate-limit auth endpoints using existing platform conventions.
-- Return stable machine-readable error codes.
-
-### 8.4 Auth UI states
-
-- Initial.
-- Client validation error.
-- Upload preview.
-- Upload processing.
-- Submission loading.
-- Success transition.
-- Duplicate-email error.
-- Invalid-credentials error.
-- Network/server error.
-- Disabled controls during submission.
-- Keyboard and screen-reader accessible status messages.
-
----
-
-## 9. Application Shell
-
-### 9.1 Persistent sidebar
-
-Navigation:
-
-- Overview.
-- Live.
-- Workflows.
-- Violations.
-- Explore.
-- Rules.
-- Alerts placeholder.
-- Integrations placeholder.
-- Settings placeholder.
-
-Only the in-scope routes must be fully implemented. Deferred routes should be clearly marked and must not appear as broken destinations.
-
-### 9.2 Global top bar
-
-- Workspace/project selector.
-- Environment selector.
-- Time range selector.
-- Compare control.
-- Live mode indicator/control.
-- Search and command palette.
-- Theme switch.
-- Notifications placeholder.
-- User menu.
-
-### 9.3 Global context
-
-Selected environment, time range, comparison, and filters should persist in the URL where sensible. Do not hide important analytical state only in memory.
-
----
-
-## 10. Overview Dashboard
-
-### 10.1 Summary metrics
-
-- Workflow health status.
-- Completion rate.
-- Active workflows.
-- Near-deadline workflows.
-- Violations.
-- Median and p95 completion duration.
-
-Each card must have:
-
-- Current value.
-- Comparison delta.
-- Sparkline or trend indicator where useful.
-- Tooltip explaining calculation.
-- Click-to-filter or click-to-explore behavior.
-- Skeleton loading state.
-
-### 10.2 Primary reliability chart
-
-Modes:
-
-- Volume.
-- Completion rate.
-- Violations.
-- Duration.
-
-Support:
-
-- Time granularity switching.
-- Hover details.
-- Comparison period.
-- Deployment annotations from the dashboard API.
-- Click-through to affected workflows.
-
-### 10.3 Workflow funnel
+The upgraded product must detect a broken business promise and immediately
+investigate its technical evidence through SigNoz.
 
 Example:
 
-`application.submitted → documents.verified → review.completed → decision.issued`
+```text
+WHEN document.uploaded
+EXPECT sequence:
+  document.scan_completed
+  document.verification_completed
+WITHIN 10 minutes
+```
 
-Allow:
+When the expected outcome does not arrive, TemporalGuard must:
 
-- Step selection from the Event Catalogue.
-- Conversion and drop-off percentages.
-- Completion window.
-- Breakdown selector.
-- View dropped workflows.
-- Save analysis action.
+1. Reconstruct the business event timeline.
+2. Find related SigNoz traces and logs.
+3. inspect service versions, errors, exceptions, external calls, queues,
+   databases, and latency.
+4. Compare violated workflows with successful workflows.
+5. Identify telemetry gaps.
+6. Rank evidence-backed contributing factors.
+7. Show exact evidence links.
+8. Stream investigation progress.
+9. Preserve an auditable investigation record.
 
-### 10.4 Deadline pressure
+The deterministic evidence pipeline is authoritative. An AI model may plan
+queries and summarize measured evidence, but it must never invent evidence or
+replace the underlying data.
 
-Display workflow counts by remaining time:
+---
 
-- Less than 5 minutes.
-- Less than 15 minutes.
-- Less than 1 hour.
-- Overdue.
+## 2. Product definition
 
-### 10.5 Violation heatmap
+TemporalGuard observes temporal guarantees such as:
 
-Breakdown options:
+- Event B must happen after event A.
+- At least one of B, C, or D must happen.
+- Every required event must happen.
+- Events must happen in a defined order.
+- A forbidden event must not happen during an observation window.
+- A workflow must reach a terminal outcome within a deadline.
+- A late outcome may recover the workflow but does not erase the violation.
 
-- Rule.
-- Workflow type.
+TemporalGuard answers:
+
+- Which promise broke?
+- Which workflow was affected?
+- What was expected?
+- What occurred?
+- How late was it?
+- Did it recover?
+- How many similar workflows are affected?
+
+SigNoz answers:
+
+- Which services and versions participated?
+- Which traces, spans, logs, metrics, and exceptions are relevant?
+- What differs between successful and violated workflows?
+- Did a deployment precede the regression?
+- Was a queue, database, or external dependency involved?
+- Is the telemetry complete enough to trust the conclusion?
+
+---
+
+## 3. Goals
+
+### Primary goals
+
+- Make SigNoz a core investigation engine rather than a simple external link.
+- Build a complete agent-native investigation workflow.
+- Support self-hosted SigNoz and SigNoz Cloud.
+- Run the complete local system through Docker Compose.
+- Deploy the complete hosted system through a Render Blueprint.
+- Preserve company isolation.
+- Support real-time progress and high-volume processing.
+- Make every claim evidence-backed.
+- Keep the product useful when the AI provider is unavailable.
+
+### Secondary goals
+
+- Detect telemetry quality problems.
+- Compare service versions and deployment windows.
+- Generate reusable SigNoz dashboard and alert assets.
+- Provide a deterministic hackathon demo.
+- Observe TemporalGuard's own ingestion and processing system.
+
+---
+
+## 4. Existing behavior to preserve
+
+Codex must audit and preserve:
+
+- Authentication.
+- Company membership and authorization.
+- Company profile and logo.
+- Events Catalogue.
+- Inline event creation in the Query Builder.
+- Event occurrence and rule-usage counts.
+- Rule CRUD.
+- `any`, `all`, `sequence`, and `forbid`.
+- Workflow list and detail.
+- Violation list and detail.
+- Existing analytics dashboards.
+- Dark and light modes.
+- Existing database records and migrations.
+- Existing local SigNoz functionality.
+
+If frontend and backend product behavior conflict, preserve the intended
+frontend experience and upgrade the backend to support it.
+
+No destructive rewrite is allowed without a documented data migration.
+
+---
+
+## 5. Core capabilities
+
+## 5.1 Workflow Evidence Graph
+
+A TemporalGuard workflow can span multiple traces and asynchronous boundaries.
+
+Required node types:
+
+- Business event.
+- Expected event.
+- Missing event.
+- Forbidden event.
+- Workflow transition.
+- Trace.
+- Span.
 - Service.
-- Environment.
-- Region.
+- Queue operation.
+- Database operation.
+- External dependency.
+- Exception.
 - Deployment version.
+- Alert.
+- Telemetry gap.
 
-### 10.6 Recent violations table
+Required edge types:
 
-Columns:
+- Occurred after.
+- Parent/child.
+- Producer/consumer.
+- Same workflow.
+- Same trace.
+- Produced by service.
+- Associated with deployment.
+- Missing expected transition.
+- Inferred relationship.
 
-- Severity/status.
-- Violation explanation.
-- Workflow ID.
-- Rule.
-- Overdue duration.
-- Last observed event.
-- Service.
-- Deployment.
-- Timestamp.
+Required behavior:
 
-Open a detail drawer without losing dashboard context.
-
----
-
-## 11. Live Workflows
-
-- Real-time visual treatment using API polling, with pause/resume and retry behavior.
-- Tabs: all, waiting, near deadline, overdue, completed.
-- Search by workflow ID, event, rule, service, or entity.
-- Filter chips.
-- Configurable columns.
-- Sorting by deadline urgency.
-- Pause/resume live updates.
-- New/changed rows animate subtly without layout instability.
-- Detail drawer includes status, rule progress, time remaining, events, attributes, and future SigNoz deep-link placeholder.
+- Business-only and technical-expanded modes.
+- Timeline and graph modes.
+- Service clustering.
+- Node detail drawer.
+- Confidence for inferred edges.
+- Explicit missing links.
+- Search and fit-to-view.
+- “Open in SigNoz” actions.
+- Keyboard navigation.
+- Accessible table alternative.
+- Large-graph limits and clustering.
 
 ---
 
-## 12. Workflow Details
+## 5.2 Violation Investigation Workspace
 
-### 12.1 Header
-
-- Workflow type and ID.
-- State.
-- Rule.
-- Started time.
-- Deadline or completion time.
-- Environment.
-- Trace reference placeholder.
-- Copy-link action.
-
-### 12.2 Visual timeline
+Every violation can have multiple investigation runs.
 
 States:
 
+- Pending.
+- Queued.
+- Running.
+- Waiting for telemetry.
 - Completed.
-- Current.
-- Expected.
-- Missed.
-- Forbidden.
-- Inferred/future evidence link.
+- Completed with gaps.
+- Failed.
+- Cancelled.
+- Superseded.
 
-### 12.3 Evidence tabs
+Sections:
 
-- Timeline.
-- Trace preview.
-- Logs preview.
-- Metrics preview.
-- Rule evaluation.
-- Attributes.
+1. Broken promise.
+2. Business event timeline.
+3. Agent plan.
+4. Live tool execution.
+5. Evidence Graph.
+6. Ranked contributors.
+7. Successful-versus-violated comparison.
+8. Deployment impact.
+9. Telemetry completeness.
+10. Recommended checks.
+11. SigNoz evidence links.
+12. Audit trail.
 
-Data comes from the API, and components consume validated typed models rather than persistence entities.
+Actions:
 
----
-
-## 13. Violations Explorer
-
-### 13.1 Query controls
-
-Filter by:
-
-- Rule.
-- Severity.
-- Workflow type.
-- Environment.
-- Status.
-- Service.
-- Missing/forbidden event.
-- Overdue duration.
-- Deployment.
-- Time range.
-
-### 13.2 Views
-
-- Trend.
-- Table.
-- Groups.
-- Heatmap.
-- Impact.
-
-### 13.3 Violation detail
-
-Explain:
-
-- Trigger event.
-- Expected or forbidden condition.
-- Correlation key.
-- Deadline.
-- What was observed.
-- Last successful event.
-- How overdue it is.
-- Similar violations.
-- Supporting technical evidence, clearly labeled as correlation rather than proven root cause.
+- Start.
+- Cancel.
+- Rerun.
+- Compare runs.
+- Add operator note.
+- Export Markdown or JSON.
+- Share stable URL.
+- Open workflow, violation, trace, logs, or service evidence.
 
 ---
 
-## 14. Event Catalogue
+## 5.3 Guard investigation agent
 
-The Event Catalogue is central to the Query Builder.
+The agent is an SRE copilot specialized in TemporalGuard violations.
 
-### 14.1 Existing event selection
+Rules:
 
-Every event selector must support:
+- Use only registered internal tools.
+- Enforce maximum steps and duration.
+- Persist every tool call.
+- Cite evidence IDs for every claim.
+- Label correlation as correlation.
+- State missing data.
+- Treat telemetry as untrusted content.
+- Never execute remediation.
+- Never expose secrets or sensitive attributes.
+- Support cancellation.
+- Work in deterministic evidence-only mode when AI is disabled.
 
-- Search by display name, canonical name, domain, description, or attribute.
-- Recent events.
-- Frequently used events.
-- Domain grouping.
-- Source/service indication.
-- Already-used indicator inside the current rule.
-- Keyboard navigation.
-- Virtualization if the event list becomes large.
+Approved tools:
 
-### 14.2 Inline event creation
+- Load violation and rule context.
+- Load workflow event timeline.
+- Query SigNoz traces.
+- Query SigNoz logs.
+- Query SigNoz metrics.
+- Aggregate errors and durations.
+- Retrieve observed deployments and service versions.
+- Compare successful and violated cohorts.
+- Calculate telemetry completeness.
+- Retrieve related TemporalGuard alerts and violation clusters.
+- Build safe SigNoz links.
+- Produce a structured report.
 
-When the user's search does not match an existing event, show:
+Final report schema:
 
-> Create `event.name`
-
-Selecting it opens an inline popover, drawer, or modal without discarding the draft rule.
-
-Required event fields:
-
-- Canonical name, using dot notation such as `document.scan_completed`.
-- Display name.
-- Domain/category.
-- Description.
-- Source service.
-- Correlation/entity key suggestion, such as `document.id`.
-- Optional attribute schema.
-
-Attribute schema entry fields:
-
-- Key.
-- Label.
-- Type: string, number, boolean, timestamp, enum, or identifier.
-- Required flag.
-- Sensitive flag.
-- Description.
-- Enum values where applicable.
-
-Creation behavior:
-
-- Validate canonical naming.
-- Detect exact and near duplicates.
-- Warn when the new event differs only by punctuation, tense, or casing.
-- Preserve the rule draft if creation is cancelled or fails.
-- Add a successfully created event immediately to the catalogue and select it in the current builder node.
-- Persist custom events through the API and invalidate the relevant TanStack Query caches after creation.
-- Test fixtures may expose a reset action only in test environments.
-
-### 14.3 Event details preview
-
-Before selecting an event, users can inspect:
-
-- Description.
-- Source service.
-- First and latest seen timestamps.
-- Example attributes.
-- Usage count.
-- Existing rules using the event.
-- Suggested correlation keys.
-
-These values are returned by the event catalogue API.
+- Summary.
+- Confidence.
+- Measured facts.
+- Ranked contributors.
+- Evidence references.
+- Data gaps.
+- Alternative explanations.
+- Recommended checks.
+- Recommended human action.
+- `automaticRemediationPerformed: false`.
 
 ---
 
-## 15. Query Builder and Rule Studio
+## 5.4 Successful-versus-violated comparison
 
-### 15.1 Purpose
+Default comparisons:
 
-Users construct a temporal rule using events from the catalogue or create events inline.
+- Successful versus violated.
+- Successful versus completed late.
+- Before deployment versus after deployment.
+- Version A versus version B.
+- Environment A versus environment B.
+- Current period versus previous period.
 
-### 15.2 Rule structure
+Dimensions:
 
-A rule contains:
+- Workflow count.
+- Completion rate.
+- Completion duration.
+- Transition duration.
+- Missing business events.
+- Trace duration.
+- Span count.
+- Error span rate.
+- Exception and log-pattern frequency.
+- Service participation.
+- Service version.
+- External dependency latency.
+- Database latency.
+- Queue delay.
+- Retry count.
+- Missing spans.
+- Telemetry completeness.
 
-- Name.
-- Description.
-- Trigger event.
-- Optional trigger filters.
-- Operator.
-- Expected/forbidden events.
-- Correlation key.
-- Deadline/window.
-- Severity.
-- Environment scope.
-- Status: draft, active, paused.
-- Version metadata.
+Statistical requirements:
 
-### 15.3 Supported operators
+- Show sample size.
+- Warn on tiny cohorts.
+- Show absolute difference and relative ratio.
+- Handle zero denominators.
+- Prefer p50/p95/p99 for latency.
+- Mark partial buckets.
+- Separate descriptive correlation from causal claims.
+- Persist the exact comparison configuration.
 
-#### `any`
+---
 
-At least one selected outcome must happen within the window.
+## 5.5 Historical rule simulation
 
-Example:
+A rule draft can be tested against historical TemporalGuard events.
 
-`delivery.picked_up → any(delivery.delivered, delivery.returned, delivery.failed) within 24h`
-
-#### `all`
-
-Every selected outcome must happen within the window. Order is not enforced.
-
-Example:
-
-`employee.offboarding_started → all(access.email_revoked, access.cloud_revoked, access.source_control_revoked) within 4h`
-
-#### `sequence`
-
-Every selected event must happen in the configured order within the window.
-
-Example:
-
-`video.uploaded → sequence(video.scan_completed, video.transcoded, video.published) within 30m`
-
-Support drag-and-drop or accessible move controls for reordering. Dragging cannot be the only interaction method.
-
-#### `forbid`
-
-A selected event must not happen for the configured period after the trigger.
-
-Example:
-
-`consent.withdrawn → forbid(marketing_data.processed) for 365d`
-
-### 15.4 Builder layout
-
-Use an advanced three-region layout on desktop:
-
-- Left: building blocks and event catalogue.
-- Center: rule canvas or sentence builder.
-- Right: properties, validation, and test preview.
-
-On smaller screens, use tabs or stacked drawers without losing the draft.
-
-### 15.5 Sentence builder
-
-Provide a readable representation:
-
-> When **Document uploaded** happens, require **all** of **Virus scan completed** and **Verification completed** within **10 minutes**, correlated by **document.id**.
-
-The sentence and visual builder must represent the same source of truth.
-
-### 15.6 Validation
-
-Prevent activation when:
-
-- Trigger is missing.
-- No outcome event is selected.
-- Trigger and outcome are invalidly identical.
-- Correlation key is missing.
-- Window is zero, negative, or unsupported.
-- `sequence` has fewer than two steps.
-- Duplicate steps exist where they are meaningless.
-- A sensitive attribute is selected as a visible grouping label without warning.
-
-Warn, but do not necessarily block, when:
-
-- Expected events have never been seen.
-- Correlation keys differ across selected events.
-- The proposed rule likely matches no workflows.
-- The window is much shorter than observed p95 duration.
-
-### 15.7 Historical test preview
-
-Return an API-backed historical evaluation result:
+Output:
 
 - Workflows evaluated.
 - Would complete.
 - Would violate.
-- Would remain open.
-- Median completion duration.
-- Sample matches.
+- Would complete late.
+- Unrecovered violations.
+- Completion rate.
+- Median, p90, p95, and p99 duration.
+- Service/version breakdown where telemetry exists.
+- Telemetry completeness.
+- Sample successful workflows.
+- Sample violated workflows.
+- Suggested deadline.
+- Insufficient-sample warning.
 
-The preview must clearly identify the evaluated time range and distinguish historical evaluation from a saved or active rule.
+Behavior:
 
-### 15.8 Draft persistence
-
-- Auto-save locally after a short debounce.
-- Show saved/saving status.
-- Recover drafts after refresh.
-- Version local draft schema.
-- Handle corrupt or outdated stored data gracefully.
-
----
-
-## 16. Visual and Interaction Requirements
-
-- Use the tracked `docs/DESIGN.MD` as the visual source of truth.
-- Use the warm paper, pencil-black, correction-red, post-it-yellow, and
-  ballpoint-blue semantic token palette defined there.
-- Support light, dark, and system theme.
-- Use Kalam for headings and Patrick Hand for body copy.
-- Use irregular wobbly radii, heavy ink borders, paper texture, and hard offset
-  shadows consistently rather than one-off feature styles.
-- Preserve the analytical hierarchy and density while expressing the
-  hand-drawn sketchbook character.
-- Avoid soft shadows, glassmorphism, random gradients, perfect geometric cards,
-  huge empty dashboard regions, and inconsistent visual effects.
-- The interface must not look generated from a generic SaaS template.
-- Use Lucide icons with a hand-drawn-compatible 2.5–3 stroke weight where
-  practical.
-- Framer Motion is the default motion system.
-- Use GSAP only for a small number of timeline/chart transitions that clearly benefit from sequencing; do not use GSAP and Framer Motion on the same element.
-- Motion should feel fast and tactile: pressed buttons lose their shadow,
-  selections slide or spring into place, and live/chart changes transition
-  without delaying investigation.
-- Respect `prefers-reduced-motion`.
+- Async job.
+- Progress stream.
+- Cancellable.
+- Immutable draft snapshot.
+- Does not mutate live workflow state.
+- Results stored and comparable.
+- Marks stale results after material schema changes.
 
 ---
 
-## 17. Loading, Empty, Error, and Partial States
+## 5.6 Deployment impact analysis
 
-Every data surface must define:
+Observe service version changes through OTel resource attributes and existing
+deployment records.
 
-- Initial skeleton.
-- Background refresh indicator that does not blank existing data.
-- Empty state with a useful next action.
-- Filtered-empty state distinct from no-data state.
-- Error state with retry.
-- Partial-data state where one widget fails but the page remains usable.
-- Permission/deferred state where applicable.
-- Slow request behavior without duplicate submissions.
+Output:
 
-Charts should render stable skeleton geometry to avoid layout shift.
+- Service.
+- Previous and new version.
+- First observed timestamp.
+- Workflow volume before/after.
+- Completion rate before/after.
+- Violation rate before/after.
+- p95 duration before/after.
+- New exceptions.
+- Changed trace paths.
+- Changed event schemas.
+- Affected rules and workflow types.
+- Confidence and sample sizes.
 
----
+Recommendation states:
 
-## 18. Accessibility
+- Healthy.
+- Observe.
+- Investigate.
+- Pause recommended.
+- Insufficient evidence.
 
-- WCAG 2.2 AA target.
-- Full keyboard access.
-- Visible focus states in both themes.
-- Minimum 44px touch targets where practical.
-- Color is never the only state indicator.
-- Charts have textual summaries or accessible data tables.
-- Drawers and dialogs manage focus and restore it correctly.
-- Form errors associate with fields.
-- Live updates use polite announcements and avoid constant screen-reader interruption.
-- Drag interactions have keyboard alternatives.
-
----
-
-## 19. Responsive Behavior
-
-### Desktop
-
-- Persistent sidebar.
-- Three-pane Query Builder.
-- Dense tables.
-- Side drawers.
-
-### Tablet
-
-- Collapsible sidebar.
-- Two-pane builder or canvas plus properties drawer.
-- Configurable table columns.
-
-### Mobile
-
-- Bottom or drawer navigation.
-- Stacked dashboard cards.
-- Scrollable chart regions with summaries.
-- Query Builder becomes step-based tabs while preserving all draft data.
-- Tables use card rows or prioritized columns, not unreadably compressed grids.
+No automatic rollback.
 
 ---
 
-## 20. Frontend Technology Requirements
+## 5.7 Telemetry completeness
 
-Required:
+Checks:
 
-- Next.js.
-- TypeScript.
-- Tailwind CSS.
-- TanStack Query.
-- React Hook Form.
-- Zod.
-- Zustand.
-- Framer Motion.
-- Lucide React.
-- shadcn/ui components adapted to the custom design system.
+- Event ID.
+- Workflow ID.
+- Workflow type.
+- Event name.
+- Occurred timestamp.
+- Service name.
+- Service version.
+- Deployment environment.
+- Trace ID.
+- Span ID.
+- Correlation properties.
+- Queue context propagation.
+- Producer/consumer links.
+- Trace/log correlation.
+- Duplicate rate.
+- Clock skew.
 
-Recommended where not already present:
+Output:
 
-- Recharts for product charts.
-- `next-themes` for theme management.
-- MSW for isolated frontend tests of API success, error, empty, and latency states.
-- Vitest and React Testing Library for unit/component tests.
-- Playwright for E2E and visual interaction testing.
-
-Do not install duplicate solutions if the repository already has accepted equivalents.
+- Overall score.
+- Service score.
+- Event score.
+- Environment score.
+- Critical gaps.
+- Investigation impact.
+- Recommended instrumentation fixes.
 
 ---
 
-## 21. State Management Rules
+## 5.8 Event-ingestion observability
 
-### TanStack Query
+Observe:
 
-Use for:
+- Request accepted.
+- Authentication.
+- Company resolution.
+- Normalization.
+- Schema validation.
+- Deduplication.
+- Persistence.
+- Queue publication.
+- Rule matching.
+- Workflow transition.
+- Deadline scheduling.
+- Violation creation.
+- OTel export.
+- Real-time publication.
 
-- Dashboard data.
-- Events catalogue.
+Metrics:
+
+- Received.
+- Accepted.
+- Rejected.
+- Duplicate.
+- Unknown.
+- Schema failure.
+- Out-of-order.
+- Late.
+- Queue depth and age.
+- Processing duration.
+- Rule evaluation duration.
+- Workflow state write duration.
+- Deadline worker drift.
+- Investigation backlog and duration.
+- SigNoz query latency/failure.
+- AI provider latency/failure.
+- SSE connections/reconnects.
+
+---
+
+## 5.9 SigNoz observability pack
+
+Dashboards:
+
+- TemporalGuard Platform Health.
+- Workflow Reliability.
+- Violation Investigation.
+- Event Ingestion.
+- Investigation Agent.
+- Telemetry Completeness.
+- Deployment Impact.
+
+Alerts:
+
+- Event rejection rate.
+- Ingestion backlog.
+- Deadline worker drift.
+- Workflow violation rate.
+- Near-deadline backlog.
+- No workflow completions.
+- SigNoz query failures.
+- Investigation backlog/failure.
+- Telemetry completeness regression.
+
+Use version-controlled assets and the official SigNoz Terraform provider.
+
+---
+
+## 5.10 Native Explorer
+
+Route:
+
+```text
+/explorer
+```
+
+Modes:
+
 - Workflows.
-- Violations.
-- Rules.
-- Historical test results.
-- Auth user/session query when integration is enabled.
+- Traces.
+- Logs.
+- Services.
+- Deployments.
+- Telemetry gaps.
 
-### Zustand
-
-Use only for cross-page client/UI state such as:
-
-- Sidebar state.
-- Command palette.
-- Live-update pause state.
-- Builder UI selection when it should not be in the URL or form state.
-
-Do not mirror server data into Zustand.
-
-### React Hook Form
-
-Use for:
-
-- Login.
-- Signup.
-- Event creation.
-- Query/rule construction.
-- Filters that represent submitted forms.
-
-### URL state
-
-Use for shareable analytical context:
+Filters:
 
 - Time range.
 - Environment.
-- Compare mode.
-- Filters.
-- View type.
-- Selected workflow/violation where appropriate.
+- Workflow ID.
+- Rule ID.
+- Event.
+- Service.
+- Version.
+- Severity.
+- Duration.
+- Error state.
+
+The browser must use safe structured APIs. It must not submit arbitrary
+ClickHouse SQL.
 
 ---
 
-## 22. SigNoz Local and Cloud Readiness
+## 6. Navigation
 
-The current repository reportedly supports local SigNoz through Docker. Preserve it unless it is broken.
+```text
+Overview
+Live Workflows
+Events
+Rules
+Violations
+Investigations
+Comparisons
+Explorer
+Services
+Deployments
+Observability
+  Connection
+  Platform Health
+  Telemetry Quality
+  Dashboard Pack
+Settings
+```
 
-The architecture must support a configuration switch:
+Adapt the existing navigation rather than duplicating routes.
 
-- `SIGNOZ_MODE=local`
+---
+
+## 7. Backend requirements
+
+Implement:
+
+- Typed SigNoz Query Range client.
+- Service-account key authentication.
+- Cloud/self-hosted configuration.
+- Timeouts.
+- Cancellation.
+- Retry for transient idempotent requests.
+- Circuit breaker.
+- Query allowlists.
+- Result limits.
+- Server-enforced company filters.
+- Redaction.
+- Query audit records.
+- Durable jobs.
+- PostgreSQL investigation state.
+- Redis progress fan-out.
+- SSE.
+- Company isolation.
+- Encrypted connection secrets.
+- Structured errors.
+- OTel instrumentation.
+
+Do not allow browser-provided raw SQL or untrusted unrestricted SigNoz filters.
+
+---
+
+## 8. Security
+
+- SigNoz credentials remain server-side.
+- Company scope is derived from authentication.
+- Integration secrets are encrypted at rest.
+- Queries have bounded ranges and row limits.
+- Telemetry content is treated as untrusted.
+- PII and secrets are redacted before storage or AI use.
+- Prompt injection in logs or spans cannot alter agent policy.
+- Exports require authorization.
+- Agent cannot call arbitrary URLs.
+- No cross-company evidence.
+- No automatic remediation.
+
+---
+
+## 9. Scalability
+
+- Cursor pagination.
+- Company-scoped indexes.
+- Time-range indexes.
+- Async investigation.
+- Per-company concurrency limits.
+- Idempotent jobs.
+- Backpressure.
+- Retry with jitter.
+- Dead-letter state.
+- Query caching where safe.
+- Browser table virtualization.
+- Graph clustering.
+- SSE coalescing.
+- Graceful shutdown.
+
+Store both `occurredAt` and `receivedAt`.
+
+---
+
+## 10. Local deployment
+
+One command must start:
+
+- Gateway.
+- Next.js web.
+- NestJS API.
+- NestJS worker.
+- PostgreSQL.
+- Redis.
+- OTel Collector.
+- Self-hosted SigNoz and dependencies.
+
+Use SigNoz Foundry to generate the current supported Compose output.
+
+Routes:
+
+- `/`
+- `/api`
+- `/explorer`
+- `/signoz`
+
+---
+
+## 11. Render deployment
+
+Provide a Blueprint or deterministic generator containing:
+
+- Public gateway.
+- Private web.
+- Private API.
+- Worker.
+- Managed PostgreSQL.
+- Render Key Value.
+- SigNoz services generated by Foundry.
+- Required disks.
+- Health checks.
+- Migrations.
+
+Support:
+
+- `SIGNOZ_MODE=self_hosted`
 - `SIGNOZ_MODE=cloud`
 
-No live SigNoz integration is required in this release. Still, centralize future values such as:
-
-- UI/deep-link base URL.
-- OTLP endpoint.
-- Cloud ingestion key on server/collector only.
-- Optional API key for future server-side queries, never in browser code.
-
-The frontend must not receive secrets.
+Switching modes must not require source changes.
 
 ---
 
-## 23. Security Requirements
+## 12. Test requirements
 
-- No secrets in client bundles.
-- Sanitize uploaded filenames and validate images.
-- Avoid storing auth tokens in local storage.
-- Use secure cookies where possible.
-- CSRF strategy must match cookie/auth topology.
-- Validate all backend DTOs.
-- Apply auth rate limits.
-- Do not log passwords, raw tokens, or Cloudinary secrets.
-- Use transactions for user/workspace creation.
-- Store refresh token hashes, not raw refresh tokens, if refresh sessions are implemented.
-- Use safe error messages without account enumeration where appropriate.
+Unit:
 
----
+- SigNoz query construction.
+- Redaction.
+- Evidence ranking.
+- Cohort statistics.
+- Completeness score.
+- Agent output validation.
+- Company filtering.
+- Deployment comparison.
+- Graph construction.
 
-## 24. Performance and Scalability Expectations
+Integration:
 
-- Prefer server components for static layout and non-interactive shells.
-- Isolate client boundaries around charts, forms, live data, and drawers.
-- Lazy-load expensive chart/builder components.
-- Virtualize long event and workflow lists.
-- Debounce search and draft persistence.
-- Avoid rerendering the entire builder for one field change.
-- Memoize derived chart data where meaningful, not indiscriminately.
-- Keep API responses paginated and cursor-ready.
-- Refresh server data without replacing stable cached data unnecessarily.
-- Ensure animations do not block interaction.
+- Stub SigNoz server.
+- Full investigation.
+- Cancellation.
+- Retry and circuit breaker.
+- Worker recovery.
+- SSE resume.
+- Rule simulation.
+- AI-disabled mode.
+- Alert/dashboard validation.
 
----
+E2E:
 
-## 25. API Data and Test Fixture Requirements
+1. Login.
+2. Open violation.
+3. Start investigation.
+4. Watch progress.
+5. Inspect Evidence Graph.
+6. Compare cohorts.
+7. Open SigNoz evidence.
+8. Run rule simulation.
+9. Inspect deployment impact.
+10. Inspect telemetry completeness.
+11. Export report.
+12. Verify cross-company isolation.
 
-The backend and its deterministic test fixtures must cover:
+Infrastructure:
 
-- Healthy document verification.
-- Missing scan completion.
-- Slow application decision.
-- Partial employee access revocation.
-- Forbidden marketing processing after consent withdrawal.
-- Out-of-order video processing.
-- Deployment health check missing.
-- Completed, waiting, near-deadline, overdue, and recovered workflows.
-
-The API must support:
-
-- Pagination.
-- Filtering.
-- Sorting.
-- Time ranges.
-- Comparisons.
-- Polling/live updates.
-- Controlled errors.
-- Empty datasets.
-- Slow responses.
-
-Deterministic fixtures and MSW handlers may reproduce these states in
-automated tests, but they are not an application runtime data source.
+- Compose config.
+- Collector dry run.
+- Foundry gauge and forge.
+- Terraform fmt and validate.
+- Empty-database migration.
+- Production builds.
+- Health checks.
+- OTel trace/log/metric arrival.
 
 ---
 
-## 26. Acceptance Criteria
+## 13. Controlled demo
 
-The release is acceptable when:
+Business events:
 
-- The design system is updated and applied consistently in light and dark mode.
-- Login and signup are complete, responsive, validated, and accessible.
-- Signup includes a logo picker, preview, validation, and loading/error states.
-- NestJS auth endpoints, entities, migration, Cloudinary service, and tests exist without breaking the current backend.
-- The authenticated shell and all in-scope dashboard routes work with validated API data.
-- Query Builder supports `any`, `all`, `sequence`, and `forbid`.
-- Every event selector uses the shared Event Catalogue.
-- Users can create an event inline and immediately use it in the active rule.
-- Draft rules survive refresh.
-- Dashboard widgets have skeleton, empty, error, and retry states.
-- Core paths are covered by automated tests.
-- Product API endpoints enforce authentication, workspace isolation, validation, pagination, and safe errors.
-- Environment examples and Docker instructions are documented.
-- Codex produces a final implementation report listing files changed, commands run, tests, assumptions, environment variables, and remaining work.
+```text
+document.uploaded
+document.scan_started
+document.scan_completed
+document.verification_completed
+```
+
+Failure:
+
+- New scanner version.
+- Provider timeout logs.
+- Slow external spans.
+- Missing `document.scan_completed`.
+- Queue and database remain healthy.
+- Successful workflows use the old version.
+
+The demo must show:
+
+- Rule.
+- Successful workflow.
+- Failed workflow.
+- Violation.
+- Live investigation.
+- Evidence Graph.
+- Cohort comparison.
+- Deployment correlation.
+- SigNoz traces/logs/metrics.
+- Telemetry completeness.
+- Evidence-backed agent summary.
 
 ---
 
-## 27. Definition of Done
+## 14. Acceptance criteria
 
-- Typecheck passes.
-- Lint passes.
-- Unit/component tests pass.
-- Playwright smoke tests pass.
-- Production frontend build passes.
-- Backend build and auth tests pass.
-- No obvious console errors or hydration warnings.
-- Keyboard navigation works through auth and Query Builder.
-- Both themes pass a visual review at mobile, tablet, and desktop widths.
-- Docker build succeeds for changed applications.
-- Documentation reflects the final implementation rather than intended behavior.
+Complete only when:
+
+- Existing product still works.
+- Local full Compose starts.
+- Render Blueprint validates.
+- Cloud/self-hosted switching works.
+- Telemetry reaches SigNoz.
+- Backend can query SigNoz.
+- Evidence Graph works.
+- Investigation is durable and streamed.
+- Every agent claim cites evidence.
+- Comparison works.
+- Simulation works.
+- Deployment analysis works.
+- Telemetry completeness works.
+- Platform health uses real data.
+- Dashboard and alert assets validate.
+- `/explorer`, `/api`, and `/signoz` behavior work.
+- Tests, lint, typecheck, and builds pass.
+- Migrations work from an empty database.
+- No required feature uses mock production data.
+- Setup and environment variables are documented.
+- Unverified items are disclosed honestly.
+
+---
+
+## 15. Final pitch
+
+TemporalGuard is an agent-native business workflow observability platform
+powered by OpenTelemetry and SigNoz. It detects when real-world processes fail
+to reach promised outcomes, reconstructs evidence across events, traces, logs,
+metrics, services, queues, and deployments, compares broken workflows with
+successful ones, and gives engineers an auditable, evidence-backed
+investigation.
