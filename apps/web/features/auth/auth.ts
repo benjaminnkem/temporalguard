@@ -30,7 +30,13 @@ export type AuthSession = {
     lastName: string;
     email: string;
   };
-  workspace: { id: string; name: string; logoUrl?: string };
+  workspace: {
+    id: string;
+    name: string;
+    logoUrl?: string;
+    website?: string;
+    description?: string;
+  };
 };
 
 export interface AuthClient {

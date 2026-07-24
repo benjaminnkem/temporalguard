@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth';
+import { BusinessesModule } from '../businesses';
 import { RulesModule } from '../rules/rules.module';
 import { WorkflowsModule } from '../workflows/workflows.module';
 import { EventsController } from './controllers/events.controller';
@@ -13,6 +14,7 @@ import { WorkflowEngineService } from './services/workflow-engine.service';
 @Module({
   imports: [
     AuthModule,
+    BusinessesModule,
     TypeOrmModule.forFeature([BusinessEvent, EventLog]),
     RulesModule,
     WorkflowsModule,

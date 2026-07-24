@@ -10,6 +10,7 @@ import {
   Pause,
   Play,
   Search,
+  Settings,
   ShieldCheck,
   Workflow,
 } from "lucide-react";
@@ -30,6 +31,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -73,6 +75,10 @@ const navigation = [
   { href: "/violations", label: "Violations", icon: AlertTriangle },
   { href: "/explore", label: "Explore", icon: FlaskConical },
   { href: "/rules", label: "Rules", icon: ShieldCheck },
+] as const;
+
+const utilityNavigation = [
+  { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 const environmentOptions = [
@@ -162,6 +168,25 @@ function AppSidebar({ session }: { session?: AuthSession | null }) {
 
       <SidebarFooter className="p-3">
         <SidebarMenu>
+          {utilityNavigation.map(({ href, label, icon: Icon }) => {
+            const active =
+              pathname === href || pathname.startsWith(`${href}/`);
+            return (
+              <SidebarMenuItem key={href}>
+                <SidebarMenuButton
+                  isActive={active}
+                  tooltip={label}
+                  render={<Link href={href} />}
+                >
+                  <Icon />
+                  <span>{label}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+        <SidebarSeparator />
+        <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -190,30 +215,41 @@ function AppSidebar({ session }: { session?: AuthSession | null }) {
                 align="start"
                 sideOffset={8}
               >
-                <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar size="sm" className="rounded-lg">
-                      <AvatarFallback className="rounded-lg bg-primary/10 text-xs font-semibold text-primary">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">{fullName}</span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        {session?.user.email ?? "—"}
-                      </span>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="p-0 font-normal">
+                    <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                      <Avatar size="sm" className="rounded-lg">
+                        <AvatarFallback className="rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-medium">{fullName}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {session?.user.email ?? "—"}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </DropdownMenuLabel>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={logout.isPending}
-                  onClick={() => logout.mutate()}
-                >
-                  <LogOut />
-                  {logout.isPending ? "Signing out…" : "Sign out"}
-                </DropdownMenuItem>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem render={<Link href="/settings" />}>
+                    <Settings />
+                    Settings
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={logout.isPending}
+                    onClick={() => logout.mutate()}
+                  >
+                    <LogOut />
+                    {logout.isPending ? "Signing out…" : "Sign out"}
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
@@ -264,7 +300,7 @@ function CommandPalette({
   onOpenChange: (open: boolean) => void;
 }) {
   const [search, setSearch] = useState("");
-  const filtered = navigation.filter((item) =>
+  const filtered = [...navigation, ...utilityNavigation].filter((item) =>
     item.label.toLowerCase().includes(search.trim().toLowerCase()),
   );
 
@@ -415,10 +451,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-48">
-              <DropdownMenuLabel>Workspace</DropdownMenuLabel>
-              <DropdownMenuItem disabled>
-                {sessionQuery.data?.workspace.name ?? "TemporalGuard"}
-              </DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Workspace</DropdownMenuLabel>
+                <DropdownMenuItem disabled>
+                  {sessionQuery.data?.workspace.name ?? "TemporalGuard"}
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
 

@@ -215,7 +215,9 @@ export class AuthService {
       workspace: {
         id: user.business.id,
         name: user.business.name,
-        logoUrl: user.business.logoUrl,
+        logoUrl: user.business.logoUrl ?? undefined,
+        website: user.business.website ?? undefined,
+        description: user.business.description ?? undefined,
       },
     };
   }

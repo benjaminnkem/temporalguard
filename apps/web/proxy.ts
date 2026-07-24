@@ -8,6 +8,7 @@ const authenticatedRoutes = [
   "/violations",
   "/explore",
   "/rules",
+  "/settings",
 ];
 
 export function proxy(request: NextRequest) {
@@ -41,5 +42,6 @@ export const config = {
     "/violations/:path*",
     "/explore/:path*",
     "/rules/:path*",
+    "/settings/:path*",
   ],
 };
