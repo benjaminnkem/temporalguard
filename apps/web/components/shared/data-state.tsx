@@ -1,6 +1,13 @@
 import { AlertTriangle, Inbox, RefreshCw } from "lucide-react";
-import { Button } from "../ui/button";
-import { Card, Skeleton } from "../ui/surface";
+import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function DataState({
   state,
@@ -26,42 +33,46 @@ export function DataState({
 
   if (state === "error") {
     return (
-      <Card className="grid min-h-56 place-items-center p-6 text-center">
-        <div className="grid max-w-md justify-items-center gap-3">
-          <AlertTriangle className="size-6 text-destructive" />
-          <h2 className="text-lg font-semibold">{title ?? "Unable to load"}</h2>
-          <p className="text-muted-foreground">
+      <Empty className="min-h-56 border border-border-strong border-solid">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <AlertTriangle className="text-destructive" />
+          </EmptyMedia>
+          <EmptyTitle>{title ?? "Unable to load"}</EmptyTitle>
+          <EmptyDescription>
             {description ?? "Something went wrong while loading this data."}
-          </p>
-          {onRetry ? (
-            <Button onClick={onRetry}>
-              <RefreshCw className="size-4" /> Retry
-            </Button>
-          ) : null}
-        </div>
-      </Card>
+          </EmptyDescription>
+        </EmptyHeader>
+        {onRetry ? (
+          <Button onClick={onRetry} variant="outline">
+            <RefreshCw className="size-4" /> Retry
+          </Button>
+        ) : null}
+      </Empty>
     );
   }
 
   if (state === "empty" || state === "filtered-empty") {
     return (
-      <Card className="grid min-h-56 place-items-center p-6 text-center">
-        <div className="grid max-w-md justify-items-center gap-3">
-          <Inbox className="size-6 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">
+      <Empty className="min-h-56 border border-border-strong border-dashed">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Inbox className="text-muted-foreground" />
+          </EmptyMedia>
+          <EmptyTitle>
             {title ??
               (state === "filtered-empty"
                 ? "No matching results"
                 : "No data yet")}
-          </h2>
-          <p className="text-muted-foreground">
+          </EmptyTitle>
+          <EmptyDescription>
             {description ??
               (state === "filtered-empty"
                 ? "Adjust or clear filters to widen the result set."
                 : "Data will appear here as workflows are observed.")}
-          </p>
-        </div>
-      </Card>
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 

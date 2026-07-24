@@ -1,14 +1,15 @@
-import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
-import { cn } from "../../lib/utils";
+import * as React from "react";
+import { Input as InputPrimitive } from "@base-ui/react/input";
 
-export function Input({
-  className,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement>) {
+import { cn } from "@/lib/utils";
+
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
-    <input
+    <InputPrimitive
+      type={type}
+      data-slot="input"
       className={cn(
-        "min-h-11 w-full border border-border-strong bg-input px-3 text-base text-foreground transition-[border-width] duration-100 placeholder:text-muted-foreground placeholder:italic disabled:opacity-60 focus:border-2 focus:border-primary focus:outline-none",
+        "h-9 w-full min-w-0 rounded-4xl border border-input bg-input/30 px-3 py-1 text-base transition-colors outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20 md:text-sm dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
         className,
       )}
       {...props}
@@ -16,45 +17,4 @@ export function Input({
   );
 }
 
-export function Textarea({
-  className,
-  ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      className={cn(
-        "min-h-24 w-full resize-y border border-border-strong bg-input px-3 py-2 text-base text-foreground transition-[border-width] duration-100 placeholder:text-muted-foreground placeholder:italic focus:border-2 focus:border-primary focus:outline-none",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-export function Field({
-  label,
-  error,
-  hint,
-  children,
-}: {
-  label: string;
-  error?: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="grid gap-1.5 text-sm font-medium">
-      <span>{label}</span>
-      {children}
-      {error ? (
-        <span className="text-xs text-destructive" role="alert">
-          {error}
-        </span>
-      ) : hint ? (
-        <span className="text-xs font-normal text-muted-foreground">
-          {hint}
-        </span>
-      ) : null}
-    </label>
-  );
-}
+export { Input };

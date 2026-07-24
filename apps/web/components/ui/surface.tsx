@@ -1,63 +1,50 @@
-import { cn } from "../../lib/utils";
+/**
+ * Compatibility layer for legacy imports.
+ * Prefer importing from @/components/ui/{card,badge,skeleton} directly.
+ */
+export {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./card";
+export { Skeleton } from "./skeleton";
 
-export function Card({
-  className,
-  children,
-  style,
-}: {
-  className?: string;
-  children: React.ReactNode;
-  decoration?: "none" | "tape" | "tack";
-  style?: React.CSSProperties;
-}) {
-  return (
-    <section
-      className={cn(
-        "relative border border-border-strong bg-card text-card-foreground",
-        className,
-      )}
-      style={style}
-    >
-      {children}
-    </section>
-  );
-}
+import { Badge as UiBadge, type badgeVariants } from "./badge";
+import { statusVariant } from "@/lib/utils";
+import type { VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
+type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
+
+/** Legacy Badge with `tone` support used across feature views. */
 export function Badge({
   children,
   tone = "neutral",
+  variant,
   className,
 }: {
   children: React.ReactNode;
-  tone?: "neutral" | "success" | "warning" | "danger" | "info" | "primary";
+  tone?:
+    | "neutral"
+    | "success"
+    | "warning"
+    | "danger"
+    | "info"
+    | "primary"
+    | string;
+  variant?: BadgeVariant;
   className?: string;
 }) {
-  const tones = {
-    neutral: "bg-muted text-muted-foreground",
-    success: "bg-success-subtle text-success",
-    warning: "bg-warning-subtle text-warning",
-    danger: "bg-destructive-subtle text-destructive",
-    info: "bg-info-subtle text-info",
-    primary: "bg-primary-subtle text-primary-subtle-foreground",
-  };
   return (
-    <span
-      className={cn(
-        "inline-flex min-h-6 items-center border border-current px-2 font-mono text-[10px] font-medium tracking-[0.06em] uppercase",
-        tones[tone],
-        className,
-      )}
+    <UiBadge
+      variant={variant ?? statusVariant(tone)}
+      className={cn(className)}
     >
       {children}
-    </span>
-  );
-}
-
-export function Skeleton({ className = "" }: { className?: string }) {
-  return (
-    <div
-      className={cn("animate-pulse border border-border bg-muted", className)}
-      aria-hidden="true"
-    />
+    </UiBadge>
   );
 }
