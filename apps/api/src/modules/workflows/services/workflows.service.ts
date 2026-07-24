@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreateWorkflowDto, UpdateWorkflowDto } from '../dto';
-import { Workflow } from '../entities';
+import { ExternalWorkflow, Workflow } from '../entities';
 import { RulesService } from '../../rules/services/rules.service';
 import { WorkflowQueueService } from './workflow-queue.service';
 import { WorkflowStatus } from '../enums/workflow-status.enum';
@@ -19,6 +19,8 @@ export class WorkflowsService {
   constructor(
     @InjectRepository(Workflow)
     private readonly workflowsRepository: Repository<Workflow>,
+    @InjectRepository(ExternalWorkflow)
+    private readonly externalWorkflowsRepository: Repository<ExternalWorkflow>,
     private readonly rulesService: RulesService,
     private readonly workflowQueueService: WorkflowQueueService,
     private readonly eventEmitter: EventEmitter2,
@@ -26,6 +28,16 @@ export class WorkflowsService {
 
   async create(createWorkflowDto: CreateWorkflowDto): Promise<Workflow> {
     const rule = await this.rulesService.findOne(createWorkflowDto.ruleId);
+    const externalWorkflow = createWorkflowDto.externalId
+      ? await this.findOrCreateExternalWorkflow(createWorkflowDto.externalId)
+      : null;
+    if (externalWorkflow) {
+      const existing = await this.findWaitingForRuleAndExternalWorkflow(
+        rule.id,
+        externalWorkflow.id,
+      );
+      if (existing) return existing;
+    }
     const deadline = this.calculateDeadline(
       new Date(),
       rule.timeoutValue,
@@ -33,10 +45,12 @@ export class WorkflowsService {
     );
     const workflow = this.workflowsRepository.create({
       ...createWorkflowDto,
+      externalWorkflowId: externalWorkflow?.id ?? null,
+      externalWorkflow,
       deadline,
       currentState: {
         receivedEvents: [],
-        expectedEvents: rule.expectedEvents,
+        expectedEvents: rule.expectedEvents ?? [],
         operator: rule.operator,
       },
     });
@@ -49,14 +63,12 @@ export class WorkflowsService {
       saved.deadline,
     );
 
-    try {
-      this.eventEmitter.emit(EVENT_WORKFLOW_CREATED, {
-        workflowId: saved.id,
-        ruleId: rule.id,
-        ruleName: rule.name,
-        status: saved.status,
-      });
-    } catch (e) {}
+    this.eventEmitter.emit(EVENT_WORKFLOW_CREATED, {
+      workflowId: saved.id,
+      ruleId: rule.id,
+      ruleName: rule.name,
+      status: saved.status,
+    });
 
     return saved;
   }
@@ -64,14 +76,26 @@ export class WorkflowsService {
   async findAll(): Promise<Workflow[]> {
     return this.workflowsRepository.find({
       order: { createdAt: 'DESC' },
-      relations: { rule: true },
+      relations: {
+        rule: {
+          triggerEventDefinition: true,
+          expectedEventDefinitions: true,
+        },
+        externalWorkflow: true,
+      },
     });
   }
 
   async findOne(id: string): Promise<Workflow> {
     const workflow = await this.workflowsRepository.findOne({
       where: { id },
-      relations: { rule: true },
+      relations: {
+        rule: {
+          triggerEventDefinition: true,
+          expectedEventDefinitions: true,
+        },
+        externalWorkflow: true,
+      },
     });
 
     if (!workflow) {
@@ -91,7 +115,7 @@ export class WorkflowsService {
     const saved = await this.workflowsRepository.save(workflow);
 
     if (oldStatus !== saved.status) {
-      this.handleStatusChangeEvents(saved, oldStatus);
+      this.handleStatusChangeEvents(saved);
     }
 
     return saved;
@@ -104,7 +128,7 @@ export class WorkflowsService {
     const saved = await this.workflowsRepository.save(workflow);
 
     if (oldStatus !== saved.status) {
-      this.handleStatusChangeEvents(saved, oldStatus);
+      this.handleStatusChangeEvents(saved);
     }
 
     return saved;
@@ -127,39 +151,114 @@ export class WorkflowsService {
       saved.deadline,
     );
 
-    try {
-      const rule = await this.rulesService.findOne(data.ruleId);
-      this.eventEmitter.emit(EVENT_WORKFLOW_CREATED, {
-        workflowId: saved.id,
-        ruleId: rule.id,
-        ruleName: rule.name,
-        status: saved.status,
-      });
-    } catch (e) {}
+    const rule = await this.rulesService.findOne(data.ruleId);
+    this.eventEmitter.emit(EVENT_WORKFLOW_CREATED, {
+      workflowId: saved.id,
+      ruleId: rule.id,
+      ruleName: rule.name,
+      status: saved.status,
+    });
 
     return saved;
   }
 
-  private handleStatusChangeEvents(workflow: Workflow, _oldStatus: WorkflowStatus): void {
-    const durationMs = Date.now() - workflow.createdAt.getTime();
+  async findOrCreateExternalWorkflow(
+    externalId: string,
+  ): Promise<ExternalWorkflow> {
+    const existing = await this.externalWorkflowsRepository.findOne({
+      where: { externalId },
+    });
+    if (existing) return existing;
     try {
-      if (workflow.status === WorkflowStatus.COMPLETED) {
-        this.eventEmitter.emit(EVENT_WORKFLOW_COMPLETED, {
-          workflowId: workflow.id,
-          ruleId: workflow.ruleId,
-          ruleName: workflow.rule?.name || '',
-          status: workflow.status,
-          durationMs,
-        });
-      } else if (workflow.status === WorkflowStatus.OVERDUE) {
-        this.eventEmitter.emit(EVENT_WORKFLOW_OVERDUE, {
-          workflowId: workflow.id,
-          ruleId: workflow.ruleId,
-          ruleName: workflow.rule?.name || '',
-          status: workflow.status,
-        });
+      return await this.externalWorkflowsRepository.save(
+        this.externalWorkflowsRepository.create({ externalId }),
+      );
+    } catch (error) {
+      if ((error as { code?: string }).code === '23505') {
+        const concurrentlyCreated =
+          await this.externalWorkflowsRepository.findOne({
+            where: { externalId },
+          });
+        if (concurrentlyCreated) return concurrentlyCreated;
       }
-    } catch (e) {}
+      throw error;
+    }
+  }
+
+  async findWaitingForRuleAndExternalWorkflow(
+    ruleId: string,
+    externalWorkflowId: string,
+  ): Promise<Workflow | null> {
+    return this.workflowsRepository.findOne({
+      where: {
+        ruleId,
+        externalWorkflowId,
+        status: WorkflowStatus.WAITING,
+      },
+      relations: {
+        rule: {
+          triggerEventDefinition: true,
+          expectedEventDefinitions: true,
+        },
+        externalWorkflow: true,
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findWaitingByExternalWorkflowAndRules(
+    externalWorkflowId: string,
+    ruleIds: string[],
+  ): Promise<Workflow[]> {
+    if (ruleIds.length === 0) return [];
+    return this.workflowsRepository.find({
+      where: {
+        externalWorkflowId,
+        ruleId: In(ruleIds),
+        status: WorkflowStatus.WAITING,
+      },
+      relations: {
+        rule: {
+          triggerEventDefinition: true,
+          expectedEventDefinitions: true,
+        },
+        externalWorkflow: true,
+      },
+    });
+  }
+
+  async saveState(
+    workflow: Workflow,
+    currentState: Record<string, unknown>,
+    completed: boolean,
+  ): Promise<Workflow> {
+    workflow.currentState = currentState;
+    if (completed) workflow.status = WorkflowStatus.COMPLETED;
+    const saved = await this.workflowsRepository.save(workflow);
+    if (completed) {
+      this.handleStatusChangeEvents(saved);
+    }
+    return saved;
+  }
+
+  private handleStatusChangeEvents(workflow: Workflow): void {
+    const durationMs = Date.now() - workflow.createdAt.getTime();
+    if (workflow.status === WorkflowStatus.COMPLETED) {
+      this.eventEmitter.emit(EVENT_WORKFLOW_COMPLETED, {
+        workflowId: workflow.id,
+        ruleId: workflow.ruleId,
+        ruleName: workflow.rule?.name || '',
+        status: workflow.status,
+        durationMs,
+      });
+    } else if (workflow.status === WorkflowStatus.OVERDUE) {
+      this.eventEmitter.emit(EVENT_WORKFLOW_OVERDUE, {
+        workflowId: workflow.id,
+        ruleId: workflow.ruleId,
+        ruleName: workflow.rule?.name || '',
+        status: workflow.status,
+      });
+    }
   }
 
   private calculateDeadline(

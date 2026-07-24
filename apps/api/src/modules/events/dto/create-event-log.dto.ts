@@ -7,16 +7,17 @@ import {
   IsString,
 } from 'class-validator';
 
-export class CreateEventDto {
+export class CreateEventLogDto {
   @ApiProperty({ example: 'payment.authorized' })
   @IsString()
   @IsNotEmpty()
   eventName: string;
 
-  @ApiProperty({ example: 'payment_123' })
+  @ApiPropertyOptional({ example: 'payment_123' })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  workflowId: string;
+  externalWorkflowId?: string;
 
   @ApiProperty({ example: new Date().toISOString() })
   @IsDateString()

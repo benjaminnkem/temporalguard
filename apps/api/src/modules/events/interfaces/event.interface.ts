@@ -1,6 +1,6 @@
 export interface IngestedEvent {
-  event: string;
-  workflowId: string;
+  eventName: string;
+  externalWorkflowId?: string;
   timestamp: string;
   payload?: Record<string, unknown>;
 }

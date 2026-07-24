@@ -189,17 +189,19 @@ Business-level spans and metrics (workflows, violations, rules) are emitted by t
 ### Entities
 
 ```
-Rule ──< Workflow ──< BusinessEvent
-  │         │
-  │         └──< Violation
-  └──────────────< Violation
+BusinessEvent ──< EventLog >── ExternalWorkflow ──< Workflow >── Rule
+      │                                                   │         │
+      └──────── trigger / expected event definitions ─────┘         │
+                                                                  Violation
 ```
 
 | Entity | Table | Description |
 |--------|-------|-------------|
-| **Rule** | `rules` | Temporal invariant — trigger, expected events, operator, timeout, severity |
-| **Workflow** | `workflows` | Tracked instance of a rule under evaluation |
-| **BusinessEvent** | `business_events` | Event received against a workflow |
+| **BusinessEvent** | `business_events` | Reusable event definition identified by a unique name |
+| **EventLog** | `event_logs` | Independent record that a business event occurred |
+| **ExternalWorkflow** | `external_workflows` | External business-process identity used to correlate logs |
+| **Rule** | `rules` | Temporal invariant linked to trigger and expected event definitions |
+| **Workflow** | `workflows` | Evaluation of one rule for an external business process |
 | **Violation** | `violations` | Recorded breach when a workflow fails its rule |
 
 ### Enums
@@ -261,7 +263,48 @@ Base path: `/api`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/events` | Ingest a business event |
+| `POST` | `/api/events` | Create or reuse an event definition |
+| `GET` | `/api/events` | List event definitions |
+| `GET` | `/api/events/:id` | Get an event definition |
+| `PATCH` | `/api/events/:id` | Update an event definition |
+| `DELETE` | `/api/events/:id` | Delete an event definition |
+
+#### Create event definition
+
+```json
+{
+  "name": "payment.authorized",
+  "type": "business",
+  "description": "A payment authorization was approved"
+}
+```
+
+Rules continue to accept `triggerEvent` and `expectedEvents` as names. The API
+resolves those names to event-definition UUIDs and creates missing definitions
+automatically.
+
+### Event logs
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/event-logs` | Record and process an event occurrence |
+
+```json
+{
+  "eventName": "payment.authorized",
+  "externalWorkflowId": "payment_123",
+  "timestamp": "2026-07-24T10:00:00.000Z",
+  "payload": {
+    "amount": 1000,
+    "currency": "USD"
+  }
+}
+```
+
+`externalWorkflowId` is optional. Without it, the occurrence is stored as a
+standalone log. With it, TemporalGuard finds or creates the external process,
+then matches or creates rule workflows and applies expected events to active
+workflows. Event logs are never owned by an individual TemporalGuard workflow.
 
 ### Violations
 

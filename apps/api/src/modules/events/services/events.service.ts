@@ -1,43 +1,86 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
-import { Workflow } from '../../workflows/entities';
-import { CreateEventDto } from '../dto';
+import { CreateBusinessEventDto, UpdateBusinessEventDto } from '../dto';
 import { BusinessEvent } from '../entities';
-import { WorkflowEngineService } from './workflow-engine.service';
-import { EVENT_BUSINESS_EVENT_RECEIVED } from '../../../common/constants/event.constants';
 
 @Injectable()
 export class EventsService {
   constructor(
     @InjectRepository(BusinessEvent)
     private readonly eventsRepository: Repository<BusinessEvent>,
-    private readonly workflowEngineService: WorkflowEngineService,
-    private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async ingest(
-    createEventDto: CreateEventDto,
-  ): Promise<{ event: BusinessEvent; workflows: Workflow[] }> {
-    const event = this.eventsRepository.create({
-      eventName: createEventDto.eventName,
-      externalWorkflowId: createEventDto.workflowId,
-      timestamp: new Date(createEventDto.timestamp),
-      payload: createEventDto.payload ?? {},
-    });
-    const savedEvent = await this.eventsRepository.save(event);
+  async createOrReuse(dto: CreateBusinessEventDto): Promise<BusinessEvent> {
+    const existing = await this.findByName(dto.name);
+    if (existing) return existing;
 
     try {
-      this.eventEmitter.emit(EVENT_BUSINESS_EVENT_RECEIVED, {
-        eventName: savedEvent.eventName,
-        workflowId: savedEvent.externalWorkflowId,
-      });
-    } catch (e) {}
+      return await this.eventsRepository.save(
+        this.eventsRepository.create(dto),
+      );
+    } catch (error) {
+      if ((error as { code?: string }).code === '23505') {
+        const concurrentlyCreated = await this.findByName(dto.name);
+        if (concurrentlyCreated) return concurrentlyCreated;
+      }
+      throw error;
+    }
+  }
 
-    const workflows =
-      await this.workflowEngineService.processEvent(savedEvent);
+  findAll(): Promise<BusinessEvent[]> {
+    return this.eventsRepository.find({ order: { createdAt: 'DESC' } });
+  }
 
-    return { event: savedEvent, workflows };
+  async findOne(id: string): Promise<BusinessEvent> {
+    const event = await this.eventsRepository.findOne({ where: { id } });
+    if (!event) {
+      throw new NotFoundException(`Business event with id "${id}" not found`);
+    }
+    return event;
+  }
+
+  findByName(name: string): Promise<BusinessEvent | null> {
+    return this.eventsRepository.findOne({ where: { name } });
+  }
+
+  async findOrCreateByName(name: string): Promise<BusinessEvent> {
+    return this.createOrReuse({ name });
+  }
+
+  async update(
+    id: string,
+    dto: UpdateBusinessEventDto,
+  ): Promise<BusinessEvent> {
+    const event = await this.findOne(id);
+    Object.assign(event, dto);
+    try {
+      return await this.eventsRepository.save(event);
+    } catch (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw new ConflictException(
+          `Business event with name "${dto.name}" already exists`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async remove(id: string): Promise<void> {
+    const event = await this.findOne(id);
+    try {
+      await this.eventsRepository.remove(event);
+    } catch (error) {
+      if ((error as { code?: string }).code === '23503') {
+        throw new ConflictException(
+          'Business event is referenced by a rule or event log',
+        );
+      }
+      throw error;
+    }
   }
 }

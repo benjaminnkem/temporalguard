@@ -9,8 +9,8 @@ name: temporalguard
 
 x-logging: &default-logging
   options:
-    max-size: '50m'
-    max-file: '3'
+    max-size: "50m"
+    max-file: "3"
 
 services:
   # ---------------------------------------------------------------------------
@@ -25,13 +25,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-temporalguard}
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - temporalguard_pg_data:/var/lib/postgresql/data
     networks:
       - temporalguard
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -42,15 +42,15 @@ services:
     image: redis:7-alpine
     container_name: temporalguard-redis
     restart: unless-stopped
-    command: ['redis-server', '--appendonly', 'yes']
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - '${REDIS_PORT:-6379}:6379'
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - temporalguard_redis_data:/data
     networks:
       - temporalguard
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -87,18 +87,12 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
     ports:
-      - '${API_HOST_PORT:-3000}:3000'
+      - "${API_HOST_PORT:-3000}:3000"
     networks:
       - temporalguard
     healthcheck:
       test:
-        [
-          'CMD',
-          'wget',
-          '--spider',
-          '-q',
-          'http://localhost:3000/api/health',
-        ]
+        ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -138,9 +132,9 @@ services:
     user: root
     environment:
       ZOO_SERVER_ID: 1
-      ALLOW_ANONYMOUS_LOGIN: 'yes'
+      ALLOW_ANONYMOUS_LOGIN: "yes"
       ZOO_AUTOPURGE_INTERVAL: 1
-      ZOO_ENABLE_PROMETHEUS_METRICS: 'yes'
+      ZOO_ENABLE_PROMETHEUS_METRICS: "yes"
       ZOO_PROMETHEUS_METRICS_PORT_NUMBER: 9141
     volumes:
       - temporalguard_zookeeper_data:/bitnami/zookeeper
@@ -149,8 +143,8 @@ services:
     healthcheck:
       test:
         [
-          'CMD-SHELL',
-          'curl -s -m 2 http://localhost:8080/commands/ruok | grep error | grep null',
+          "CMD-SHELL",
+          "curl -s -m 2 http://localhost:8080/commands/ruok | grep error | grep null",
         ]
       interval: 30s
       timeout: 5s
@@ -185,7 +179,7 @@ services:
         soft: 262144
         hard: 262144
     healthcheck:
-      test: ['CMD', 'wget', '--spider', '-q', '0.0.0.0:8123/ping']
+      test: ["CMD", "wget", "--spider", "-q", "0.0.0.0:8123/ping"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -202,9 +196,9 @@ services:
     environment:
       SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN: tcp://clickhouse:9000
       SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_CLUSTER: cluster
-      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_REPLICATION: 'true'
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_REPLICATION: "true"
       SIGNOZ_OTEL_COLLECTOR_TIMEOUT: 10m
-    entrypoint: ['/bin/sh']
+    entrypoint: ["/bin/sh"]
     command:
       - -c
       - |
@@ -231,20 +225,13 @@ services:
       SIGNOZ_TOKENIZER_JWT_SECRET: ${SIGNOZ_JWT_SECRET:-temporalguard-local-dev-secret}
     ports:
       # Host 3301 → container 8080 (classic SigNoz UI port for local dev)
-      - '${SIGNOZ_UI_PORT:-3301}:8080'
+      - "${SIGNOZ_UI_PORT:-3301}:8080"
     volumes:
       - temporalguard_signoz_data:/var/lib/signoz/
     networks:
       - temporalguard
     healthcheck:
-      test:
-        [
-          'CMD',
-          'wget',
-          '--spider',
-          '-q',
-          'localhost:8080/api/v1/health',
-        ]
+      test: ["CMD", "wget", "--spider", "-q", "localhost:8080/api/v1/health"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -263,7 +250,7 @@ services:
         condition: service_healthy
       signoz-telemetrystore-migrator:
         condition: service_completed_successfully
-    entrypoint: ['/bin/sh']
+    entrypoint: ["/bin/sh"]
     command:
       - -c
       - |
@@ -271,27 +258,21 @@ services:
         /signoz-otel-collector --config=/etc/otel-collector-config.yaml --manager-config=/etc/manager-config.yaml --copy-path=/var/tmp/collector-config.yaml
     environment:
       OTEL_RESOURCE_ATTRIBUTES: host.name=temporalguard,os.type=linux
-      LOW_CARDINAL_EXCEPTION_GROUPING: 'false'
+      LOW_CARDINAL_EXCEPTION_GROUPING: "false"
       SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN: tcp://clickhouse:9000
       SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_CLUSTER: cluster
-      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_REPLICATION: 'true'
+      SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_REPLICATION: "true"
       SIGNOZ_OTEL_COLLECTOR_TIMEOUT: 10m
     volumes:
       - ./deploy/signoz/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
       - ./deploy/signoz/otel-collector-opamp-config.yaml:/etc/manager-config.yaml:ro
     ports:
-      - '${OTEL_GRPC_PORT:-4317}:4317'
-      - '${OTEL_HTTP_PORT:-4318}:4318'
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
     networks:
       - temporalguard
     healthcheck:
-      test:
-        [
-          'CMD',
-          '/bin/sh',
-          '-c',
-          'exec 3<>/dev/tcp/127.0.0.1/13133',
-        ]
+      test: ["CMD", "/bin/sh", "-c", "exec 3<>/dev/tcp/127.0.0.1/13133"]
       interval: 30s
       timeout: 5s
       retries: 5

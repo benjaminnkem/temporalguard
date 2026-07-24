@@ -1,13 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EVENT_RULE_MATCHED } from '../../../common/constants/event.constants';
 import { Rule } from '../../rules/entities';
+import { RuleOperator } from '../../rules/enums/rule-operator.enum';
 import { TimeoutUnit } from '../../rules/enums/timeout-unit.enum';
 import { RulesService } from '../../rules/services/rules.service';
+import { Workflow } from '../../workflows/entities';
 import { WorkflowStatus } from '../../workflows/enums/workflow-status.enum';
 import { WorkflowsService } from '../../workflows/services/workflows.service';
-import { Workflow } from '../../workflows/entities';
-import { BusinessEvent } from '../entities';
-import { EVENT_RULE_MATCHED } from '../../../common/constants/event.constants';
+import { EventLog } from '../entities';
 
 @Injectable()
 export class WorkflowEngineService {
@@ -19,68 +20,110 @@ export class WorkflowEngineService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async processEvent(event: BusinessEvent): Promise<Workflow[]> {
-    const matchingRules = await this.rulesService.findEnabledByTriggerEvent(
-      event.eventName,
+  async processEvent(log: EventLog): Promise<Workflow[]> {
+    if (!log.externalWorkflowRecordId || !log.externalWorkflow) return [];
+
+    const affected = new Map<string, Workflow>();
+    const triggerRules = await this.rulesService.findEnabledByTriggerEvent(
+      log.eventId,
     );
 
-    if (matchingRules.length === 0) {
-      this.logger.debug(
-        `No matching rules found for event "${event.eventName}"`,
+    for (const rule of triggerRules) {
+      this.eventEmitter.emit(EVENT_RULE_MATCHED, {
+        ruleId: rule.id,
+        ruleName: rule.name,
+        eventName: log.event.name,
+      });
+
+      let workflow =
+        await this.workflowsService.findWaitingForRuleAndExternalWorkflow(
+          rule.id,
+          log.externalWorkflowRecordId,
+        );
+      if (!workflow) {
+        try {
+          workflow = await this.createWorkflowForRule(rule, log);
+        } catch (error) {
+          if ((error as { code?: string }).code !== '23505') throw error;
+          workflow =
+            await this.workflowsService.findWaitingForRuleAndExternalWorkflow(
+              rule.id,
+              log.externalWorkflowRecordId,
+            );
+          if (!workflow) throw error;
+        }
+      }
+      affected.set(workflow.id, workflow);
+    }
+
+    const expectingRules = await this.rulesService.findEnabledExpectingEvent(
+      log.eventId,
+    );
+    const waiting =
+      await this.workflowsService.findWaitingByExternalWorkflowAndRules(
+        log.externalWorkflowRecordId,
+        expectingRules.map((rule) => rule.id),
       );
-      return [];
+
+    for (const workflow of waiting) {
+      const expectedNames = workflow.rule.expectedEventDefinitions.map(
+        (event) => event.name,
+      );
+      const state = workflow.currentState ?? {};
+      const received = new Set(
+        Array.isArray(state.receivedEvents)
+          ? (state.receivedEvents as string[])
+          : [],
+      );
+      received.add(log.event.name);
+      const receivedEvents = [...received];
+      const completed =
+        workflow.rule.operator === RuleOperator.ANY
+          ? receivedEvents.some((name) => expectedNames.includes(name))
+          : expectedNames.every((name) => received.has(name));
+
+      const saved = await this.workflowsService.saveState(
+        workflow,
+        {
+          ...state,
+          receivedEvents,
+          expectedEvents: expectedNames,
+          operator: workflow.rule.operator,
+        },
+        completed,
+      );
+      affected.set(saved.id, saved);
     }
 
-    this.logger.log(
-      `Found ${matchingRules.length} matching rule(s) for event "${event.eventName}"`,
-    );
-
-    const workflows: Workflow[] = [];
-
-    for (const rule of matchingRules) {
-      try {
-        this.eventEmitter.emit(EVENT_RULE_MATCHED, {
-          ruleId: rule.id,
-          ruleName: rule.name,
-          eventName: event.eventName,
-        });
-      } catch (e) {}
-
-      const workflow = await this.createWorkflowForRule(rule, event);
-      workflows.push(workflow);
-    }
-
-    return workflows;
+    return [...affected.values()];
   }
 
   private async createWorkflowForRule(
     rule: Rule,
-    event: BusinessEvent,
+    log: EventLog,
   ): Promise<Workflow> {
     const deadline = this.calculateDeadline(
-      event.timestamp,
+      log.timestamp,
       rule.timeoutValue,
       rule.timeoutUnit,
     );
-
-    const workflow = await this.workflowsService.createFromRule({
+    return this.workflowsService.createFromRule({
       ruleId: rule.id,
-      externalId: event.externalWorkflowId,
+      rule,
+      externalId: log.externalWorkflow!.externalId,
+      externalWorkflowId: log.externalWorkflowRecordId,
+      externalWorkflow: log.externalWorkflow!,
       name: rule.name,
       status: WorkflowStatus.WAITING,
       deadline,
       currentState: {
         receivedEvents: [],
-        expectedEvents: rule.expectedEvents,
+        expectedEvents: rule.expectedEventDefinitions.map(
+          (event) => event.name,
+        ),
         operator: rule.operator,
       },
     });
-
-    this.logger.log(
-      `Created workflow "${workflow.id}" for rule "${rule.name}" with deadline ${deadline.toISOString()}`,
-    );
-
-    return workflow;
   }
 
   calculateDeadline(
@@ -89,7 +132,6 @@ export class WorkflowEngineService {
     timeoutUnit: TimeoutUnit,
   ): Date {
     const deadline = new Date(from);
-
     switch (timeoutUnit) {
       case TimeoutUnit.SECONDS:
         deadline.setSeconds(deadline.getSeconds() + timeoutValue);
@@ -104,7 +146,6 @@ export class WorkflowEngineService {
         deadline.setDate(deadline.getDate() + timeoutValue);
         break;
     }
-
     return deadline;
   }
 }

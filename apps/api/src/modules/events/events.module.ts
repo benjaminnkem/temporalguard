@@ -3,18 +3,20 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { RulesModule } from '../rules/rules.module';
 import { WorkflowsModule } from '../workflows/workflows.module';
 import { EventsController } from './controllers/events.controller';
-import { BusinessEvent } from './entities';
+import { EventLogsController } from './controllers/event-logs.controller';
+import { BusinessEvent, EventLog } from './entities';
+import { EventLogsService } from './services/event-logs.service';
 import { EventsService } from './services/events.service';
 import { WorkflowEngineService } from './services/workflow-engine.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([BusinessEvent]),
+    TypeOrmModule.forFeature([BusinessEvent, EventLog]),
     RulesModule,
     WorkflowsModule,
   ],
-  controllers: [EventsController],
-  providers: [EventsService, WorkflowEngineService],
-  exports: [EventsService],
+  controllers: [EventsController, EventLogsController],
+  providers: [EventsService, EventLogsService, WorkflowEngineService],
+  exports: [EventsService, EventLogsService],
 })
 export class EventsModule {}

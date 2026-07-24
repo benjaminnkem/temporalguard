@@ -1,32 +1,29 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, ManyToMany, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../common/entities';
-import { Workflow } from '../../workflows/entities';
+import { Rule } from '../../rules/entities';
 import { EventType } from '../enums/event-type.enum';
+import { EventLog } from './event-log.entity';
 
 @Entity('business_events')
 export class BusinessEvent extends BaseEntity {
-  @Column({ type: 'varchar', length: 255 })
-  eventName: string;
+  @Column({ type: 'varchar', length: 255, unique: true })
+  name: string;
 
   @Column({ type: 'enum', enum: EventType, default: EventType.BUSINESS })
   type: EventType;
 
-  @Column({ type: 'timestamptz' })
-  timestamp: Date;
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  payload: Record<string, unknown>;
+  metadata: Record<string, unknown> | null;
 
-  @Column({ type: 'varchar', length: 255 })
-  externalWorkflowId: string;
+  @OneToMany(() => EventLog, (log) => log.event)
+  logs: EventLog[];
 
-  @Column({ type: 'uuid', nullable: true })
-  workflowId: string;
+  @OneToMany(() => Rule, (rule) => rule.triggerEventDefinition)
+  triggeredRules: Rule[];
 
-  @ManyToOne(() => Workflow, (workflow) => workflow.businessEvents, {
-    onDelete: 'CASCADE',
-    nullable: true,
-  })
-  @JoinColumn({ name: 'workflowId' })
-  workflow: Workflow;
+  @ManyToMany(() => Rule, (rule) => rule.expectedEventDefinitions)
+  expectedByRules: Rule[];
 }
