@@ -1,3 +1,4 @@
+import { startOfHour, subHours } from "date-fns";
 import {
   eventDefinitionSchema,
   ruleDraftSchema,
@@ -494,8 +495,67 @@ function loadCustomEvents() {
 const delay = (milliseconds = 180) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+const seedRules: RuleSummary[] = [
+  {
+    id: "rule_doc",
+    name: "Documents verified within 10m",
+    description:
+      "After a document is uploaded, scan and verification must complete within ten minutes.",
+    operator: "all",
+    severity: "critical",
+    status: "active",
+    triggerEvent: "document.uploaded",
+    expectedEvents: ["document.scan_completed", "document.verified"],
+    window: { value: 10, unit: "minutes" },
+    updatedAt: FIXED_NOW,
+  },
+  {
+    id: "rule_application",
+    name: "Decision issued within 4h",
+    description:
+      "Applications that start review must receive a decision within four hours.",
+    operator: "any",
+    severity: "warning",
+    status: "active",
+    triggerEvent: "application.submitted",
+    expectedEvents: ["application.approved", "application.rejected"],
+    window: { value: 4, unit: "hours" },
+    updatedAt: FIXED_NOW,
+  },
+  {
+    id: "rule_privacy",
+    name: "No processing after withdrawal",
+    description:
+      "Marketing processing must not occur after consent is withdrawn.",
+    operator: "forbid",
+    severity: "critical",
+    status: "active",
+    triggerEvent: "consent.withdrawn",
+    expectedEvents: ["marketing_data.processed"],
+    window: { value: 30, unit: "days" },
+    updatedAt: FIXED_NOW,
+  },
+  {
+    id: "rule_video",
+    name: "Video publish sequence",
+    description:
+      "Uploaded videos must be scanned, transcoded, then published in order.",
+    operator: "sequence",
+    severity: "warning",
+    status: "paused",
+    triggerEvent: "video.uploaded",
+    expectedEvents: [
+      "video.scan_completed",
+      "video.transcoded",
+      "video.published",
+    ],
+    window: { value: 2, unit: "hours" },
+    updatedAt: FIXED_NOW,
+  },
+];
+
 export class MockTemporalGuardDataSource implements TemporalGuardDataSource {
-  private mockRules: RuleSummary[] = [];
+  private mockRules: RuleSummary[] = [...seedRules];
   private mockRuleDrafts = new Map<string, RuleDraft>();
 
   async getDashboardOverview(query: AnalyticsQuery) {
@@ -559,13 +619,16 @@ export class MockTemporalGuardDataSource implements TemporalGuardDataSource {
           description: "Median and p95 workflow completion duration.",
         },
       ],
-      reliabilitySeries: Array.from({ length: 12 }, (_, index) => ({
-        timestamp: `${String(index * 2).padStart(2, "0")}:00`,
-        volume: 760 + ((index * 83) % 310),
-        completionRate: 94 + ((index * 17) % 45) / 10,
-        violations: 4 + ((index * 7) % 10),
-        duration: 180 + ((index * 41) % 260),
-      })),
+      reliabilitySeries: Array.from({ length: 12 }, (_, index) => {
+        const bucketStart = subHours(startOfHour(new Date()), (11 - index) * 2);
+        return {
+          timestamp: bucketStart.toISOString(),
+          volume: 760 + ((index * 83) % 310),
+          completionRate: 94 + ((index * 17) % 45) / 10,
+          violations: 4 + ((index * 7) % 10),
+          duration: 180 + ((index * 41) % 260),
+        };
+      }),
       deadlineBuckets: [
         { bucket: "< 5m", count: 12 },
         { bucket: "< 15m", count: 35 },
@@ -852,7 +915,7 @@ export class MockTemporalGuardDataSource implements TemporalGuardDataSource {
 
   async reset() {
     localStorage.removeItem(storageKey);
-    this.mockRules = [];
+    this.mockRules = [...seedRules];
     this.mockRuleDrafts.clear();
   }
 }

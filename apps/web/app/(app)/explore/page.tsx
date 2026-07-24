@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { RuleBuilder } from "../../../features/query-builder/rule-builder";
+import { RuleBuilder } from "@/features/query-builder/rule-builder";
 
 export const metadata: Metadata = { title: "Explore" };
 

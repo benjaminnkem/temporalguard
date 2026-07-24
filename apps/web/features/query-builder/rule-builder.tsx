@@ -26,36 +26,52 @@ import {
   Check,
   Clock3,
   GripVertical,
-  LoaderCircle,
   Plus,
   RotateCcw,
   Save,
   Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
-import { EventSelector } from "../events/event-selector";
-import { DataState } from "../../components/shared/data-state";
-import { FormField } from "../../components/shared/form-field";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Textarea } from "../../components/ui/textarea";
-import { Badge, Card } from "../../components/ui/surface";
+import { EventSelector } from "@/features/events/event-selector";
+import { DataState } from "@/components/shared/data-state";
+import { FormField } from "@/components/shared/form-field";
+import { PageHeader } from "@/components/shared/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ruleDraftSchema,
   type EventDefinition,
   type RuleDraft,
-} from "../../lib/contracts";
+} from "@/lib/contracts";
 import {
   useCreateRule,
   useEvents,
   useRule,
   useTestRule,
   useUpdateRule,
-} from "../../lib/queries";
-import { ruleSentence } from "../../lib/rules";
+} from "@/lib/queries";
+import { ruleSentence } from "@/lib/rules";
+import { cn, statusVariant } from "@/lib/utils";
 
 const draftKey = "temporalguard.ruleDrafts.v1";
 
@@ -67,11 +83,18 @@ const defaultDraft: RuleDraft = {
   operator: "all",
   outcomes: [],
   correlationKey: "",
-  window: { value: 0, unit: "minutes" },
+  window: { value: 15, unit: "minutes" },
   severity: "info",
-  environments: [],
+  environments: ["production"],
   status: "draft",
 };
+
+const operators = [
+  { value: "any", label: "Any", hint: "One is enough" },
+  { value: "all", label: "All", hint: "Every event" },
+  { value: "sequence", label: "Sequence", hint: "In exact order" },
+  { value: "forbid", label: "Forbid", hint: "Must not happen" },
+] as const;
 
 function toReference(event: EventDefinition) {
   return {
@@ -103,18 +126,18 @@ function SortableOutcome({
     <div
       ref={sortable.setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface p-2"
+      className="flex items-center gap-2 rounded-xl border border-border bg-card p-2 shadow-sm ring-1 ring-foreground/5"
     >
       <button
         type="button"
         {...sortable.attributes}
         {...sortable.listeners}
-        className="grid size-8 place-items-center text-muted-foreground"
+        className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
         aria-label={`Drag ${event.displayName}`}
       >
         <GripVertical className="size-4" />
       </button>
-      <span className="grid size-7 place-items-center rounded-full bg-primary-subtle text-xs font-semibold text-primary-subtle-foreground">
+      <span className="grid size-7 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
         {index + 1}
       </span>
       <span className="min-w-0 flex-1">
@@ -128,32 +151,32 @@ function SortableOutcome({
       <div className="flex">
         <Button
           type="button"
-          size="icon"
+          size="icon-sm"
           variant="ghost"
           disabled={index === 0}
           onClick={() => onMove(-1)}
           aria-label={`Move ${event.displayName} earlier`}
         >
-          <ArrowUp className="size-3.5" />
+          <ArrowUp />
         </Button>
         <Button
           type="button"
-          size="icon"
+          size="icon-sm"
           variant="ghost"
           disabled={index === total - 1}
           onClick={() => onMove(1)}
           aria-label={`Move ${event.displayName} later`}
         >
-          <ArrowDown className="size-3.5" />
+          <ArrowDown />
         </Button>
         <Button
           type="button"
-          size="icon"
+          size="icon-sm"
           variant="ghost"
           onClick={onRemove}
           aria-label={`Remove ${event.displayName}`}
         >
-          <Trash2 className="size-3.5" />
+          <Trash2 />
         </Button>
       </div>
     </div>
@@ -301,6 +324,8 @@ export function RuleBuilder() {
     const input: RuleDraft = {
       ...values,
       status: ruleId ? values.status : "active",
+      environments:
+        values.environments.length > 0 ? values.environments : ["production"],
     };
     const callbacks = {
       onSuccess: (savedRule: { id: string }) => {
@@ -346,93 +371,123 @@ export function RuleBuilder() {
     );
   }
 
+  const errorMessages = Object.values(form.formState.errors)
+    .map((error) =>
+      error && "message" in error && typeof error.message === "string"
+        ? error.message
+        : null,
+    )
+    .filter((message): message is string => Boolean(message));
+
   return (
     <div className="grid gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {ruleId ? "Edit rule" : "Rule Studio"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {ruleId
-              ? "Update this persisted workflow promise."
-              : "Build and test a time-bound workflow promise against persisted history."}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`text-xs ${
-              saveState === "failed"
-                ? "text-destructive"
-                : "text-muted-foreground"
-            }`}
-            aria-live="polite"
-          >
-            {saveState === "saving"
-              ? "Saving…"
-              : saveState === "failed"
-                ? "Save failed"
-                : saveState === "restored"
-                  ? "Draft restored"
-                  : "Draft autosaved"}
-          </span>
-          <Button
-            type="button"
-            onClick={() => {
-              localStorage.removeItem(
-                ruleId ? `${draftKey}.${ruleId}` : draftKey,
-              );
-              form.reset(
-                ruleId && ruleQuery.data ? ruleQuery.data : defaultDraft,
-              );
-              toast.success(ruleId ? "Changes reset." : "Draft reset to seed.");
-            }}
-          >
-            <RotateCcw className="size-4" />
-            Reset
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => void activate()}
-            disabled={savePending}
-          >
-            {savePending ? (
-              <LoaderCircle className="size-4 animate-spin" />
-            ) : (
-              <Save className="size-4" />
-            )}
-            {savePending ? "Saving…" : ruleId ? "Update rule" : "Save rule"}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Rule Studio"
+        title={ruleId ? "Edit rule" : "Explore & build"}
+        description={
+          ruleId
+            ? "Update this persisted workflow promise."
+            : "Compose a time-bound workflow promise, validate it, and test against history."
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "text-xs",
+                saveState === "failed"
+                  ? "text-destructive"
+                  : "text-muted-foreground",
+              )}
+              aria-live="polite"
+            >
+              {saveState === "saving"
+                ? "Saving…"
+                : saveState === "failed"
+                  ? "Save failed"
+                  : saveState === "restored"
+                    ? "Draft restored"
+                    : "Draft autosaved"}
+            </span>
+            {ruleId ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                render={<Link href="/rules" />}
+              >
+                Back to rules
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                localStorage.removeItem(
+                  ruleId ? `${draftKey}.${ruleId}` : draftKey,
+                );
+                form.reset(
+                  ruleId && ruleQuery.data ? ruleQuery.data : defaultDraft,
+                );
+                toast.success(
+                  ruleId ? "Changes reset." : "Draft reset to defaults.",
+                );
+              }}
+            >
+              <RotateCcw />
+              Reset
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void activate()}
+              disabled={savePending}
+            >
+              {savePending ? <Spinner /> : <Save />}
+              {savePending
+                ? "Saving…"
+                : ruleId
+                  ? "Update rule"
+                  : "Save rule"}
+            </Button>
+          </div>
+        }
+      />
 
-      <div className="flex gap-1 rounded-[var(--radius-md)] bg-muted p-1 lg:hidden">
-        {(["catalogue", "canvas", "properties"] as const).map((pane) => (
-          <button
-            key={pane}
-            type="button"
-            onClick={() => setActivePane(pane)}
-            className={`flex-1 rounded-[var(--radius-sm)] px-2 py-2 text-xs font-medium capitalize ${
-              activePane === pane
-                ? "bg-surface shadow-sm"
-                : "text-muted-foreground"
-            }`}
-          >
-            {pane}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={activePane}
+        onValueChange={(value) => {
+          if (
+            value === "catalogue" ||
+            value === "canvas" ||
+            value === "properties"
+          ) {
+            setActivePane(value);
+          }
+        }}
+        className="lg:hidden"
+      >
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="catalogue">Blocks</TabsTrigger>
+          <TabsTrigger value="canvas">Canvas</TabsTrigger>
+          <TabsTrigger value="properties">Properties</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <div className="grid min-h-[680px] gap-4 lg:grid-cols-[280px_minmax(0,1fr)_330px]">
         <Card
-          className={`p-4 ${activePane !== "catalogue" ? "hidden lg:block" : ""}`}
+          className={cn(
+            "gap-0 py-0",
+            activePane !== "catalogue" && "hidden lg:flex",
+          )}
         >
-          <h2 className="font-semibold">Building blocks</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Select known events or create one without losing this draft.
-          </p>
-          <div className="mt-5 grid gap-4">
+          <CardHeader className="border-b py-4">
+            <CardTitle>Building blocks</CardTitle>
+            <CardDescription>
+              Select known events or create one without losing this draft.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 py-4">
             <FormField
               label="Trigger"
               error={form.formState.errors.trigger?.message}
@@ -468,83 +523,94 @@ export function RuleBuilder() {
                 onSelect={addOutcome}
               />
             </FormField>
-            <div>
-              <p className="mb-2 text-xs font-medium">Operator</p>
+            <div className="grid gap-2">
+              <p className="text-sm font-medium">Operator</p>
               <div className="grid grid-cols-2 gap-2">
-                {(["any", "all", "sequence", "forbid"] as const).map(
-                  (operator) => (
+                {operators.map((operator) => {
+                  const active = draft.operator === operator.value;
+                  return (
                     <button
-                      key={operator}
+                      key={operator.value}
                       type="button"
                       onClick={() =>
-                        form.setValue("operator", operator, {
+                        form.setValue("operator", operator.value, {
                           shouldValidate: true,
                         })
                       }
-                      className={`rounded-[var(--radius-md)] border p-3 text-left ${
-                        draft.operator === operator
-                          ? operator === "forbid"
-                            ? "border-destructive bg-destructive-subtle text-destructive"
-                            : "border-primary bg-primary-subtle text-primary-subtle-foreground"
-                          : "border-border bg-surface"
-                      }`}
+                      className={cn(
+                        "rounded-xl border p-3 text-left transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                        active
+                          ? operator.value === "forbid"
+                            ? "border-destructive/40 bg-destructive/10 text-destructive"
+                            : "border-primary/40 bg-primary/10 text-foreground"
+                          : "border-border bg-card hover:bg-muted/40",
+                      )}
                     >
-                      <span className="block text-xs font-bold uppercase">
-                        {operator}
+                      <span className="block text-xs font-semibold uppercase tracking-wide">
+                        {operator.label}
                       </span>
-                      <span className="mt-1 block text-[10px] opacity-75">
-                        {operator === "any"
-                          ? "One is enough"
-                          : operator === "all"
-                            ? "Every event"
-                            : operator === "sequence"
-                              ? "In exact order"
-                              : "Must not happen"}
+                      <span className="mt-1 block text-[11px] opacity-75">
+                        {operator.hint}
                       </span>
                     </button>
-                  ),
-                )}
+                  );
+                })}
               </div>
             </div>
-          </div>
+          </CardContent>
         </Card>
 
         <Card
-          className={`min-w-0 p-4 sm:p-6 ${
-            activePane !== "canvas" ? "hidden lg:block" : ""
-          }`}
+          className={cn(
+            "min-w-0 gap-0 py-0",
+            activePane !== "canvas" && "hidden lg:flex",
+          )}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold">Rule canvas</h2>
-              <p className="text-xs text-muted-foreground">
-                One model drives this canvas and readable sentence.
-              </p>
+          <CardHeader className="border-b py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle>Rule canvas</CardTitle>
+                <CardDescription>
+                  One model drives this canvas and readable sentence.
+                </CardDescription>
+              </div>
+              <Badge
+                variant={statusVariant(draft.status)}
+                className="capitalize"
+              >
+                {draft.status || "draft"}
+              </Badge>
             </div>
-            <Badge tone={draft.status === "active" ? "success" : "neutral"}>
-              {draft.status}
-            </Badge>
-          </div>
-          <div className="mt-6 grid gap-5">
-            <div className="rounded-[var(--radius-lg)] border border-primary bg-primary-subtle p-4">
-              <p className="text-[10px] font-bold tracking-[0.12em] text-primary-subtle-foreground uppercase">
+          </CardHeader>
+          <CardContent className="grid gap-5 py-5">
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-[10px] font-semibold tracking-[0.12em] text-primary uppercase">
                 When
               </p>
               <p className="mt-1 font-medium">
                 {draft.trigger?.displayName ?? "Choose a trigger event"}
               </p>
               <p className="font-mono text-xs text-muted-foreground">
-                {draft.trigger?.canonicalName}
+                {draft.trigger?.canonicalName ?? "No trigger selected"}
               </p>
             </div>
+
             <div className="mx-auto flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="h-8 w-px bg-border-strong" />
-              <Badge tone={draft.operator === "forbid" ? "danger" : "primary"}>
-                {draft.operator.toUpperCase()}
+              <span className="h-8 w-px bg-border" />
+              <Badge
+                variant={
+                  draft.operator === "forbid" ? "destructive" : "default"
+                }
+                className="uppercase"
+              >
+                {draft.operator}
               </Badge>
               <Clock3 className="size-3.5" />
-              {draft.window.value} {draft.window.unit}
+              <span className="tabular-nums">
+                {draft.window.value || "—"} {draft.window.unit}
+              </span>
             </div>
+
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -574,38 +640,53 @@ export function RuleBuilder() {
                     />
                   ))}
                   {draft.outcomes.length === 0 ? (
-                    <div className="grid min-h-28 place-items-center rounded-[var(--radius-md)] border border-dashed border-border-strong text-center text-sm text-muted-foreground">
+                    <div className="grid min-h-28 place-items-center rounded-2xl border border-dashed border-border bg-muted/20 text-center text-sm text-muted-foreground">
                       <span>
                         <Plus className="mx-auto mb-2 size-5" />
-                        Add an outcome from the Event Catalogue
+                        Add an outcome from Building blocks
                       </span>
                     </div>
                   ) : null}
                 </div>
               </SortableContext>
             </DndContext>
-            <div className="rounded-[var(--radius-lg)] bg-surface-subtle p-4">
+
+            <div className="rounded-2xl bg-muted/40 p-4">
               <p className="mb-1 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                 Readable rule
               </p>
-              <p className="leading-6">{ruleSentence(draft)}</p>
+              <p className="leading-6 text-sm">{ruleSentence(draft)}</p>
             </div>
-          </div>
+          </CardContent>
         </Card>
 
         <Card
-          className={`p-4 ${activePane !== "properties" ? "hidden lg:block" : ""}`}
+          className={cn(
+            "gap-0 py-0",
+            activePane !== "properties" && "hidden lg:flex",
+          )}
         >
-          <h2 className="font-semibold">Properties & validation</h2>
-          <div className="mt-4 grid gap-4">
+          <CardHeader className="border-b py-4">
+            <CardTitle>Properties & validation</CardTitle>
+            <CardDescription>
+              Name, window, severity, and historical test.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 py-4">
             <FormField
               label="Rule name"
               error={form.formState.errors.name?.message}
             >
-              <Input {...form.register("name")} />
+              <Input
+                placeholder="Documents verified within 10m"
+                {...form.register("name")}
+              />
             </FormField>
             <FormField label="Description">
-              <Textarea {...form.register("description")} />
+              <Textarea
+                placeholder="Describe the business promise this rule enforces."
+                {...form.register("description")}
+              />
             </FormField>
             <FormField
               label="Correlation key"
@@ -613,6 +694,7 @@ export function RuleBuilder() {
             >
               <Input
                 className="font-mono"
+                placeholder="document.id"
                 {...form.register("correlationKey")}
               />
             </FormField>
@@ -628,90 +710,100 @@ export function RuleBuilder() {
                 />
               </FormField>
               <FormField label="Unit">
-                <select
-                  className="min-h-10 rounded-[var(--radius-md)] border border-border bg-input px-2"
+                <NativeSelect
+                  className="w-full"
                   {...form.register("window.unit")}
                 >
                   {["seconds", "minutes", "hours", "days"].map((unit) => (
-                    <option key={unit}>{unit}</option>
+                    <NativeSelectOption key={unit} value={unit}>
+                      {unit}
+                    </NativeSelectOption>
                   ))}
-                </select>
+                </NativeSelect>
               </FormField>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <FormField label="Severity">
-                <select
-                  className="min-h-10 rounded-[var(--radius-md)] border border-border bg-input px-2"
+                <NativeSelect
+                  className="w-full"
                   {...form.register("severity")}
                 >
-                  <option value="info">Info</option>
-                  <option value="warning">Warning</option>
-                  <option value="critical">Critical</option>
-                </select>
+                  <NativeSelectOption value="info">Info</NativeSelectOption>
+                  <NativeSelectOption value="warning">
+                    Warning
+                  </NativeSelectOption>
+                  <NativeSelectOption value="critical">
+                    Critical
+                  </NativeSelectOption>
+                </NativeSelect>
               </FormField>
               <FormField label="Environment">
-                <select
-                  className="min-h-10 rounded-[var(--radius-md)] border border-border bg-input px-2"
-                  value={draft.environments[0]}
+                <NativeSelect
+                  className="w-full"
+                  value={draft.environments[0] ?? "production"}
                   onChange={(event) =>
                     form.setValue("environments", [event.target.value], {
                       shouldValidate: true,
                     })
                   }
                 >
-                  <option value="production">Production</option>
-                  <option value="staging">Staging</option>
-                  <option value="development">Development</option>
-                </select>
+                  <NativeSelectOption value="production">
+                    Production
+                  </NativeSelectOption>
+                  <NativeSelectOption value="staging">
+                    Staging
+                  </NativeSelectOption>
+                  <NativeSelectOption value="development">
+                    Development
+                  </NativeSelectOption>
+                </NativeSelect>
               </FormField>
             </div>
-            {Object.keys(form.formState.errors).length > 0 ? (
-              <div className="rounded-[var(--radius-md)] bg-destructive-subtle p-3 text-xs text-destructive">
+
+            {errorMessages.length > 0 ? (
+              <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">
                 <p className="font-semibold">Activation blocked</p>
                 <ul className="mt-1 list-disc pl-4">
-                  {Object.values(form.formState.errors).map((error, index) => (
-                    <li key={index}>
-                      {"message" in error && typeof error.message === "string"
-                        ? error.message
-                        : "Complete the highlighted field."}
-                    </li>
+                  {errorMessages.map((message) => (
+                    <li key={message}>{message}</li>
                   ))}
                 </ul>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-[var(--radius-md)] bg-success-subtle p-3 text-xs text-success">
+              <div className="flex items-center gap-2 rounded-xl bg-success-subtle p-3 text-xs text-success">
                 <Check className="size-4" />
                 Rule is valid for activation.
               </div>
             )}
+
             {warnings.map((warning) => (
               <div
                 key={warning}
-                className="flex gap-2 rounded-[var(--radius-md)] bg-warning-subtle p-3 text-xs text-warning"
+                className="flex gap-2 rounded-xl bg-warning-subtle p-3 text-xs text-warning"
               >
                 <AlertTriangle className="size-4 shrink-0" />
                 {warning}
               </div>
             ))}
-            <div className="border-t border-border pt-4">
-              <div className="mb-3 flex items-center justify-between">
+
+            <Separator />
+
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
                   <h3 className="text-sm font-semibold">Historical test</h3>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     Persisted workspace history
                   </p>
                 </div>
                 <Button
                   type="button"
                   size="sm"
+                  variant="outline"
                   onClick={() => testMutation.mutate(draft)}
                   disabled={testMutation.isPending}
                 >
-                  {testMutation.isPending ? (
-                    <LoaderCircle className="size-3.5 animate-spin" />
-                  ) : (
-                    <Beaker className="size-3.5" />
-                  )}
+                  {testMutation.isPending ? <Spinner /> : <Beaker />}
                   Test
                 </Button>
               </div>
@@ -725,7 +817,7 @@ export function RuleBuilder() {
                   ].map(([label, value]) => (
                     <div
                       key={label}
-                      className="rounded-[var(--radius-sm)] bg-surface-subtle p-2"
+                      className="rounded-xl bg-muted/40 p-2.5"
                     >
                       <dt className="text-muted-foreground">{label}</dt>
                       <dd className="mt-1 text-lg font-semibold tabular-nums">
@@ -740,7 +832,7 @@ export function RuleBuilder() {
                 </p>
               )}
             </div>
-          </div>
+          </CardContent>
         </Card>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
+import { format, isValid, parseISO } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -11,14 +12,32 @@ export function formatDuration(milliseconds: number) {
   return `${(milliseconds / 3_600_000).toFixed(1)}h`;
 }
 
+function toDate(value: string | number | Date) {
+  if (value instanceof Date) return value;
+  if (typeof value === "number") return new Date(value);
+  const parsed = parseISO(value);
+  if (isValid(parsed)) return parsed;
+  const fallback = new Date(value);
+  return isValid(fallback) ? fallback : null;
+}
+
 export function formatDate(value: string) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  const date = toDate(value);
+  if (!date) return value;
+  return format(date, "MMM d, yyyy · h:mm a");
+}
+
+export function formatChartAxisDate(value: string | number | Date) {
+  const date = toDate(value);
+  if (!date) return String(value);
+  return format(date, "MMM d · h a");
+}
+
+export function formatChartTooltipDate(value: string | number | Date) {
+  const date = toDate(value);
+  if (!date) return String(value);
+  return format(date, "EEE, MMM d · h:mm a");
 }
 
 export function statusVariant(

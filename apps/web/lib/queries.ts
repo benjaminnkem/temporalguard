@@ -97,11 +97,18 @@ export function useDeleteRule() {
   });
 }
 
-export const useWorkflows = (query: AnalyticsQuery) =>
+export const useWorkflows = (
+  query: AnalyticsQuery,
+  options?: {
+    refetchInterval?: number | false;
+  },
+) =>
   useQuery({
     queryKey: queryKeys.workflows(query),
     queryFn: () => dataSource.listWorkflows(query),
-    refetchInterval: query.state === "paused" ? false : 12_000,
+    refetchInterval:
+      options?.refetchInterval ??
+      (query.state === "paused" ? false : 12_000),
   });
 
 export const useWorkflow = (id: string) =>

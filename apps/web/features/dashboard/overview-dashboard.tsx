@@ -50,7 +50,14 @@ import {
 } from "@/components/ui/tooltip";
 import type { ViolationSummary } from "@/lib/contracts";
 import { useDashboard } from "@/lib/queries";
-import { cn, formatDate, formatDuration, statusVariant } from "@/lib/utils";
+import {
+  cn,
+  formatChartAxisDate,
+  formatChartTooltipDate,
+  formatDate,
+  formatDuration,
+  statusVariant,
+} from "@/lib/utils";
 
 const modes = ["volume", "completionRate", "violations", "duration"] as const;
 type Mode = (typeof modes)[number];
@@ -313,7 +320,10 @@ export function OverviewDashboard() {
                         tickLine={false}
                         axisLine={false}
                         tickMargin={8}
-                        minTickGap={24}
+                        minTickGap={28}
+                        tickFormatter={(value) =>
+                          formatChartAxisDate(String(value))
+                        }
                       />
                       <YAxis
                         tickLine={false}
@@ -325,7 +335,9 @@ export function OverviewDashboard() {
                         cursor={false}
                         content={
                           <ChartTooltipContent
-                            labelKey="timestamp"
+                            labelFormatter={(value) =>
+                              formatChartTooltipDate(String(value ?? ""))
+                            }
                             indicator="line"
                           />
                         }

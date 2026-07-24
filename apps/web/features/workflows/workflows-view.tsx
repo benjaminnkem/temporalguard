@@ -7,22 +7,34 @@ import {
   ChevronRight,
   Clock3,
   Columns3,
-  Pause,
-  Play,
-  Radio,
   Search,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { DataState } from "../../components/shared/data-state";
-import { PageHeader } from "../../components/shared/page-header";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Badge, Card } from "../../components/ui/surface";
-import { useWorkflows } from "../../lib/queries";
-import { formatDate } from "../../lib/utils";
-import { useUiStore } from "../../stores/ui-store";
+import { DataState } from "@/components/shared/data-state";
+import { PageHeader } from "@/components/shared/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useWorkflows } from "@/lib/queries";
+import { formatDate, statusVariant } from "@/lib/utils";
 
 const tabs = [
   "all",
@@ -32,30 +44,16 @@ const tabs = [
   "completed",
 ] as const;
 
-function toneForState(state: string) {
-  if (state === "completed" || state === "recovered") return "success" as const;
-  if (state === "violated") return "danger" as const;
-  if (state === "near_deadline") return "warning" as const;
-  return "info" as const;
-}
-
-export function WorkflowsView({ live = false }: { live?: boolean }) {
+export function WorkflowsView() {
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<(typeof tabs)[number]>("all");
   const [search, setSearch] = useState("");
   const [columnsOpen, setColumnsOpen] = useState(false);
-  const livePaused = useUiStore((state) => state.livePaused);
-  const toggleLive = useUiStore((state) => state.toggleLive);
   const environment = searchParams.get("environment") ?? "production";
   const query = useWorkflows({
     environment,
     search,
-    state:
-      searchParams.get("state") === "error"
-        ? "error"
-        : livePaused
-          ? "paused"
-          : tab,
+    state: searchParams.get("state") === "error" ? "error" : tab,
   });
   const dataState = query.isLoading
     ? "loading"
@@ -70,91 +68,75 @@ export function WorkflowsView({ live = false }: { live?: boolean }) {
   return (
     <div className="grid gap-6">
       <PageHeader
-        eyebrow={live ? "Streaming view" : "Workflow explorer"}
-        title={live ? "Live workflows" : "Workflows"}
-        description={
-          live
-            ? "Background refresh highlights workflows approaching or crossing their deadline."
-            : "Search, filter, and inspect workflow instances while preserving analytical context."
-        }
-        actions={
-          live ? (
-            <Button
-              onClick={toggleLive}
-              variant={livePaused ? "secondary" : "primary"}
-            >
-              {livePaused ? (
-                <Play className="size-4" />
-              ) : (
-                <Pause className="size-4" />
-              )}
-              {livePaused ? "Resume updates" : "Pause updates"}
-            </Button>
-          ) : null
-        }
+        eyebrow="Workflow explorer"
+        title="Workflows"
+        description="Search, filter, and inspect workflow instances while preserving analytical context."
       />
-      <Card className="overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-border p-3 sm:p-4 xl:flex-row xl:items-center">
-          <div className="flex gap-1 overflow-x-auto">
-            {tabs.map((item) => (
-              <button
-                type="button"
-                key={item}
-                onClick={() => setTab(item)}
-                className={`rounded-[var(--radius-md)] px-3 py-2 text-xs font-medium whitespace-nowrap ${
-                  tab === item
-                    ? "bg-primary-subtle text-primary-subtle-foreground"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {item.replace("_", " ")}
-              </button>
-            ))}
-          </div>
-          <div className="flex min-w-0 flex-1 gap-2 xl:justify-end">
-            <div className="relative min-w-0 flex-1 xl:max-w-sm">
-              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="pl-9"
-                placeholder="Workflow, event, rule, service, entity…"
-              />
-            </div>
-            <Button
-              size="icon"
-              aria-label="Configure columns"
-              aria-pressed={columnsOpen}
-              onClick={() => setColumnsOpen((value) => !value)}
+      <Card className="gap-0 overflow-hidden py-0">
+        <CardHeader className="gap-3 border-b py-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+            <Tabs
+              value={tab}
+              onValueChange={(value) => {
+                if (tabs.includes(value as (typeof tabs)[number])) {
+                  setTab(value as (typeof tabs)[number]);
+                }
+              }}
             >
-              <Columns3 className="size-4" />
-            </Button>
-            <Button size="icon" aria-label="Sort by urgency">
-              <ArrowUpDown className="size-4" />
-            </Button>
+              <TabsList className="h-auto w-full flex-wrap justify-start xl:w-auto">
+                {tabs.map((item) => (
+                  <TabsTrigger
+                    key={item}
+                    value={item}
+                    className="px-2.5 text-xs capitalize sm:text-sm"
+                  >
+                    {item.replaceAll("_", " ")}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            <div className="flex min-w-0 flex-1 gap-2 xl:justify-end">
+              <InputGroup className="min-w-0 flex-1 xl:max-w-sm">
+                <InputGroupAddon>
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Workflow, event, rule, service, entity…"
+                />
+              </InputGroup>
+              <Button
+                size="icon"
+                variant="outline"
+                aria-label="Configure columns"
+                aria-pressed={columnsOpen}
+                onClick={() => setColumnsOpen((value) => !value)}
+              >
+                <Columns3 />
+              </Button>
+              <Button size="icon" variant="outline" aria-label="Sort by urgency">
+                <ArrowUpDown />
+              </Button>
+            </div>
           </div>
-        </div>
+        </CardHeader>
         {columnsOpen ? (
-          <div className="flex flex-wrap gap-3 border-b border-border bg-surface-subtle px-4 py-3 text-xs">
+          <div className="flex flex-wrap gap-4 border-b border-border bg-muted/30 px-4 py-3 text-xs">
             {["Rule", "Service", "Deployment", "Deadline", "Last event"].map(
               (column) => (
-                <label key={column} className="flex items-center gap-1.5">
-                  <input type="checkbox" defaultChecked />
+                <Label
+                  key={column}
+                  className="flex items-center gap-2 font-normal"
+                >
+                  <Checkbox defaultChecked />
                   {column}
-                </label>
+                </Label>
               ),
             )}
           </div>
         ) : null}
-        {live ? (
-          <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground">
-            <Radio className={`size-3.5 ${livePaused ? "" : "text-success"}`} />
-            {livePaused
-              ? "Updates paused; existing data remains visible."
-              : "Mock stream active · next refresh in approximately 12 seconds"}
-          </div>
-        ) : null}
-        <div className="p-3 sm:p-4">
+        <CardContent className="p-0">
           <DataState
             state={dataState}
             onRetry={() => void query.refetch()}
@@ -164,109 +146,105 @@ export function WorkflowsView({ live = false }: { live?: boolean }) {
                 : undefined
             }
           >
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border text-xs text-muted-foreground">
-                    <th className="px-3 py-3 font-medium">State</th>
-                    <th className="px-3 py-3 font-medium">Workflow</th>
-                    <th className="px-3 py-3 font-medium">Rule</th>
-                    <th className="px-3 py-3 font-medium">Last event</th>
-                    <th className="px-3 py-3 font-medium">Service</th>
-                    <th className="px-3 py-3 font-medium">Deadline</th>
-                    <th className="px-3 py-3 font-medium">Deployment</th>
-                    <th className="w-10" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {query.data?.items.map((workflow) => (
-                    <tr
-                      key={workflow.id}
-                      className="border-b border-border transition-colors hover:bg-surface-subtle"
-                    >
-                      <td className="px-3 py-3">
-                        <Badge tone={toneForState(workflow.state)}>
-                          {workflow.state.replace("_", " ")}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-3">
-                        <Link
-                          href={`/workflows/${workflow.id}?${searchParams.toString()}`}
-                          className="font-medium hover:text-primary"
-                        >
-                          {workflow.workflowType}
-                        </Link>
-                        <p className="font-mono text-[10px] text-muted-foreground">
-                          {workflow.id} · {workflow.entityId}
-                        </p>
-                      </td>
-                      <td className="px-3 py-3">{workflow.ruleName}</td>
-                      <td className="px-3 py-3 font-mono text-xs">
-                        {workflow.lastEventName}
-                      </td>
-                      <td className="px-3 py-3">
-                        {workflow.serviceName ?? "—"}
-                      </td>
-                      <td className="px-3 py-3 text-xs tabular-nums">
-                        {workflow.completedAt ? (
-                          <span className="inline-flex items-center gap-1 text-success">
-                            <CheckCircle2 className="size-3.5" />
-                            {formatDate(workflow.completedAt)}
-                          </span>
-                        ) : workflow.deadlineAt ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Clock3 className="size-3.5" />
-                            {formatDate(workflow.deadlineAt)}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-3 py-3 font-mono text-xs">
-                        {workflow.deploymentVersion}
-                      </td>
-                      <td>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          render={
-                            <Link
-                              href={`/workflows/${workflow.id}?${searchParams.toString()}`}
-                              aria-label={`Open ${workflow.id}`}
-                            />
-                          }
-                        >
-                          <ChevronRight className="size-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>State</TableHead>
+                  <TableHead>Workflow</TableHead>
+                  <TableHead>Rule</TableHead>
+                  <TableHead>Last event</TableHead>
+                  <TableHead>Service</TableHead>
+                  <TableHead>Deadline</TableHead>
+                  <TableHead>Deployment</TableHead>
+                  <TableHead className="w-12" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {query.data?.items.map((workflow) => (
+                  <TableRow key={workflow.id}>
+                    <TableCell>
+                      <Badge
+                        variant={statusVariant(workflow.state)}
+                        className="capitalize"
+                      >
+                        {workflow.state.replaceAll("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-[220px] whitespace-normal">
+                      <Link
+                        href={`/workflows/${workflow.id}?${searchParams.toString()}`}
+                        className="font-medium hover:text-primary"
+                      >
+                        {workflow.workflowType}
+                      </Link>
+                      <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                        {workflow.id} · {workflow.entityId}
+                      </p>
+                    </TableCell>
+                    <TableCell>{workflow.ruleName}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {workflow.lastEventName}
+                    </TableCell>
+                    <TableCell>{workflow.serviceName ?? "—"}</TableCell>
+                    <TableCell className="text-xs tabular-nums">
+                      {workflow.completedAt ? (
+                        <span className="inline-flex items-center gap-1 text-success">
+                          <CheckCircle2 className="size-3.5" />
+                          {formatDate(workflow.completedAt)}
+                        </span>
+                      ) : workflow.deadlineAt ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Clock3 className="size-3.5" />
+                          {formatDate(workflow.deadlineAt)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {workflow.deploymentVersion}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        render={
+                          <Link
+                            href={`/workflows/${workflow.id}?${searchParams.toString()}`}
+                            aria-label={`Open ${workflow.id}`}
+                          />
+                        }
+                      >
+                        <ChevronRight />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </DataState>
-        </div>
-        <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground">
+        </CardContent>
+        <CardFooter className="justify-between border-t text-xs text-muted-foreground">
           <span>{query.data?.total ?? 0} results · cursor pagination</span>
           <div className="flex gap-1">
             <Button
-              size="icon"
+              size="icon-sm"
               variant="ghost"
               disabled
               aria-label="Previous page"
             >
-              <ChevronLeft className="size-4" />
+              <ChevronLeft />
             </Button>
             <Button
-              size="icon"
+              size="icon-sm"
               variant="ghost"
               disabled={!query.data?.nextCursor}
               aria-label="Next page"
             >
-              <ChevronRight className="size-4" />
+              <ChevronRight />
             </Button>
           </div>
-        </div>
+        </CardFooter>
       </Card>
     </div>
   );
