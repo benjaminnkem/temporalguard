@@ -15,7 +15,6 @@ import {
 import {
   ArrowDownRight,
   ArrowUpRight,
-  ChevronRight,
   CircleHelp,
   RefreshCw,
 } from "lucide-react";
@@ -29,8 +28,38 @@ import { Badge, Card, Skeleton } from "../../components/ui/surface";
 import { Button } from "../../components/ui/button";
 import { useDashboard } from "../../lib/queries";
 import { formatDate, formatDuration } from "../../lib/utils";
+import type { ViolationSummary } from "../../lib/contracts";
 
 const modes = ["volume", "completionRate", "violations", "duration"] as const;
+
+function violationComposition(items: ViolationSummary[]) {
+  const counts = new Map<string, number>();
+  items.forEach((item) =>
+    counts.set(item.type, (counts.get(item.type) ?? 0) + 1),
+  );
+  const rows = [...counts.entries()].sort((left, right) => right[1] - left[1]);
+  const maximum = Math.max(1, ...rows.map(([, count]) => count));
+  return rows.map(([type, count]) => ({
+    label: type.replaceAll("_", " "),
+    count,
+    percent: (count / maximum) * 100,
+  }));
+}
+
+function violationHeatmap(items: ViolationSummary[]) {
+  const rules = [...new Set(items.map((item) => item.ruleName))].slice(0, 4);
+  return rules.map((rule) => ({
+    label: rule,
+    values: Array.from(
+      { length: 8 },
+      (_, bucket) =>
+        items.filter((item) => {
+          const hour = new Date(item.occurredAt).getHours();
+          return item.ruleName === rule && Math.floor(hour / 3) === bucket;
+        }).length,
+    ),
+  }));
+}
 
 export function OverviewDashboard() {
   const searchParams = useSearchParams();
@@ -83,9 +112,6 @@ export function OverviewDashboard() {
                 return (
                   <Card
                     key={metric.id}
-                    decoration={
-                      index === 0 ? "tape" : index === 4 ? "tack" : "none"
-                    }
                     className="sketch-enter group relative min-h-36 overflow-hidden p-4 transition-colors hover:border-border-strong"
                     style={
                       {
@@ -153,11 +179,9 @@ export function OverviewDashboard() {
                         {mode === item ? (
                           <motion.span
                             layoutId="dashboard-mode"
-                            className="absolute inset-0 rounded-[var(--radius-sm)] border-2 border-border bg-surface shadow-[2px_2px_0_var(--shadow-ink)]"
+                            className="absolute inset-0 border border-primary bg-surface"
                             transition={{
-                              type: "spring",
-                              bounce: 0.25,
-                              duration: 0.35,
+                              duration: 0.1,
                             }}
                           />
                         ) : null}
@@ -222,9 +246,7 @@ export function OverviewDashboard() {
                         <Tooltip
                           contentStyle={{
                             background: "var(--popover)",
-                            border: "2px solid var(--border)",
-                            borderRadius: "var(--radius-md)",
-                            boxShadow: "4px 4px 0 var(--shadow-ink)",
+                            border: "1px solid var(--border-strong)",
                           }}
                         />
                         <Area
@@ -290,12 +312,10 @@ export function OverviewDashboard() {
                       <Tooltip
                         contentStyle={{
                           background: "var(--popover)",
-                          border: "2px solid var(--border)",
-                          borderRadius: "var(--radius-md)",
-                          boxShadow: "4px 4px 0 var(--shadow-ink)",
+                          border: "1px solid var(--border-strong)",
                         }}
                       />
-                      <Bar dataKey="count" radius={[0, 8, 3, 0]}>
+                      <Bar dataKey="count" radius={0}>
                         {query.data.deadlineBuckets.map((bucket, index) => (
                           <Cell
                             key={bucket.bucket}
@@ -326,49 +346,34 @@ export function OverviewDashboard() {
               <Card className="p-4 sm:p-5">
                 <div className="mb-5 flex items-center justify-between">
                   <div>
-                    <h2 className="font-semibold">Workflow funnel</h2>
+                    <h2 className="font-semibold">Violation composition</h2>
                     <p className="text-xs text-muted-foreground">
-                      Application decision · within 4 hours
+                      Types observed in the selected period
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    Configure
-                  </Button>
                 </div>
                 <div className="grid gap-3">
-                  {[
-                    ["Application submitted", 12_840, 100],
-                    ["Documents verified", 11_942, 93],
-                    ["Review completed", 10_917, 85],
-                    ["Decision issued", 10_504, 82],
-                  ].map(([label, value, percent], index) => (
-                    <button
-                      key={String(label)}
-                      className="group grid grid-cols-[minmax(120px,1fr)_auto] items-center gap-3 text-left"
-                    >
-                      <div>
+                  {violationComposition(query.data.recentViolations).map(
+                    ({ label, count, percent }) => (
+                      <div key={label}>
                         <div className="mb-1 flex justify-between text-xs">
-                          <span>{label}</span>
-                          <span className="text-muted-foreground">
-                            {Number(percent)}%
-                          </span>
+                          <span className="capitalize">{label}</span>
+                          <span className="text-muted-foreground">{count}</span>
                         </div>
                         <div className="h-7 overflow-hidden rounded-[var(--radius-sm)] bg-muted">
                           <div
-                            className="flex h-full items-center bg-primary-subtle px-2 text-xs font-medium text-primary-subtle-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
-                            style={{ width: `${Number(percent)}%` }}
-                          >
-                            {Number(value).toLocaleString()}
-                          </div>
+                            className="h-full bg-primary"
+                            style={{ width: `${percent}%` }}
+                          />
                         </div>
                       </div>
-                      {index < 3 ? (
-                        <ChevronRight className="size-4 text-muted-foreground" />
-                      ) : (
-                        <span className="size-4" />
-                      )}
-                    </button>
-                  ))}
+                    ),
+                  )}
+                  {query.data.recentViolations.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No violation types were observed in this period.
+                    </p>
+                  ) : null}
                 </div>
               </Card>
 
@@ -382,7 +387,7 @@ export function OverviewDashboard() {
                 <div
                   className="grid grid-cols-[110px_repeat(8,minmax(24px,1fr))] gap-1 text-xs"
                   role="img"
-                  aria-label="Violation heatmap. Decision issued within 4 hours is the highest-volume rule, peaking at six violations around 06:00."
+                  aria-label="Violation counts grouped by rule and three-hour time bucket."
                 >
                   <span />
                   {["00", "03", "06", "09", "12", "15", "18", "21"].map(
@@ -395,29 +400,30 @@ export function OverviewDashboard() {
                       </span>
                     ),
                   )}
-                  {[
-                    ["Decision SLA", 1, 2, 6, 4, 2, 1, 3, 1],
-                    ["Document verify", 0, 1, 2, 1, 3, 1, 0, 1],
-                    ["Consent policy", 0, 0, 1, 0, 0, 2, 1, 0],
-                    ["Video sequence", 1, 0, 2, 0, 1, 0, 2, 1],
-                  ].flatMap(([label, ...values]) => [
-                    <span key={`${label}-label`} className="truncate py-2">
-                      {label}
-                    </span>,
-                    ...values.map((value, index) => (
+                  {violationHeatmap(query.data.recentViolations).flatMap(
+                    ({ label, values }) => [
                       <span
-                        key={`${label}-${index}`}
-                        title={`${label}: ${value} violations`}
-                        className="min-h-8 rounded-[var(--radius-xs)] border border-border"
-                        style={{
-                          background:
-                            Number(value) === 0
-                              ? "var(--surface-subtle)"
-                              : `color-mix(in srgb, var(--destructive) ${20 + Number(value) * 12}%, var(--surface))`,
-                        }}
-                      />
-                    )),
-                  ])}
+                        key={`${label}-label`}
+                        className="truncate py-2"
+                        title={label}
+                      >
+                        {label}
+                      </span>,
+                      ...values.map((value, index) => (
+                        <span
+                          key={`${label}-${index}`}
+                          title={`${label}: ${value} violations`}
+                          className="min-h-8 rounded-[var(--radius-xs)] border border-border"
+                          style={{
+                            background:
+                              value === 0
+                                ? "var(--surface-subtle)"
+                                : `color-mix(in srgb, var(--destructive) ${Math.min(90, 20 + value * 15)}%, var(--surface))`,
+                          }}
+                        />
+                      )),
+                    ],
+                  )}
                 </div>
                 <div className="mt-4 flex items-center justify-end gap-2 text-[10px] text-muted-foreground">
                   <span>Fewer</span>

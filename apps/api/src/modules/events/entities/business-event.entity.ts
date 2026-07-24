@@ -18,6 +18,8 @@ import { EventLog } from './event-log.entity';
   unique: true,
 })
 export class BusinessEvent extends BaseEntity {
+  usageCount?: number;
+
   @Column({ type: 'uuid' })
   businessId: string;
 

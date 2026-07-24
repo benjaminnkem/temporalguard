@@ -10,10 +10,10 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <header className="relative flex flex-col gap-4 border-b-2 border-dashed border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <header className="relative flex flex-col gap-4 border-b-4 border-border-strong pb-5 sm:flex-row sm:items-end sm:justify-between">
       <div className="max-w-3xl">
         {eyebrow ? (
-          <p className="mb-1 inline-block -rotate-1 bg-warning-subtle px-2 py-0.5 text-sm font-semibold tracking-[0.08em] text-foreground uppercase">
+          <p className="mb-2 font-mono text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">
             {eyebrow}
           </p>
         ) : null}

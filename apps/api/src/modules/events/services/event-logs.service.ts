@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
+import { context, trace } from '@opentelemetry/api';
 import { Repository } from 'typeorm';
 import { EVENT_BUSINESS_EVENT_RECEIVED } from '../../../common/constants/event.constants';
 import { Workflow } from '../../workflows/entities';
@@ -22,39 +23,52 @@ export class EventLogsService {
   ) {}
 
   async ingest(
+    businessId: string,
     dto: CreateEventLogDto,
   ): Promise<{ eventLog: EventLog; workflows: Workflow[] }> {
     const event = await this.eventsService.findOrCreateByName(
-      dto.businessId,
+      businessId,
       dto.eventName,
     );
     const externalWorkflow = dto.externalWorkflowId
       ? await this.workflowsService.findOrCreateExternalWorkflow(
-          dto.businessId,
+          businessId,
           dto.externalWorkflowId,
         )
       : null;
+    const spanContext = trace.getSpan(context.active())?.spanContext();
 
     const eventLog = await this.logsRepository.save(
       this.logsRepository.create({
-        businessId: dto.businessId,
+        businessId,
         eventId: event.id,
         event,
         timestamp: new Date(dto.timestamp),
         payload: dto.payload ?? {},
+        traceId: spanContext?.traceId ?? null,
+        spanId: spanContext?.spanId ?? null,
         externalWorkflowRecordId: externalWorkflow?.id ?? null,
         externalWorkflow,
       }),
     );
 
-    this.eventEmitter.emit(EVENT_BUSINESS_EVENT_RECEIVED, {
-      eventName: event.name,
-      workflowId: dto.externalWorkflowId ?? '',
-    });
-
-    const workflows = externalWorkflow
+    const workflows: Workflow[] = externalWorkflow
       ? await this.workflowEngineService.processEvent(eventLog)
       : [];
+
+    const matchedWorkflows: Array<Workflow | null> =
+      workflows.length > 0 ? workflows : [null];
+    matchedWorkflows.forEach((workflow) => {
+      this.eventEmitter.emit(EVENT_BUSINESS_EVENT_RECEIVED, {
+        businessId,
+        eventName: event.name,
+        workflowId: workflow?.id,
+        externalWorkflowId: dto.externalWorkflowId,
+        eventLogId: eventLog.id,
+        traceId: eventLog.traceId,
+        spanId: eventLog.spanId,
+      });
+    });
 
     return { eventLog, workflows };
   }

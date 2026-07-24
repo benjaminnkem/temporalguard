@@ -1,5 +1,6 @@
 import {
   Column,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   JoinTable,
@@ -70,6 +71,18 @@ export class Rule extends BaseEntity {
 
   @Column({ type: 'boolean', default: true })
   enabled: boolean;
+
+  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
+  triggerFilters: Array<Record<string, unknown>>;
+
+  @Column({ type: 'varchar', length: 255, default: 'workflow.id' })
+  correlationKey: string;
+
+  @Column({ type: 'text', array: true, default: () => "ARRAY['production']" })
+  environments: string[];
+
+  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 
   @OneToMany(() => Workflow, (workflow) => workflow.rule)
   workflows: Workflow[];

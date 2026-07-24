@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Create workspace" };
 export default function SignupPage() {
   return (
     <div className="py-8">
-      <p className="mb-2 inline-block -rotate-1 bg-warning-subtle px-2 text-base font-semibold text-foreground">
+      <p className="mb-3 font-mono text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">
         TemporalGuard
       </p>
       <h1 className="text-4xl font-bold tracking-tight">

@@ -1,7 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource/kalam/400.css";
-import "@fontsource/kalam/700.css";
-import "@fontsource/patrick-hand/400.css";
 import "./globals.css";
 import { Providers } from "./providers";
 

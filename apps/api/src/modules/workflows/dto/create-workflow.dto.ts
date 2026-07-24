@@ -8,9 +8,10 @@ import {
 } from 'class-validator';
 
 export class CreateWorkflowDto {
-  @ApiProperty({ format: 'uuid' })
+  @ApiPropertyOptional({ format: 'uuid', writeOnly: true })
+  @IsOptional()
   @IsUUID()
-  businessId: string;
+  businessId?: string;
 
   @ApiPropertyOptional({ example: 'pay_123' })
   @IsOptional()

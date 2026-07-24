@@ -9,7 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -19,56 +19,64 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateViolationDto, UpdateViolationDto } from '../dto';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { AccessTokenGuard } from '../../auth/guards/access-token.guard';
+import type { User } from '../../users/entities';
 import { ViolationsService } from '../services/violations.service';
 
 @ApiTags('violations')
 @Controller('violations')
+@UseGuards(AccessTokenGuard)
 export class ViolationsController {
   constructor(private readonly violationsService: ViolationsService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a violation' })
   @ApiCreatedResponse({ description: 'Violation created' })
-  create(@Body() createViolationDto: CreateViolationDto) {
-    return this.violationsService.create(createViolationDto);
+  create(
+    @CurrentUser() user: User,
+    @Body() createViolationDto: CreateViolationDto,
+  ) {
+    return this.violationsService.create({
+      ...createViolationDto,
+      businessId: user.businessId,
+    });
   }
 
   @Get()
   @ApiOperation({ summary: 'List all violations' })
   @ApiOkResponse({ description: 'List of violations' })
-  findAll(@Query('businessId', ParseUUIDPipe) businessId: string) {
-    return this.violationsService.findAll(businessId);
+  findAll(@CurrentUser() user: User) {
+    return this.violationsService.findAll(user.businessId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a violation by id' })
   @ApiOkResponse({ description: 'Violation found' })
-  findOne(
-    @Query('businessId', ParseUUIDPipe) businessId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    return this.violationsService.findOne(businessId, id);
+  findOne(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+    return this.violationsService.findOne(user.businessId, id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a violation' })
   @ApiOkResponse({ description: 'Violation updated' })
   update(
-    @Query('businessId', ParseUUIDPipe) businessId: string,
+    @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateViolationDto: UpdateViolationDto,
   ) {
-    return this.violationsService.update(businessId, id, updateViolationDto);
+    return this.violationsService.update(
+      user.businessId,
+      id,
+      updateViolationDto,
+    );
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a violation' })
   @ApiNoContentResponse({ description: 'Violation deleted' })
-  remove(
-    @Query('businessId', ParseUUIDPipe) businessId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    return this.violationsService.remove(businessId, id);
+  remove(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+    return this.violationsService.remove(user.businessId, id);
   }
 }

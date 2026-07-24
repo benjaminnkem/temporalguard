@@ -25,6 +25,7 @@ export class ViolationsService {
     try {
       const fullViolation = await this.findOne(saved.businessId, saved.id);
       this.eventEmitter.emit(EVENT_VIOLATION_CREATED, {
+        businessId: fullViolation.businessId,
         violationId: fullViolation.id,
         workflowId: fullViolation.workflowId,
         ruleId: fullViolation.ruleId,
@@ -39,24 +40,51 @@ export class ViolationsService {
   }
 
   async findAll(businessId: string): Promise<Violation[]> {
-    return this.violationsRepository.find({
+    const violations = await this.violationsRepository.find({
       where: { businessId },
+      withDeleted: true,
       order: { occurredAt: 'DESC' },
-      relations: { workflow: true, rule: true },
+      relations: {
+        workflow: {
+          rule: {
+            triggerEventDefinition: true,
+            expectedEventDefinitions: true,
+          },
+          externalWorkflow: { eventLogs: { event: true } },
+        },
+        rule: {
+          triggerEventDefinition: true,
+          expectedEventDefinitions: true,
+        },
+      },
     });
+    return violations.map((violation) => this.withRuleEventNames(violation));
   }
 
   async findOne(businessId: string, id: string): Promise<Violation> {
     const violation = await this.violationsRepository.findOne({
       where: { id, businessId },
-      relations: { workflow: true, rule: true },
+      withDeleted: true,
+      relations: {
+        workflow: {
+          rule: {
+            triggerEventDefinition: true,
+            expectedEventDefinitions: true,
+          },
+          externalWorkflow: { eventLogs: { event: true } },
+        },
+        rule: {
+          triggerEventDefinition: true,
+          expectedEventDefinitions: true,
+        },
+      },
     });
 
     if (!violation) {
       throw new NotFoundException(`Violation with id "${id}" not found`);
     }
 
-    return violation;
+    return this.withRuleEventNames(violation);
   }
 
   async update(
@@ -72,5 +100,15 @@ export class ViolationsService {
   async remove(businessId: string, id: string): Promise<void> {
     const violation = await this.findOne(businessId, id);
     await this.violationsRepository.remove(violation);
+  }
+
+  private withRuleEventNames(violation: Violation): Violation {
+    for (const rule of [violation.rule, violation.workflow?.rule]) {
+      if (!rule) continue;
+      rule.triggerEvent = rule.triggerEventDefinition?.name;
+      rule.expectedEvents =
+        rule.expectedEventDefinitions?.map((event) => event.name) ?? [];
+    }
+    return violation;
   }
 }

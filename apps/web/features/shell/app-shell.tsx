@@ -4,50 +4,45 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {
   Activity,
   AlertTriangle,
-  Bell,
   ChevronDown,
-  CircleDot,
   Command,
+  Database,
   FlaskConical,
   LayoutDashboard,
+  LogOut,
   Menu,
   Pause,
   Play,
   Search,
-  Settings,
   ShieldCheck,
   Workflow,
   X,
 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useUiStore } from "../../stores/ui-store";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/surface";
 import { ThemeSwitch } from "../../components/shared/theme-switch";
 import { cn } from "../../lib/utils";
+import { authClient, type AuthSession } from "../auth/auth";
 
 const navigation = [
   { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/live", label: "Live", icon: Activity },
   { href: "/workflows", label: "Workflows", icon: Workflow },
+  { href: "/events", label: "Events", icon: Database },
   { href: "/violations", label: "Violations", icon: AlertTriangle },
   { href: "/explore", label: "Explore", icon: FlaskConical },
   { href: "/rules", label: "Rules", icon: ShieldCheck },
 ];
 
-const deferred = [
-  { label: "Alerts", icon: Bell },
-  { label: "Integrations", icon: CircleDot },
-  { label: "Settings", icon: Settings },
-];
-
 function Brand() {
   return (
     <Link href="/overview" className="flex items-center gap-2.5 font-semibold">
-      <span className="grid size-9 -rotate-2 place-items-center rounded-[var(--radius-md)] border-2 border-border bg-primary text-lg font-bold text-primary-foreground shadow-[3px_3px_0_var(--shadow-ink)] transition-transform duration-100 hover:rotate-1">
+      <span className="grid size-9 place-items-center border border-primary bg-primary font-mono text-sm font-bold text-primary-foreground">
         T
       </span>
       <span>TemporalGuard</span>
@@ -55,17 +50,31 @@ function Brand() {
   );
 }
 
-function Sidebar({ mobile = false }: { mobile?: boolean }) {
+function Sidebar({
+  mobile = false,
+  session,
+}: {
+  mobile?: boolean;
+  session?: AuthSession | null;
+}) {
   const pathname = usePathname();
+  const router = useRouter();
   const close = useUiStore((state) => state.setSidebarOpen);
+  const logout = useMutation({
+    mutationFn: () => authClient.logout(),
+    onSettled: () => router.replace("/login"),
+  });
+  const initials = session
+    ? `${session.user.firstName.charAt(0)}${session.user.lastName.charAt(0)}`
+    : "—";
   return (
     <aside
       className={cn(
-        "flex h-full w-[var(--sidebar-width)] flex-col border-r-2 border-border bg-surface",
+        "flex w-[var(--sidebar-width)] flex-col border-r border-border-strong bg-surface h-screen",
         mobile ? "w-full border-r-0" : "hidden lg:flex",
       )}
     >
-      <div className="flex h-16 items-center justify-between border-b-2 border-dashed border-border px-4">
+      <div className="flex h-16 items-center justify-between border-b border-border-strong px-4">
         <Brand />
         {mobile ? (
           <Button
@@ -96,9 +105,9 @@ function Sidebar({ mobile = false }: { mobile?: boolean }) {
                 href={href}
                 onClick={() => close(false)}
                 className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] border-2 border-transparent px-3 text-base font-medium text-muted-foreground transition-[background,border,transform,box-shadow] duration-100 hover:rotate-[0.3deg] hover:border-border hover:bg-warning-subtle hover:text-foreground",
+                  "flex min-h-11 items-center gap-3 border-l-2 border-transparent px-3 text-sm font-medium text-muted-foreground transition-colors duration-100 hover:border-primary hover:bg-primary-subtle hover:text-foreground",
                   active &&
-                    "-rotate-[0.5deg] border-border bg-primary-subtle text-primary-subtle-foreground shadow-[3px_3px_0_var(--shadow-ink)] before:h-4 before:w-0.5 before:rounded-full before:bg-primary",
+                    "border-primary bg-primary-subtle text-primary-subtle-foreground",
                 )}
                 aria-current={active ? "page" : undefined}
               >
@@ -108,37 +117,32 @@ function Sidebar({ mobile = false }: { mobile?: boolean }) {
             );
           })}
         </div>
-        <p className="mt-6 px-2 pb-2 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-          Configure
-        </p>
-        <div className="grid gap-1">
-          {deferred.map(({ label, icon: Icon }) => (
-            <div
-              key={label}
-              className="flex min-h-10 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm text-muted-foreground"
-            >
-              <Icon className="size-[18px]" />
-              <span>{label}</span>
-              <Badge className="ml-auto">Soon</Badge>
-            </div>
-          ))}
-        </div>
       </nav>
-      <div className="border-t-2 border-dashed border-border p-3">
-        <button className="flex w-full items-center gap-3 rounded-[var(--radius-md)] p-2 text-left hover:bg-muted">
-          <span className="grid size-9 place-items-center rounded-full bg-primary-subtle font-semibold text-primary-subtle-foreground">
-            AO
+      <div className="border-t border-border-strong p-3">
+        <div className="flex w-full items-center gap-3 p-2">
+          <span className="grid size-9 place-items-center border border-primary bg-primary-subtle font-mono text-xs font-semibold text-primary-subtle-foreground">
+            {initials}
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium">
-              Ada Okafor
+              {session
+                ? `${session.user.firstName} ${session.user.lastName}`
+                : "Loading session…"}
             </span>
             <span className="block truncate text-xs text-muted-foreground">
-              Northstar Labs
+              {session?.workspace.name ?? "TemporalGuard"}
             </span>
           </span>
-          <ChevronDown className="size-4 text-muted-foreground" />
-        </button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Sign out"
+            disabled={logout.isPending}
+            onClick={() => logout.mutate()}
+          >
+            <LogOut className="size-4" />
+          </Button>
+        </div>
       </div>
     </aside>
   );
@@ -156,7 +160,7 @@ function ContextSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="hidden min-h-11 items-center gap-1.5 rounded-[var(--radius-md)] border-2 border-border bg-surface px-2 shadow-[2px_2px_0_var(--shadow-ink)] xl:flex">
+    <label className="hidden min-h-11 items-center gap-1.5 border border-border-strong bg-surface px-2 xl:flex">
       <span className="sr-only">{label}</span>
       <select
         className="h-8 bg-transparent text-xs font-medium outline-none"
@@ -186,6 +190,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setCommandOpen = useUiStore((state) => state.setCommandOpen);
   const livePaused = useUiStore((state) => state.livePaused);
   const toggleLive = useUiStore((state) => state.toggleLive);
+  const [commandSearch, setCommandSearch] = useState("");
+  const sessionQuery = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: () => authClient.me(),
+    retry: false,
+  });
+  const queryClient = useQueryClient();
 
   const updateContext = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -204,20 +215,58 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [setCommandOpen]);
 
+  useEffect(() => {
+    if (sessionQuery.isError) router.replace("/login");
+  }, [router, sessionQuery.isError]);
+
+  useEffect(() => {
+    if (livePaused || !sessionQuery.data) return;
+    const source = new EventSource(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api"}/workflows/stream`,
+      { withCredentials: true },
+    );
+    const seen = new Set<string>();
+    source.onmessage = (message) => {
+      try {
+        const event = JSON.parse(message.data) as {
+          type?: string;
+          payload?: { workflowId?: string; violationId?: string };
+        };
+        if (!event.type || event.type === "heartbeat") return;
+        const identity =
+          event.payload?.workflowId ??
+          event.payload?.violationId ??
+          `${event.type}:${message.lastEventId}`;
+        if (seen.has(identity)) return;
+        seen.add(identity);
+        if (seen.size > 200) seen.delete(seen.values().next().value ?? "");
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+          queryClient.invalidateQueries({ queryKey: ["workflows"] }),
+          queryClient.invalidateQueries({ queryKey: ["violations"] }),
+          queryClient.invalidateQueries({ queryKey: ["events"] }),
+        ]);
+      } catch {
+        // EventSource reconnects automatically; malformed messages are ignored.
+      }
+    };
+    return () => source.close();
+  }, [livePaused, queryClient, sessionQuery.data]);
+
   return (
     <div className="flex min-h-screen bg-transparent">
-      <Sidebar />
+      <Sidebar session={sessionQuery.data} />
       <Dialog.Root open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 lg:hidden" />
           <Dialog.Content className="fixed inset-y-0 left-0 z-50 w-[min(85vw,280px)] lg:hidden">
             <Dialog.Title className="sr-only">Navigation</Dialog.Title>
-            <Sidebar mobile />
+            <Sidebar mobile session={sessionQuery.data} />
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-      <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b-2 border-dashed border-border bg-background/95 px-3 sm:px-5">
+      <div className="min-w-0 flex-1 max-h-screen overflow-y-scroll">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border-strong bg-background/95 px-3 sm:px-5">
           <Button
             size="icon"
             variant="ghost"
@@ -230,7 +279,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="hidden items-center gap-2 xl:flex">
             <button className="flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 text-sm font-medium">
               <span className="size-2 rounded-full bg-primary" />
-              Northstar Labs
+              {sessionQuery.data?.workspace.name ?? "Workspace"}
               <ChevronDown className="size-3.5" />
             </button>
           </div>
@@ -284,9 +333,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <kbd className="ml-auto font-mono text-[10px]">⌘ K</kbd>
             </Button>
             <ThemeSwitch />
-            <Button size="icon" variant="ghost" aria-label="Notifications">
-              <Bell className="size-4" />
-            </Button>
           </div>
         </header>
         <main className="mx-auto w-full max-w-[1920px] p-4 sm:p-6 lg:p-8">
@@ -296,34 +342,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Dialog.Root open={commandOpen} onOpenChange={setCommandOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-          <Dialog.Content className="fixed top-[15vh] left-1/2 z-50 w-[min(92vw,620px)] -translate-x-1/2 overflow-hidden rounded-[var(--radius-xl)] border-2 border-border bg-popover shadow-[8px_8px_0_var(--shadow-ink)]">
+          <Dialog.Content className="fixed top-[15vh] left-1/2 z-50 w-[min(92vw,620px)] -translate-x-1/2 overflow-hidden border border-border-strong bg-popover">
             <Dialog.Title className="sr-only">Command palette</Dialog.Title>
             <div className="flex items-center gap-2 border-b border-border px-4">
               <Command className="size-4 text-muted-foreground" />
               <input
                 autoFocus
+                value={commandSearch}
+                onChange={(event) => setCommandSearch(event.target.value)}
                 className="h-12 flex-1 bg-transparent outline-none"
-                placeholder="Search workflows, violations, or navigate…"
+                placeholder="Navigate to a product area…"
               />
             </div>
             <div className="p-2">
               <p className="px-2 py-2 text-xs font-medium text-muted-foreground">
                 Navigate
               </p>
-              {navigation.map(({ href, label, icon: Icon }) => (
-                <Link
-                  href={href}
-                  key={href}
-                  onClick={() => setCommandOpen(false)}
-                  className="flex min-h-10 items-center gap-3 rounded-[var(--radius-md)] px-3 hover:bg-muted"
-                >
-                  <Icon className="size-4" />
-                  {label}
-                </Link>
-              ))}
-              <div className="mt-2 border-t border-border px-3 py-3 text-xs text-muted-foreground">
-                Search is local deterministic mock data in this release.
-              </div>
+              {navigation
+                .filter((item) =>
+                  item.label
+                    .toLowerCase()
+                    .includes(commandSearch.trim().toLowerCase()),
+                )
+                .map(({ href, label, icon: Icon }) => (
+                  <Link
+                    href={href}
+                    key={href}
+                    onClick={() => {
+                      setCommandOpen(false);
+                      setCommandSearch("");
+                    }}
+                    className="flex min-h-10 items-center gap-3 px-3 hover:bg-muted"
+                  >
+                    <Icon className="size-4" />
+                    {label}
+                  </Link>
+                ))}
             </div>
           </Dialog.Content>
         </Dialog.Portal>

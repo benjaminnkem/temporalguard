@@ -10,15 +10,15 @@ implementation brief.
 TemporalGuard is now a production-shaped Next.js and NestJS monorepo. The
 frontend includes authentication, the authenticated analytics shell, overview,
 workflow monitoring, violation analysis, a reusable Event Catalogue, and the
-four-mode rule builder. The current frontend baseline contains a deterministic
-test adapter behind `TemporalGuardDataSource`; the next implementation phase
-replaces the runtime selection with the real HTTP adapter without component
-changes.
+four-mode rule builder. Production runtime data now uses the authenticated HTTP
+implementation behind `TemporalGuardDataSource`; the deterministic adapter is
+retained only as an explicitly instantiated test fixture.
 
 The backend implements registration, login, refresh rotation, logout, current
 session, workspace ownership, server-side Cloudinary logo handling, rate
 limiting, secure cookies, and migration-only persistence. Monnify, Telegram,
-billing, notifications, and live SigNoz product queries remain out of scope.
+billing, and notification delivery remain out of scope. Live SigNoz product
+queries are implemented server-side with service-account authentication.
 
 ## Architecture and decisions
 
@@ -61,6 +61,8 @@ billing, notifications, and live SigNoz product queries remain out of scope.
   validation, warnings, readable sentence, drag-and-drop plus keyboard
   ordering, autosave/restore/reset, and historical evaluation UI.
 - `/rules`: saved-rule catalogue.
+- `/events`: searchable Event Catalogue with occurrence usage counts, inline
+  definition, and selected-event inspection.
 - Global shell: responsive sidebar/mobile navigation, environment and time
   context, command palette, theme control, skeleton/loading/error/not-found
   states, and toast feedback.
@@ -147,51 +149,45 @@ pnpm --filter api migration:run
 
 Frontend additions provide query caching, form/schema validation, scoped state,
 charts, motion, accessible primitives, command/search UX, drag-and-drop,
-themes, dates, notifications, Tailwind, locally bundled Kalam and Patrick Hand
-font files, Vitest/Testing Library, Playwright, MSW, and axe. Backend additions
+themes, dates, notifications, Tailwind, Vitest/Testing Library, Playwright,
+MSW, and axe. Backend additions
 provide JWT/session auth, throttling, Argon2id, Cloudinary, cookie parsing,
 file inspection, and image metadata validation. No second form, chart, motion,
 or auth system was added.
 
-## Hand-drawn design-system migration
+## Editorial purple design-system migration
 
-The updated `docs/DESIGN.MD` replaces the earlier precision-analytics visual
-direction. The web application now consumes a centralized hand-drawn token
-layer:
+The updated `docs/DESIGN.MD` defines an editorial, line-led visual direction
+with a TemporalGuard-specific purple override:
 
-- Warm dotted paper and dark charcoal-paper canvases.
-- Kalam headings and Patrick Hand body typography bundled into the application
-  so production builds do not depend on a font CDN.
-- Wobbly reusable radii, pencil borders, correction-red primary actions,
-  ballpoint-blue secondary interactions, post-it highlights, and semantic
-  success/warning/error colors in both themes.
-- Shared hard offset shadows and tactile press/hover states on buttons, cards,
-  inputs, dialogs, navigation, and authentication surfaces.
-- Tape and tack card treatments, dashed separators, sketch labels, and
-  irregular active navigation without scattering literal feature colors.
-- Animated theme icons, live-state pulse, dashboard mode selection, chart
-  transitions, loading-to-content entry, and responsive dialogs. Reduced-motion
-  behavior remains enforced globally.
+- True white light-mode and true black dark-mode page canvases.
+- Playfair/Georgia display typography, Source Serif/Georgia body typography,
+  and a mono stack for technical labels.
+- Square corners, flat surfaces, precise border hierarchy, and no drop shadows.
+- Violet primary actions, selected states, focus indicators, and chart series,
+  with adjacent lavender tones for supporting visualization data.
+- Semantic success, warning, and destructive colors reserved for status meaning.
+- Restrained 100ms interactions and reduced-motion enforcement.
 
 ## Verification record
 
 Completed locally on 2026-07-24:
 
-| Check                              | Result                               |
-| ---------------------------------- | ------------------------------------ |
-| Web TypeScript                     | Passed                               |
-| API TypeScript                     | Passed                               |
-| Web ESLint                         | Passed                               |
-| API ESLint, non-mutating           | Passed                               |
-| Web Vitest                         | 13/13 passed                         |
-| API Jest                           | 14/14 passed                         |
-| Web Playwright                     | 22/22 passed on Chromium and WebKit  |
-| API e2e                            | 3/3 passed, including auth lifecycle |
-| Migration clean up/down/up         | Passed on disposable PostgreSQL 16   |
-| Next.js production build           | Passed; 12 routes generated          |
-| NestJS production build            | Passed                               |
-| Web and API Docker image builds    | Passed                               |
-| Compose default/local/cloud config | Passed                               |
+| Check                              | Result                                |
+| ---------------------------------- | ------------------------------------- |
+| Web TypeScript                     | Passed                                |
+| API TypeScript                     | Passed                                |
+| Web ESLint                         | Passed                                |
+| API ESLint, non-mutating           | Passed                                |
+| Web Vitest                         | 13/13 passed                          |
+| API Jest                           | 14/14 passed                          |
+| Web Playwright                     | 22/22 passed on Chromium and WebKit   |
+| API e2e                            | Blocked: local PostgreSQL unavailable |
+| Migration clean up/down/up         | Blocked: Docker daemon not running    |
+| Next.js production build           | Passed                                |
+| NestJS production build            | Passed                                |
+| Web and API Docker image builds    | Passed                                |
+| Compose default/local/cloud config | Passed                                |
 
 Playwright currently covers desktop Chromium and mobile WebKit for login
 validation with intercepted test responses, analytics navigation and violation
@@ -219,10 +215,83 @@ pnpm --filter api migration:run
 
 ## Current API implementation boundary
 
-- Product-domain runtime data must move to the NestJS API; the existing
-  deterministic adapter is retained only as test-fixture infrastructure during
-  the migration.
+- Product-domain runtime data uses the NestJS API. The deterministic adapter is
+  retained only as test-fixture infrastructure.
+- Events, rules, workflows, violations, dashboard aggregation, and draft-rule
+  historical tests derive workspace scope from the authenticated user.
+- Rule persistence supports `any`, `all`, `sequence`, and `forbid` through the
+  `1722100000000-ExtendRuleOperators` migration.
+- `/api/workflows/stream` provides an authenticated, workspace-filtered SSE
+  stream with heartbeats. The frontend deduplicates messages and invalidates
+  dashboard, workflow, violation, and event queries while live mode is active.
 - Auth uses the NestJS backend through `NEXT_PUBLIC_API_BASE_URL`.
 - Logo upload is optional. HTTP signup with a logo requires Cloudinary.
-- Monnify, Telegram, notification delivery, billing, and live SigNoz queries
-  remain outside the current API implementation scope.
+- Monnify, Telegram, notification delivery, and billing remain outside the
+  current API implementation scope.
+
+## Rule lifecycle controls
+
+Completed locally on 2026-07-24:
+
+- Rules can be enabled or disabled through
+  `PATCH /api/rules/:id/status`, scoped to the authenticated workspace.
+- Rule deletion is soft deletion through the
+  `1722300000000-AddRuleSoftDelete` migration. Deletion atomically disables
+  the rule and records `deletedAt`.
+- Normal rule reads and event evaluation exclude soft-deleted rules.
+  Historical workflows, violations, and dashboard records can still resolve
+  their original rule relation.
+- The Rules page exposes enable, disable, and confirmed delete actions with
+  query invalidation, pending states, and success/error notifications.
+- Rule deletion uses an application modal; browser alert/confirm UI is not
+  used.
+- Rule Studio recognizes `/explore?rule=:id`, hydrates the persisted rule, and
+  saves through `PATCH /api/rules/:id`. Initial creation switches the URL into
+  edit mode after the API returns the new ID.
+- Trigger filters, correlation key, and environments are persisted through the
+  `1722400000000-AddRuleBuilderFields` migration so editing round-trips the
+  complete builder state.
+
+| Check                            | Result         |
+| -------------------------------- | -------------- |
+| Rule soft-delete migration       | Passed/applied |
+| Rule lifecycle API e2e           | Passed         |
+| Rule lifecycle web unit test     | Passed         |
+| Desktop/mobile Playwright action | 2/2 passed     |
+| Desktop/mobile Rule Studio edit  | 2/2 passed     |
+
+## Workflow observability correlation
+
+Completed locally on 2026-07-24:
+
+- Event logs now persist the active OpenTelemetry `traceId` and `spanId`
+  through the `1722200000000-AddEventLogTraceContext` migration.
+- The API exports structured lifecycle logs over OTLP/HTTP alongside traces
+  and metrics. Log attributes include workflow, rule, event, violation, and
+  event-log identifiers where applicable.
+- Workflow detail retains persisted event payloads under Attributes and loads
+  trace, log, and metric previews through `TemporalGuardDataSource`.
+- Authenticated workflow observability routes query SigNoz
+  `/api/v5/query_range` server-side for correlated traces, structured logs,
+  and custom workflow metrics.
+- The SigNoz service-account key remains server-only. Missing query
+  configuration produces an explicit non-error UI state, and upstream query
+  failures produce a retryable panel error.
+- The configured Cloud key must belong to a service account with the
+  `signoz-viewer` (or an equivalent read-capable) role.
+- SigNoz actions use backend-generated correlated trace/explorer links when
+  available. Newly emitted workflow metrics include `workflow.id` and
+  `rule.id`; telemetry emitted before this change is not retroactively
+  correlated.
+
+| Check                                | Result         |
+| ------------------------------------ | -------------- |
+| Trace-context migration              | Passed/applied |
+| API Jest                             | 16/16 passed   |
+| API e2e                              | 3/3 passed     |
+| Web Vitest                           | 13/13 passed   |
+| Web TypeScript                       | Passed         |
+| Next.js production build             | Passed         |
+| NestJS production build              | Passed         |
+| `pnpm dev` startup and `/api/health` | Passed         |
+| SigNoz query service unit tests      | 2/2 passed     |

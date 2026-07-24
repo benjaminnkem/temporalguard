@@ -18,6 +18,17 @@ export default () => ({
     exporterProtocol:
       process.env.OTEL_EXPORTER_OTLP_PROTOCOL ?? 'http/protobuf',
   },
+  signoz: {
+    apiUrl: process.env.SIGNOZ_API_URL?.replace(/\/+$/, ''),
+    apiKey: process.env.SIGNOZ_API_KEY,
+    uiUrl: (
+      process.env.SIGNOZ_UI_URL ?? process.env.NEXT_PUBLIC_SIGNOZ_UI_URL
+    )?.replace(/\/+$/, ''),
+    queryTimeoutMs: parseInt(
+      process.env.SIGNOZ_QUERY_TIMEOUT_MS ?? '10000',
+      10,
+    ),
+  },
   auth: {
     accessSecret: process.env.JWT_ACCESS_SECRET ?? 'development-access-secret',
     accessTtl: process.env.JWT_ACCESS_TTL ?? '15m',

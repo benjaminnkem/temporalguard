@@ -6,22 +6,23 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "../../lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border-2 px-3 text-base font-medium shadow-[4px_4px_0_var(--shadow-ink)] transition-[background,color,border,box-shadow,transform] duration-100 disabled:pointer-events-none disabled:opacity-50 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_var(--shadow-ink)] active:translate-x-1 active:translate-y-1 active:shadow-none",
+  "inline-flex min-h-11 items-center justify-center gap-2 border px-4 font-mono text-xs font-medium tracking-[0.08em] uppercase transition-colors duration-100 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         primary:
-          "border-border bg-primary text-primary-foreground hover:bg-primary-hover",
+          "border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover",
         secondary:
-          "border-border bg-surface text-foreground hover:bg-info hover:text-white",
+          "border-border-strong bg-surface text-foreground hover:bg-foreground hover:text-background",
         ghost:
-          "border-transparent bg-transparent text-muted-foreground shadow-none hover:border-border hover:bg-muted hover:text-foreground hover:shadow-[2px_2px_0_var(--shadow-ink)]",
-        destructive: "border-border bg-destructive text-white hover:opacity-90",
+          "border-transparent bg-transparent text-muted-foreground hover:text-foreground hover:underline hover:underline-offset-4",
+        destructive:
+          "border-destructive bg-destructive text-white hover:bg-transparent hover:text-destructive",
       },
       size: {
-        sm: "min-h-10 px-2.5 text-sm",
+        sm: "min-h-10 px-3 text-[11px]",
         md: "min-h-11 px-3",
-        lg: "min-h-12 px-5 text-lg",
+        lg: "min-h-12 px-6 text-sm",
         icon: "size-11 p-0",
       },
     },

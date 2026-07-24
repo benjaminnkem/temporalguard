@@ -192,22 +192,68 @@ function AlternativeViolationView({
   view: Exclude<(typeof views)[number][0], "table">;
   items: NonNullable<ReturnType<typeof useViolations>["data"]>["items"];
 }) {
+  const latestTimestamp = Math.max(
+    Date.now(),
+    ...items.map((item) => new Date(item.occurredAt).getTime()),
+  );
+  const trend = Array.from(
+    { length: 12 },
+    (_, index) =>
+      items.filter((item) => {
+        const timestamp = new Date(item.occurredAt).getTime();
+        const bucketStart = latestTimestamp - (12 - index) * 2 * 60 * 60 * 1000;
+        return (
+          timestamp >= bucketStart &&
+          timestamp < bucketStart + 2 * 60 * 60 * 1000
+        );
+      }).length,
+  );
+  const maximumTrend = Math.max(1, ...trend);
+  const groups = Object.values(
+    items.reduce<
+      Record<
+        string,
+        {
+          ruleId: string;
+          ruleName: string;
+          severity: (typeof items)[number]["severity"];
+          count: number;
+          services: Set<string>;
+        }
+      >
+    >((result, item) => {
+      const group = result[item.ruleId] ?? {
+        ruleId: item.ruleId,
+        ruleName: item.ruleName,
+        severity: item.severity,
+        count: 0,
+        services: new Set<string>(),
+      };
+      group.count += 1;
+      if (item.serviceName) group.services.add(item.serviceName);
+      result[item.ruleId] = group;
+      return result;
+    }, {}),
+  );
+
   if (view === "trend") {
     return (
       <div>
         <div className="flex h-64 items-end gap-2 border-b border-border px-4">
-          {[3, 5, 4, 8, 6, 12, 9, 7, 11, 6, 5, 8].map((value, index) => (
+          {trend.map((value, index) => (
             <div key={index} className="flex-1">
               <div
                 className="rounded-t-[var(--radius-sm)] bg-destructive"
-                style={{ height: `${value * 13}px` }}
+                style={{
+                  height: `${Math.max(2, (value / maximumTrend) * 208)}px`,
+                }}
                 title={`${value} violations`}
               />
             </div>
           ))}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Twelve-period trend. Peak: 12 violations, followed by a decline to 8.
+          Twelve two-hour periods. Peak: {maximumTrend} violations.
         </p>
       </div>
     );
@@ -215,14 +261,15 @@ function AlternativeViolationView({
   if (view === "groups") {
     return (
       <div className="grid gap-3 sm:grid-cols-3">
-        {items.map((item) => (
-          <Card key={item.ruleId} className="p-4">
-            <Badge tone={item.severity === "critical" ? "danger" : "warning"}>
-              {item.severity}
+        {groups.map((group) => (
+          <Card key={group.ruleId} className="p-4">
+            <Badge tone={group.severity === "critical" ? "danger" : "warning"}>
+              {group.severity}
             </Badge>
-            <h3 className="mt-3 font-semibold">{item.ruleName}</h3>
+            <h3 className="mt-3 font-semibold">{group.ruleName}</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              1 visible violation · {item.serviceName}
+              {group.count} visible violation{group.count === 1 ? "" : "s"} ·{" "}
+              {[...group.services].join(", ") || "unknown service"}
             </p>
           </Card>
         ))}
@@ -237,19 +284,39 @@ function AlternativeViolationView({
           role="img"
           aria-label="Violation heatmap across services and time. The strongest concentration is in the review worker."
         >
-          {Array.from({ length: 60 }, (_, index) => (
-            <span
-              key={index}
-              className="aspect-square rounded-[3px]"
-              style={{
-                background: `color-mix(in srgb, var(--destructive) ${10 + ((index * 17) % 75)}%, var(--surface))`,
-              }}
-            />
-          ))}
+          {Array.from({ length: 60 }, (_, index) => {
+            const serviceIndex = Math.floor(index / 12);
+            const bucketIndex = index % 12;
+            const services = [
+              ...new Set(items.map((item) => item.serviceName)),
+            ];
+            const count = items.filter((item) => {
+              const timestamp = new Date(item.occurredAt).getTime();
+              const bucketStart =
+                latestTimestamp - (12 - bucketIndex) * 2 * 60 * 60 * 1000;
+              return (
+                item.serviceName === services[serviceIndex] &&
+                timestamp >= bucketStart &&
+                timestamp < bucketStart + 2 * 60 * 60 * 1000
+              );
+            }).length;
+            return (
+              <span
+                key={index}
+                className="aspect-square rounded-[3px]"
+                style={{
+                  background:
+                    count === 0
+                      ? "var(--surface-subtle)"
+                      : `color-mix(in srgb, var(--destructive) ${Math.min(90, 20 + count * 20)}%, var(--surface))`,
+                }}
+              />
+            );
+          })}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Concentration is highest for decision workflows between 03:00 and
-          08:00.
+          Cells represent observed violations grouped by service and two-hour
+          period.
         </p>
       </div>
     );
@@ -257,9 +324,22 @@ function AlternativeViolationView({
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       {[
-        ["Affected workflows", "18"],
-        ["Estimated customers", "14"],
-        ["Critical rules", "2"],
+        [
+          "Affected workflows",
+          new Set(items.map((item) => item.workflowId)).size,
+        ],
+        [
+          "Affected services",
+          new Set(items.map((item) => item.serviceName).filter(Boolean)).size,
+        ],
+        [
+          "Critical rules",
+          new Set(
+            items
+              .filter((item) => item.severity === "critical")
+              .map((item) => item.ruleId),
+          ).size,
+        ],
       ].map(([label, value]) => (
         <Card key={label} className="p-5">
           <p className="text-sm text-muted-foreground">{label}</p>

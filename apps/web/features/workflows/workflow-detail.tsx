@@ -16,13 +16,33 @@ import { useSearchParams } from "next/navigation";
 import { DataState } from "../../components/shared/data-state";
 import { Button } from "../../components/ui/button";
 import { Badge, Card } from "../../components/ui/surface";
-import { useWorkflow } from "../../lib/queries";
+import type { WorkflowObservabilityPreview } from "../../lib/contracts";
+import {
+  useWorkflow,
+  useWorkflowLogs,
+  useWorkflowMetrics,
+  useWorkflowTraces,
+} from "../../lib/queries";
 import { formatDate } from "../../lib/utils";
 
 export function WorkflowDetailView({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const query = useWorkflow(id);
+  const tracesQuery = useWorkflowTraces(id);
+  const logsQuery = useWorkflowLogs(id);
+  const metricsQuery = useWorkflowMetrics(id);
   const workflow = query.data;
+  const signozBaseUrl = process.env.NEXT_PUBLIC_SIGNOZ_UI_URL?.replace(
+    /\/$/,
+    "",
+  );
+  const signozUrl =
+    tracesQuery.data?.explorerUrl ??
+    (signozBaseUrl
+      ? workflow?.traceId
+        ? `${signozBaseUrl}/trace/${encodeURIComponent(workflow.traceId)}`
+        : signozBaseUrl
+      : undefined);
   return (
     <DataState
       state={query.isLoading ? "loading" : query.isError ? "error" : "ready"}
@@ -70,12 +90,17 @@ export function WorkflowDetailView({ id }: { id: string }) {
                 >
                   <Copy className="size-4" /> Copy link
                 </Button>
-                <Button
-                  disabled
-                  title="Available when SigNoz linking is enabled"
-                >
-                  <ExternalLink className="size-4" /> Open in SigNoz
-                </Button>
+                {signozUrl ? (
+                  <Button asChild>
+                    <a href={signozUrl} target="_blank" rel="noreferrer">
+                      <ExternalLink className="size-4" /> Open in SigNoz
+                    </a>
+                  </Button>
+                ) : (
+                  <Button disabled title="Configure NEXT_PUBLIC_SIGNOZ_UI_URL">
+                    <ExternalLink className="size-4" /> Open in SigNoz
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -218,29 +243,67 @@ export function WorkflowDetailView({ id }: { id: string }) {
                   ))}
                 </div>
               </Tabs.Content>
-              <Tabs.Content
-                value="trace"
-                className="pt-4 text-sm text-muted-foreground"
-              >
-                Correlated trace preview for {workflow.traceId}. Deep linking is
-                deferred until server-side SigNoz query integration.
+              <Tabs.Content value="trace" className="pt-4">
+                <ObservabilityPanel
+                  label="traces"
+                  query={tracesQuery}
+                  fallbackUrl={signozUrl}
+                />
               </Tabs.Content>
               <Tabs.Content value="logs" className="pt-4">
-                <pre className="overflow-x-auto rounded-[var(--radius-md)] bg-surface-subtle p-4 font-mono text-xs">
-                  {`level=info service=${workflow.serviceName} workflow.id=${workflow.id}\nmessage="event handled; awaiting next expected step"`}
-                </pre>
+                <ObservabilityPanel
+                  label="logs"
+                  query={logsQuery}
+                  fallbackUrl={signozBaseUrl}
+                />
               </Tabs.Content>
-              <Tabs.Content
-                value="metrics"
-                className="pt-4 text-sm text-muted-foreground"
-              >
-                Mock metric summary: processing latency p95 842ms, error rate
-                1.7%, queue depth 42.
+              <Tabs.Content value="metrics" className="pt-4">
+                <ObservabilityPanel
+                  label="metrics"
+                  query={metricsQuery}
+                  fallbackUrl={signozBaseUrl}
+                />
               </Tabs.Content>
               <Tabs.Content value="attributes" className="pt-4">
-                <pre className="overflow-x-auto rounded-[var(--radius-md)] bg-surface-subtle p-4 font-mono text-xs">
-                  {JSON.stringify(workflow.attributes, null, 2)}
-                </pre>
+                <div className="grid gap-3">
+                  {workflow.events.length > 0 ? (
+                    workflow.events.map((event) => (
+                      <div
+                        key={event.id}
+                        className="rounded-[var(--radius-md)] bg-surface-subtle p-4"
+                      >
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="font-medium">{event.displayName}</p>
+                            <p className="font-mono text-xs text-muted-foreground">
+                              {event.canonicalName}
+                            </p>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(event.occurredAt)}
+                          </span>
+                        </div>
+                        <pre className="overflow-x-auto font-mono text-xs">
+                          {JSON.stringify(event.attributes, null, 2)}
+                        </pre>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No event-log attributes are available.
+                    </p>
+                  )}
+                  {Object.keys(workflow.attributes).length > 0 ? (
+                    <div className="rounded-[var(--radius-md)] border border-border p-4">
+                      <p className="mb-3 text-xs font-medium uppercase text-muted-foreground">
+                        Workflow metadata
+                      </p>
+                      <pre className="overflow-x-auto font-mono text-xs">
+                        {JSON.stringify(workflow.attributes, null, 2)}
+                      </pre>
+                    </div>
+                  ) : null}
+                </div>
               </Tabs.Content>
             </Tabs.Root>
           </Card>
@@ -249,5 +312,82 @@ export function WorkflowDetailView({ id }: { id: string }) {
         <span />
       )}
     </DataState>
+  );
+}
+
+type PreviewQuery = {
+  data?: WorkflowObservabilityPreview;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  refetch: () => Promise<unknown>;
+};
+
+function ObservabilityPanel({
+  label,
+  query,
+  fallbackUrl,
+}: {
+  label: "traces" | "logs" | "metrics";
+  query: PreviewQuery;
+  fallbackUrl?: string;
+}) {
+  if (query.isLoading) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Querying live SigNoz {label}…
+      </p>
+    );
+  }
+  if (query.isError) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-destructive">
+          {query.error?.message ?? `Unable to load SigNoz ${label}.`}
+        </p>
+        <Button onClick={() => void query.refetch()}>Retry</Button>
+      </div>
+    );
+  }
+  const preview = query.data;
+  if (!preview?.configured) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {preview?.message ??
+          "SigNoz live query access is not configured on the API server."}
+      </p>
+    );
+  }
+  const explorerUrl = preview.explorerUrl ?? fallbackUrl;
+  return (
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          Live query · {formatDate(preview.start)} to {formatDate(preview.end)}
+        </p>
+        {explorerUrl ? (
+          <Button asChild variant="ghost">
+            <a href={explorerUrl} target="_blank" rel="noreferrer">
+              <ExternalLink className="size-4" /> Open {label} in SigNoz
+            </a>
+          </Button>
+        ) : null}
+      </div>
+      {preview.items.length > 0 ? (
+        preview.items.slice(0, 25).map((item, index) => (
+          <pre
+            key={`${label}-${index}`}
+            className="overflow-x-auto rounded-[var(--radius-md)] bg-surface-subtle p-4 font-mono text-xs"
+          >
+            {JSON.stringify(item, null, 2)}
+          </pre>
+        ))
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          SigNoz returned no correlated {label} in this workflow&apos;s time
+          range. New telemetry can take a short while to become queryable.
+        </p>
+      )}
+    </div>
   );
 }

@@ -30,6 +30,12 @@ export class EventLog extends BaseEntity {
   @Column({ type: 'jsonb', nullable: true })
   payload: Record<string, unknown> | null;
 
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  traceId: string | null;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  spanId: string | null;
+
   @Column({ type: 'uuid', nullable: true })
   externalWorkflowRecordId: string | null;
 

@@ -74,7 +74,7 @@ export function WorkflowsView({ live = false }: { live?: boolean }) {
         title={live ? "Live workflows" : "Workflows"}
         description={
           live
-            ? "Deterministic mock updates highlight workflows approaching or crossing their deadline."
+            ? "Background refresh highlights workflows approaching or crossing their deadline."
             : "Search, filter, and inspect workflow instances while preserving analytical context."
         }
         actions={

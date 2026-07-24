@@ -183,7 +183,8 @@ export function ViolationDetailView({ id }: { id: string }) {
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  No correlated evidence is available for this mock record.
+                  No correlated technical evidence is available for this
+                  violation.
                 </p>
               )}
             </div>

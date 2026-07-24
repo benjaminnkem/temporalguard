@@ -32,10 +32,12 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { EventSelector } from "../events/event-selector";
+import { DataState } from "../../components/shared/data-state";
 import { Button } from "../../components/ui/button";
 import { Field, Input, Textarea } from "../../components/ui/input";
 import { Badge, Card } from "../../components/ui/surface";
@@ -44,23 +46,28 @@ import {
   type EventDefinition,
   type RuleDraft,
 } from "../../lib/contracts";
-import { useEvents, useTestRule } from "../../lib/queries";
+import {
+  useCreateRule,
+  useEvents,
+  useRule,
+  useTestRule,
+  useUpdateRule,
+} from "../../lib/queries";
 import { ruleSentence } from "../../lib/rules";
 
-const draftKey = "temporalguard.mock.ruleDrafts.v1";
+const draftKey = "temporalguard.ruleDrafts.v1";
 
 const defaultDraft: RuleDraft = {
-  name: "Document verification within ten minutes",
-  description:
-    "Protect the customer onboarding flow from incomplete document verification.",
+  name: "",
+  description: "",
   trigger: null,
   triggerFilters: [],
   operator: "all",
   outcomes: [],
-  correlationKey: "document.id",
-  window: { value: 10, unit: "minutes" },
-  severity: "critical",
-  environments: ["production"],
+  correlationKey: "",
+  window: { value: 0, unit: "minutes" },
+  severity: "info",
+  environments: [],
   status: "draft",
 };
 
@@ -152,15 +159,23 @@ function SortableOutcome({
 }
 
 export function RuleBuilder() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const ruleId = searchParams.get("rule") ?? undefined;
+  const hydrationKey = ruleId ?? "new";
   const [saveState, setSaveState] = useState<
     "saved" | "saving" | "failed" | "restored"
   >("saved");
   const [activePane, setActivePane] = useState<
     "catalogue" | "canvas" | "properties"
   >("canvas");
-  const hydrated = useRef(false);
+  const hydratedKey = useRef<string | null>(null);
   const eventsQuery = useEvents();
+  const ruleQuery = useRule(ruleId);
   const testMutation = useTestRule();
+  const createMutation = useCreateRule();
+  const updateMutation = useUpdateRule();
+  const savePending = createMutation.isPending || updateMutation.isPending;
   const form = useForm<RuleDraft>({
     resolver: zodResolver(ruleDraftSchema),
     defaultValues: defaultDraft,
@@ -185,8 +200,14 @@ export function RuleBuilder() {
   );
 
   useEffect(() => {
-    if (hydrated.current) return;
-    hydrated.current = true;
+    if (hydratedKey.current === hydrationKey) return;
+    if (ruleId) {
+      if (!ruleQuery.data) return;
+      form.reset(ruleQuery.data);
+      hydratedKey.current = hydrationKey;
+      setSaveState("saved");
+      return;
+    }
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
@@ -201,21 +222,25 @@ export function RuleBuilder() {
     } catch {
       localStorage.removeItem(draftKey);
     }
-  }, [form]);
+    hydratedKey.current = hydrationKey;
+  }, [form, hydrationKey, ruleId, ruleQuery.data]);
 
   useEffect(() => {
-    if (!hydrated.current) return;
+    if (hydratedKey.current !== hydrationKey) return;
     setSaveState("saving");
     const timer = window.setTimeout(() => {
       try {
-        localStorage.setItem(draftKey, JSON.stringify(draft));
+        localStorage.setItem(
+          ruleId ? `${draftKey}.${ruleId}` : draftKey,
+          JSON.stringify(draft),
+        );
         setSaveState("saved");
       } catch {
         setSaveState("failed");
       }
     }, 650);
     return () => window.clearTimeout(timer);
-  }, [draft]);
+  }, [draft, hydrationKey, ruleId]);
 
   const warnings = useMemo(() => {
     const result: string[] = [];
@@ -234,7 +259,7 @@ export function RuleBuilder() {
     if (keys.length > 0 && !keys.includes(draft.correlationKey))
       result.push("Selected events suggest a different correlation key.");
     if (draft.window.value < 2 && draft.window.unit === "minutes")
-      result.push("The window is shorter than the mock p95 duration.");
+      result.push("The window may be shorter than recent p95 duration.");
     return result;
   }, [draft, events]);
 
@@ -269,18 +294,67 @@ export function RuleBuilder() {
     if (from >= 0 && to >= 0) reorder(from, to);
   };
 
-  const activate = form.handleSubmit(() => {
-    toast.success("Rule saved in mock mode.");
-    form.setValue("status", "active");
+  const activate = form.handleSubmit((values) => {
+    setSaveState("saving");
+    const input: RuleDraft = {
+      ...values,
+      status: ruleId ? values.status : "active",
+    };
+    const callbacks = {
+      onSuccess: (savedRule: { id: string }) => {
+        form.setValue("status", input.status);
+        setSaveState("saved" as const);
+        if (ruleId) {
+          toast.success("Rule updated.");
+        } else {
+          toast.success("Rule saved and activated.");
+          router.replace(`/explore?rule=${encodeURIComponent(savedRule.id)}`);
+        }
+      },
+      onError: (error: Error) => {
+        setSaveState("failed" as const);
+        toast.error(error.message);
+      },
+    };
+    if (ruleId) {
+      updateMutation.mutate({ id: ruleId, input }, callbacks);
+    } else {
+      createMutation.mutate(input, callbacks);
+    }
   });
+
+  if (ruleId && ruleQuery.isError) {
+    return (
+      <DataState
+        state="error"
+        title="Rule unavailable"
+        description={ruleQuery.error.message}
+        onRetry={() => void ruleQuery.refetch()}
+      >
+        <span />
+      </DataState>
+    );
+  }
+
+  if (ruleId && (ruleQuery.isLoading || !ruleQuery.data)) {
+    return (
+      <DataState state="loading" title="Loading rule">
+        <span />
+      </DataState>
+    );
+  }
 
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rule Studio</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {ruleId ? "Edit rule" : "Rule Studio"}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Build and test a time-bound workflow promise with mock history.
+            {ruleId
+              ? "Update this persisted workflow promise."
+              : "Build and test a time-bound workflow promise against persisted history."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -298,14 +372,18 @@ export function RuleBuilder() {
                 ? "Save failed"
                 : saveState === "restored"
                   ? "Draft restored"
-                  : "Saved locally"}
+                  : "Draft autosaved"}
           </span>
           <Button
             type="button"
             onClick={() => {
-              localStorage.removeItem(draftKey);
-              form.reset(defaultDraft);
-              toast.success("Draft reset to seed.");
+              localStorage.removeItem(
+                ruleId ? `${draftKey}.${ruleId}` : draftKey,
+              );
+              form.reset(
+                ruleId && ruleQuery.data ? ruleQuery.data : defaultDraft,
+              );
+              toast.success(ruleId ? "Changes reset." : "Draft reset to seed.");
             }}
           >
             <RotateCcw className="size-4" />
@@ -315,9 +393,14 @@ export function RuleBuilder() {
             type="button"
             variant="primary"
             onClick={() => void activate()}
+            disabled={savePending}
           >
-            <Save className="size-4" />
-            Save rule
+            {savePending ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            {savePending ? "Saving…" : ruleId ? "Update rule" : "Save rule"}
           </Button>
         </div>
       </div>
@@ -613,7 +696,7 @@ export function RuleBuilder() {
                 <div>
                   <h3 className="text-sm font-semibold">Historical test</h3>
                   <p className="text-[10px] text-muted-foreground">
-                    Simulated mock data
+                    Persisted workspace history
                   </p>
                 </div>
                 <Button
@@ -651,8 +734,7 @@ export function RuleBuilder() {
                 </dl>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Test this draft against 248 deterministic historical
-                  workflows.
+                  Test this draft against recent persisted workflow history.
                 </p>
               )}
             </div>

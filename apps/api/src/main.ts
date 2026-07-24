@@ -33,6 +33,12 @@ async function bootstrap() {
       'Business process observability engine for monitoring business invariants',
     )
     .setVersion('0.1.0')
+    .addBearerAuth({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      description: 'Paste a TemporalGuard access JWT (the tg_access token)',
+    })
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

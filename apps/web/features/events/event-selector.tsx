@@ -279,7 +279,7 @@ export function EventSelector({
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[1px]" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[88vh] w-[min(94vw,920px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[var(--radius-xl)] border-[3px] border-border bg-popover shadow-[8px_8px_0_var(--shadow-ink)]">
+        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[88vh] w-[min(94vw,920px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-border-strong bg-popover">
           <Dialog.Title className="sr-only">{label}</Dialog.Title>
           {creating ? (
             <EventCreator
@@ -320,7 +320,7 @@ export function EventSelector({
                     <button
                       type="button"
                       onClick={() => setCreating(true)}
-                      className="mb-2 flex w-full items-center gap-3 rounded-[var(--radius-md)] border-2 border-primary bg-primary-subtle p-3 text-left text-primary-subtle-foreground shadow-[3px_3px_0_var(--shadow-ink)] transition-transform duration-100 hover:-rotate-[0.3deg]"
+                      className="mb-2 flex w-full items-center gap-3 border border-primary bg-primary-subtle p-3 text-left text-primary-subtle-foreground transition-colors duration-100 hover:bg-primary hover:text-primary-foreground"
                     >
                       <Plus className="size-4" />
                       <span>

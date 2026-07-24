@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
   IsObject,
@@ -9,9 +9,10 @@ import {
 import { ViolationSeverity } from '../enums/violation-severity.enum';
 
 export class CreateViolationDto {
-  @ApiProperty({ format: 'uuid' })
+  @ApiPropertyOptional({ format: 'uuid', writeOnly: true })
+  @IsOptional()
   @IsUUID()
-  businessId: string;
+  businessId?: string;
 
   @ApiPropertyOptional({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @IsOptional()

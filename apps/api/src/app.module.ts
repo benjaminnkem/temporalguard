@@ -25,7 +25,7 @@ import {
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      envFilePath: ['.env', '../../.env'],
+      envFilePath: ['../../.env', '.env'],
     }),
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([

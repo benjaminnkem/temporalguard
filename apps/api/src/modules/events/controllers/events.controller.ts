@@ -9,7 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -19,51 +19,49 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CreateBusinessEventDto, UpdateBusinessEventDto } from '../dto';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { AccessTokenGuard } from '../../auth/guards/access-token.guard';
+import type { User } from '../../users/entities';
 import { EventsService } from '../services/events.service';
 
 @ApiTags('events')
 @Controller('events')
+@UseGuards(AccessTokenGuard)
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create or reuse a business event definition' })
   @ApiCreatedResponse({ description: 'Event definition created or reused' })
-  create(@Body() dto: CreateBusinessEventDto) {
-    return this.eventsService.createOrReuse(dto);
+  create(@CurrentUser() user: User, @Body() dto: CreateBusinessEventDto) {
+    return this.eventsService.createOrReuse(user.businessId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'List business event definitions' })
   @ApiOkResponse({ description: 'List of event definitions' })
-  findAll(@Query('businessId', ParseUUIDPipe) businessId: string) {
-    return this.eventsService.findAll(businessId);
+  findAll(@CurrentUser() user: User) {
+    return this.eventsService.findAll(user.businessId);
   }
 
   @Get(':id')
-  findOne(
-    @Query('businessId', ParseUUIDPipe) businessId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    return this.eventsService.findOne(businessId, id);
+  findOne(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+    return this.eventsService.findOne(user.businessId, id);
   }
 
   @Patch(':id')
   update(
-    @Query('businessId', ParseUUIDPipe) businessId: string,
+    @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateBusinessEventDto,
   ) {
-    return this.eventsService.update(businessId, id, dto);
+    return this.eventsService.update(user.businessId, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Event definition deleted' })
-  remove(
-    @Query('businessId', ParseUUIDPipe) businessId: string,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    return this.eventsService.remove(businessId, id);
+  remove(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+    return this.eventsService.remove(user.businessId, id);
   }
 }

@@ -548,3 +548,21 @@ It should NOT feel like:
 - Something that "needs a pop of color"
 - Minimalist Modern with the colors removed
   </design-system>
+
+## TemporalGuard product color override
+
+The product keeps the editorial structure, typography, sharp geometry,
+line-based hierarchy, flat surfaces, and restrained motion defined above. The
+strict monochrome color rule is intentionally replaced for TemporalGuard:
+
+- Light mode uses a true white (`#FFFFFF`) page background and black foreground.
+- Dark mode uses a true black (`#000000`) page background and white foreground.
+- Primary buttons, selected states, links, focus indicators, highlights, and
+  the principal chart series use the centralized purple brand scale.
+- The light primary is violet `#6D28D9`; the dark primary is violet
+  `#A78BFA`, with accessible foreground colors.
+- Supporting visualization series may use adjacent violet and lavender tones.
+- Semantic success, warning, and destructive colors remain reserved for states
+  whose meaning would be weakened by rendering them purple.
+- Product code must consume semantic tokens and must not add literal feature
+  colors, gradients, rounded corners, or shadows.

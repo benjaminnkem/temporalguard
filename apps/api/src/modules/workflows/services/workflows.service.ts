@@ -26,14 +26,17 @@ export class WorkflowsService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async create(createWorkflowDto: CreateWorkflowDto): Promise<Workflow> {
+  async create(
+    businessId: string,
+    createWorkflowDto: CreateWorkflowDto,
+  ): Promise<Workflow> {
     const rule = await this.rulesService.findOne(
-      createWorkflowDto.businessId,
+      businessId,
       createWorkflowDto.ruleId,
     );
     const externalWorkflow = createWorkflowDto.externalId
       ? await this.findOrCreateExternalWorkflow(
-          createWorkflowDto.businessId,
+          businessId,
           createWorkflowDto.externalId,
         )
       : null;
@@ -51,6 +54,7 @@ export class WorkflowsService {
     );
     const workflow = this.workflowsRepository.create({
       ...createWorkflowDto,
+      businessId,
       externalWorkflowId: externalWorkflow?.id ?? null,
       externalWorkflow,
       deadline,
@@ -71,6 +75,7 @@ export class WorkflowsService {
     );
 
     this.eventEmitter.emit(EVENT_WORKFLOW_CREATED, {
+      businessId: saved.businessId,
       workflowId: saved.id,
       ruleId: rule.id,
       ruleName: rule.name,
@@ -81,8 +86,9 @@ export class WorkflowsService {
   }
 
   async findAll(businessId: string): Promise<Workflow[]> {
-    return this.workflowsRepository.find({
+    const workflows = await this.workflowsRepository.find({
       where: { businessId },
+      withDeleted: true,
       order: { createdAt: 'DESC' },
       relations: {
         rule: {
@@ -92,17 +98,19 @@ export class WorkflowsService {
         externalWorkflow: true,
       },
     });
+    return workflows.map((workflow) => this.withRuleEventNames(workflow));
   }
 
   async findOne(businessId: string, id: string): Promise<Workflow> {
     const workflow = await this.workflowsRepository.findOne({
       where: { id, businessId },
+      withDeleted: true,
       relations: {
         rule: {
           triggerEventDefinition: true,
           expectedEventDefinitions: true,
         },
-        externalWorkflow: true,
+        externalWorkflow: { eventLogs: { event: true } },
       },
     });
 
@@ -110,7 +118,7 @@ export class WorkflowsService {
       throw new NotFoundException(`Workflow with id "${id}" not found`);
     }
 
-    return workflow;
+    return this.withRuleEventNames(workflow);
   }
 
   async update(
@@ -167,6 +175,7 @@ export class WorkflowsService {
 
     const rule = await this.rulesService.findOne(saved.businessId, data.ruleId);
     this.eventEmitter.emit(EVENT_WORKFLOW_CREATED, {
+      businessId: saved.businessId,
       workflowId: saved.id,
       ruleId: rule.id,
       ruleName: rule.name,
@@ -260,6 +269,7 @@ export class WorkflowsService {
     const durationMs = Date.now() - workflow.createdAt.getTime();
     if (workflow.status === WorkflowStatus.COMPLETED) {
       this.eventEmitter.emit(EVENT_WORKFLOW_COMPLETED, {
+        businessId: workflow.businessId,
         workflowId: workflow.id,
         ruleId: workflow.ruleId,
         ruleName: workflow.rule?.name || '',
@@ -268,12 +278,21 @@ export class WorkflowsService {
       });
     } else if (workflow.status === WorkflowStatus.OVERDUE) {
       this.eventEmitter.emit(EVENT_WORKFLOW_OVERDUE, {
+        businessId: workflow.businessId,
         workflowId: workflow.id,
         ruleId: workflow.ruleId,
         ruleName: workflow.rule?.name || '',
         status: workflow.status,
       });
     }
+  }
+
+  private withRuleEventNames(workflow: Workflow): Workflow {
+    if (!workflow.rule) return workflow;
+    workflow.rule.triggerEvent = workflow.rule.triggerEventDefinition?.name;
+    workflow.rule.expectedEvents =
+      workflow.rule.expectedEventDefinitions?.map((event) => event.name) ?? [];
+    return workflow;
   }
 
   private calculateDeadline(

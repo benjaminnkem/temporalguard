@@ -10,9 +10,10 @@ import {
 import { EventType } from '../enums';
 
 export class CreateBusinessEventDto {
-  @ApiProperty({ format: 'uuid' })
+  @ApiPropertyOptional({ format: 'uuid', writeOnly: true })
+  @IsOptional()
   @IsUUID()
-  businessId: string;
+  businessId?: string;
 
   @ApiProperty({ example: 'payment.authorized' })
   @IsString()

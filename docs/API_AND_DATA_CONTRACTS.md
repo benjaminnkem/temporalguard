@@ -184,6 +184,23 @@ type RuleDraft = {
 };
 ```
 
+Authenticated lifecycle operations:
+
+```text
+GET    /api/rules/:id
+PATCH  /api/rules/:id         RuleDraft fields
+PATCH  /api/rules/:id/status  { "enabled": true | false }
+DELETE /api/rules/:id
+```
+
+When `/explore?rule=:id` is open, the client loads the persisted rule and uses
+`PATCH` when saving. A newly created rule replaces the URL with its persisted
+ID so subsequent saves remain updates.
+
+`DELETE` is a soft delete. The API atomically disables the rule and records
+`deletedAt`; ordinary rule reads exclude it, while existing workflow and
+violation history may still resolve the deleted rule relation.
+
 ### Historical test result
 
 ```ts
@@ -264,7 +281,29 @@ type WorkflowDetail = WorkflowSummary & {
   traceId?: string;
   attributes: Record<string, string | number | boolean | null>;
 };
+
+type WorkflowObservabilityPreview = {
+  configured: boolean;
+  signal: "traces" | "logs" | "metrics";
+  start: string;
+  end: string;
+  explorerUrl?: string;
+  items: Array<Record<string, unknown>>;
+  message?: string;
+};
 ```
+
+Authenticated workflow observability endpoints:
+
+```text
+GET /api/workflows/:id/observability/traces
+GET /api/workflows/:id/observability/logs
+GET /api/workflows/:id/observability/metrics
+```
+
+The API verifies workspace ownership before querying SigNoz. It sends the
+server-only `SIGNOZ_API_KEY` to SigNoz `/api/v5/query_range`; neither the key
+nor the raw upstream error body is returned to the browser.
 
 ---
 

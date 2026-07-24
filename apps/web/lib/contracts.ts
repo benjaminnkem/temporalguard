@@ -127,6 +127,19 @@ export const ruleDraftSchema = z
 
 export type RuleDraft = z.infer<typeof ruleDraftSchema>;
 
+export type RuleSummary = {
+  id: string;
+  name: string;
+  description?: string;
+  operator: RuleDraft["operator"];
+  severity: RuleDraft["severity"];
+  status: RuleDraft["status"];
+  triggerEvent: string;
+  expectedEvents: string[];
+  window: RuleDraft["window"];
+  updatedAt: string;
+};
+
 export type WorkflowState =
   | "waiting"
   | "near_deadline"
@@ -160,7 +173,9 @@ export type WorkflowDetail = WorkflowSummary & {
     displayName: string;
     occurredAt: string;
     serviceName?: string;
-    attributes: Record<string, string | number | boolean | null>;
+    traceId?: string;
+    spanId?: string;
+    attributes: Record<string, unknown>;
   }>;
   expectedSteps: Array<{
     canonicalName: string;
@@ -171,6 +186,20 @@ export type WorkflowDetail = WorkflowSummary & {
   traceId?: string;
   attributes: Record<string, string | number | boolean | null>;
 };
+
+export const workflowObservabilityPreviewSchema = z.object({
+  configured: z.boolean(),
+  signal: z.enum(["traces", "logs", "metrics"]),
+  start: z.string(),
+  end: z.string(),
+  explorerUrl: z.string().url().optional(),
+  items: z.array(z.record(z.string(), z.unknown())),
+  message: z.string().optional(),
+});
+
+export type WorkflowObservabilityPreview = z.infer<
+  typeof workflowObservabilityPreviewSchema
+>;
 
 export type ViolationSummary = {
   id: string;

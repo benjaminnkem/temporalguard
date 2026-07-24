@@ -94,11 +94,19 @@ export class TelemetryListener {
   @OnEvent(EVENT_BUSINESS_EVENT_RECEIVED)
   handleBusinessEventReceived(payload: {
     eventName: string;
-    workflowId: string;
+    workflowId?: string;
+    externalWorkflowId?: string;
+    eventLogId: string;
+    traceId?: string | null;
+    spanId?: string | null;
   }) {
     this.telemetryService.businessEventReceived(
       payload.eventName,
       payload.workflowId,
+      payload.externalWorkflowId,
+      payload.eventLogId,
+      payload.traceId,
+      payload.spanId,
     );
   }
 }

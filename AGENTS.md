@@ -79,12 +79,7 @@ local data reset.
   workflows, violations, and dashboard analytics.
 - Frontend authentication uses one `AuthClient` boundary with the HTTP adapter
   selected centrally. Components must not contain transport-specific branches.
-- Do not implement Monnify, Telegram, billing, notification delivery, or live
-  SigNoz product queries.
-- Never place database, JWT, refresh-token, Cloudinary, SigNoz ingestion, or
-  SigNoz query secrets in browser code or a `NEXT_PUBLIC_*` variable.
-- Preserve the working self-hosted SigNoz Compose topology. Cloud switching
-  belongs at the backend/collector export boundary, not in product components.
+- Do not implement Monnify, Telegram, billing, notification delivery
 - Follow `docs/DESIGN.MD`. Use centralized CSS variables and semantic tokens;
   feature code must not introduce literal colors, arbitrary radii, or a second
   motion/chart system.
@@ -96,8 +91,6 @@ local data reset.
   Keep TypeScript strict and do not use `any` without an explicit external
   boundary and narrowing.
 - Page files compose feature modules; they do not contain complete features.
-- Preserve user changes in the dirty worktree. Do not reformat or rewrite
-  unrelated backend files while implementing frontend/auth milestones.
 
 ## Data and database rules
 

@@ -50,7 +50,7 @@ const mockSession: AuthSession = {
   workspace: { id: "biz_demo", name: "Northstar Labs" },
 };
 
-class MockAuthClient implements AuthClient {
+export class MockAuthClient implements AuthClient {
   async login(input: LoginInput) {
     await new Promise((resolve) => setTimeout(resolve, 550));
     if (input.email.toLowerCase() === "error@example.com") {
@@ -136,10 +136,7 @@ class HttpAuthClient implements AuthClient {
   }
 }
 
-export const authClient: AuthClient =
-  process.env.NEXT_PUBLIC_AUTH_MODE === "http"
-    ? new HttpAuthClient()
-    : new MockAuthClient();
+export const authClient: AuthClient = new HttpAuthClient();
 
 export function validateLogo(file: File) {
   const allowed = ["image/jpeg", "image/png", "image/webp"];

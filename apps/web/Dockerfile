@@ -19,11 +19,7 @@ COPY --from=deps /app/packages ./packages
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/web ./apps/web
 COPY packages ./packages
-ARG NEXT_PUBLIC_DATA_MODE=mock
-ARG NEXT_PUBLIC_AUTH_MODE=mock
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:4000/api
-ENV NEXT_PUBLIC_DATA_MODE=$NEXT_PUBLIC_DATA_MODE
-ENV NEXT_PUBLIC_AUTH_MODE=$NEXT_PUBLIC_AUTH_MODE
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 RUN pnpm --filter web build
 

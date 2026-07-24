@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsInt,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsPositive,
   IsString,
@@ -16,9 +17,10 @@ import { RuleSeverity } from '../enums/rule-severity.enum';
 import { TimeoutUnit } from '../enums/timeout-unit.enum';
 
 export class CreateRuleDto {
-  @ApiProperty({ format: 'uuid' })
+  @ApiPropertyOptional({ format: 'uuid', writeOnly: true })
+  @IsOptional()
   @IsUUID()
-  businessId: string;
+  businessId?: string;
 
   @ApiProperty({ example: 'payment-must-resolve-within-15m' })
   @IsString()
@@ -70,4 +72,30 @@ export class CreateRuleDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'object', additionalProperties: true },
+  })
+  @IsOptional()
+  @IsArray()
+  @IsObject({ each: true })
+  triggerFilters?: Array<Record<string, unknown>>;
+
+  @ApiPropertyOptional({ example: 'payment.id', default: 'workflow.id' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  correlationKey?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['production'],
+    default: ['production'],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  environments?: string[];
 }

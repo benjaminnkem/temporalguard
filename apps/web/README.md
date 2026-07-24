@@ -29,11 +29,11 @@ the web application.
 
 ## Design system
 
-The source of truth is `../../docs/DESIGN.MD`. Semantic tokens, light/dark
-paper themes, wobbly radii, hard shadows, motion timing, and font mappings live
-in `app/globals.css`. Kalam and Patrick Hand are bundled through Fontsource;
-feature components should consume semantic utilities and shared primitives
-instead of adding literal colors or a second motion system.
+The source of truth is `../../docs/DESIGN.MD`. Semantic tokens, pure
+white/black light and dark canvases, the purple brand scale, square geometry,
+flat borders, restrained motion, and serif/mono font mappings live in
+`app/globals.css`. Feature components should consume semantic utilities and
+shared primitives instead of adding literal colors or a second motion system.
 
 ## Checks
 

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "../../components/ui/button";
@@ -34,7 +34,7 @@ function ErrorSummary({ messages }: { messages: string[] }) {
   return (
     <div
       role="alert"
-      className="rounded-[var(--radius-md)] border-2 border-destructive bg-destructive-subtle p-3 text-sm text-destructive shadow-[3px_3px_0_var(--shadow-ink)]"
+      className="border-2 border-destructive bg-destructive-subtle p-3 text-sm text-destructive"
       tabIndex={-1}
     >
       <p className="font-semibold">Please check the form</p>
@@ -49,6 +49,7 @@ function ErrorSummary({ messages }: { messages: string[] }) {
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -56,7 +57,14 @@ export function LoginForm() {
   });
   const mutation = useMutation({
     mutationFn: (input: LoginInput) => authClient.login(input),
-    onSuccess: () => router.push("/overview"),
+    onSuccess: () => {
+      const returnTo = searchParams.get("returnTo");
+      router.push(
+        returnTo?.startsWith("/") && !returnTo.startsWith("//")
+          ? returnTo
+          : "/overview",
+      );
+    },
   });
   const serverError =
     mutation.error?.message === "AUTH_INVALID_CREDENTIALS"
@@ -113,9 +121,6 @@ export function LoginForm() {
           <input type="checkbox" className="size-4 accent-[var(--primary)]" />
           Keep me signed in
         </label>
-        <span className="text-muted-foreground">
-          Password reset coming soon
-        </span>
       </div>
       <Button
         type="submit"
@@ -136,10 +141,6 @@ export function LoginForm() {
         >
           Create a workspace
         </Link>
-      </p>
-      <p className="text-center text-xs text-muted-foreground">
-        Mock mode: use any email and password. Use error@example.com to test an
-        invalid login.
       </p>
     </form>
   );
@@ -299,7 +300,7 @@ export function SignupForm() {
           onChange={(event) => chooseFile(event.target.files?.[0])}
         />
         {preview && logo ? (
-          <div className="flex items-center gap-3 rounded-[var(--radius-md)] border-2 border-border bg-surface-subtle p-3 shadow-[3px_3px_0_var(--shadow-ink)]">
+          <div className="flex items-center gap-3 border border-border-strong bg-surface-subtle p-3">
             <Image
               src={preview}
               alt="Business logo preview"
@@ -343,7 +344,7 @@ export function SignupForm() {
         ) : (
           <button
             type="button"
-            className="grid min-h-28 place-items-center rounded-[var(--radius-md)] border-[3px] border-dashed border-border-strong bg-surface-subtle p-4 text-center shadow-[3px_3px_0_var(--shadow-ink)] transition-[border,transform,box-shadow] duration-100 hover:-rotate-[0.4deg] hover:border-primary hover:shadow-[5px_5px_0_var(--shadow-ink)]"
+            className="grid min-h-28 place-items-center border-2 border-dashed border-border-strong bg-surface-subtle p-4 text-center transition-colors duration-100 hover:border-primary hover:bg-primary-subtle"
             onClick={() => inputRef.current?.click()}
             onDrop={(event) => {
               event.preventDefault();
@@ -370,8 +371,8 @@ export function SignupForm() {
           className="mt-0.5 size-4 accent-[var(--primary)]"
         />
         <span>
-          I agree to the placeholder Terms and Privacy Policy. Legal routes will
-          be added before public launch.
+          I confirm that I am authorized to create this workspace for my
+          organization.
         </span>
       </label>
       <Button
@@ -402,9 +403,9 @@ export function SignupForm() {
 
 export function AuthVisual() {
   return (
-    <div className="relative hidden min-h-screen overflow-hidden border-l-[3px] border-dashed border-border bg-surface-subtle p-10 lg:flex lg:flex-col lg:justify-between">
+    <div className="relative hidden min-h-screen overflow-hidden border-l border-border-strong bg-surface-subtle p-10 lg:flex lg:flex-col lg:justify-between">
       <div>
-        <div className="inline-flex -rotate-1 items-center gap-2 rounded-[var(--radius-md)] border-2 border-border bg-primary-subtle px-3 py-1 text-sm font-medium text-primary-subtle-foreground shadow-[3px_3px_0_var(--shadow-ink)]">
+        <div className="inline-flex items-center gap-2 border border-primary bg-primary-subtle px-3 py-1 font-mono text-[11px] font-medium tracking-[0.08em] text-primary-subtle-foreground uppercase">
           <ShieldCheck className="size-3.5" />
           Workflow reliability, made explicit
         </div>
@@ -416,11 +417,7 @@ export function AuthVisual() {
           investigate correlated technical evidence without losing context.
         </p>
       </div>
-      <div className="relative mx-auto w-full max-w-xl rotate-1 rounded-[var(--radius-xl)] border-[3px] border-border bg-card p-6 shadow-[8px_8px_0_var(--shadow-ink)]">
-        <span
-          aria-hidden="true"
-          className="absolute -top-3 left-1/2 h-6 w-24 -translate-x-1/2 -rotate-2 bg-muted/80"
-        />
+      <div className="relative mx-auto w-full max-w-xl border border-border-strong bg-card p-6">
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 className="size-4 text-primary" />
@@ -450,9 +447,8 @@ export function AuthVisual() {
           ))}
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Deterministic mock product data · real authentication backend available
-        through an environment adapter
+      <p className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground uppercase">
+        Authenticated · workspace-scoped · evidence-led
       </p>
     </div>
   );

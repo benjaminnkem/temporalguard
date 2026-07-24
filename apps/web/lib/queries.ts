@@ -7,8 +7,12 @@ import { dataSource, type AnalyticsQuery } from "./data-source";
 export const queryKeys = {
   dashboard: (query: AnalyticsQuery) => ["dashboard", query] as const,
   events: (query: AnalyticsQuery) => ["events", query] as const,
+  rules: (query: AnalyticsQuery) => ["rules", query] as const,
+  rule: (id: string) => ["rule", id] as const,
   workflows: (query: AnalyticsQuery) => ["workflows", query] as const,
   workflow: (id: string) => ["workflow", id] as const,
+  workflowObservability: (id: string, signal: "traces" | "logs" | "metrics") =>
+    ["workflow", id, "observability", signal] as const,
   violations: (query: AnalyticsQuery) => ["violations", query] as const,
   violation: (id: string) => ["violation", id] as const,
 };
@@ -35,6 +39,64 @@ export function useCreateEvent() {
   });
 }
 
+export const useRules = (query: AnalyticsQuery = {}) =>
+  useQuery({
+    queryKey: queryKeys.rules(query),
+    queryFn: () => dataSource.listRules(query),
+  });
+
+export const useRule = (id?: string) =>
+  useQuery({
+    queryKey: ["rule", id],
+    queryFn: () => dataSource.getRule(id as string),
+    enabled: Boolean(id),
+  });
+
+export function useCreateRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: RuleDraft) => dataSource.createRule(input),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["rules"] });
+    },
+  });
+}
+
+export function useUpdateRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: RuleDraft }) =>
+      dataSource.updateRule(id, input),
+    onSuccess: async (rule) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["rules"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.rule(rule.id) }),
+      ]);
+    },
+  });
+}
+
+export function useSetRuleEnabled() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      dataSource.setRuleEnabled(id, enabled),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["rules"] });
+    },
+  });
+}
+
+export function useDeleteRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => dataSource.deleteRule(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["rules"] });
+    },
+  });
+}
+
 export const useWorkflows = (query: AnalyticsQuery) =>
   useQuery({
     queryKey: queryKeys.workflows(query),
@@ -46,6 +108,24 @@ export const useWorkflow = (id: string) =>
   useQuery({
     queryKey: queryKeys.workflow(id),
     queryFn: () => dataSource.getWorkflow(id),
+  });
+
+export const useWorkflowTraces = (id: string) =>
+  useQuery({
+    queryKey: queryKeys.workflowObservability(id, "traces"),
+    queryFn: () => dataSource.getWorkflowTraces(id),
+  });
+
+export const useWorkflowLogs = (id: string) =>
+  useQuery({
+    queryKey: queryKeys.workflowObservability(id, "logs"),
+    queryFn: () => dataSource.getWorkflowLogs(id),
+  });
+
+export const useWorkflowMetrics = (id: string) =>
+  useQuery({
+    queryKey: queryKeys.workflowObservability(id, "metrics"),
+    queryFn: () => dataSource.getWorkflowMetrics(id),
   });
 
 export const useViolations = (query: AnalyticsQuery) =>

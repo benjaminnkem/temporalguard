@@ -1,9 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { BusinessEvent } from '../../events/entities';
-import { CreateRuleDto, UpdateRuleDto } from '../dto';
+import { Workflow } from '../../workflows/entities';
+import { WorkflowStatus } from '../../workflows/enums/workflow-status.enum';
+import { CreateRuleDto, TestRuleDto, UpdateRuleDto } from '../dto';
 import { Rule } from '../entities';
+import { RuleOperator } from '../enums';
 
 @Injectable()
 export class RulesService {
@@ -12,18 +15,21 @@ export class RulesService {
     private readonly rulesRepository: Repository<Rule>,
     @InjectRepository(BusinessEvent)
     private readonly eventsRepository: Repository<BusinessEvent>,
+    @InjectRepository(Workflow)
+    private readonly workflowsRepository: Repository<Workflow>,
   ) {}
 
-  async create(dto: CreateRuleDto): Promise<Rule> {
+  async create(businessId: string, dto: CreateRuleDto): Promise<Rule> {
     const { triggerEvent, expectedEvents, ...values } = dto;
-    const trigger = await this.findOrCreateEvent(dto.businessId, triggerEvent);
+    const trigger = await this.findOrCreateEvent(businessId, triggerEvent);
     const expected = await Promise.all(
       [...new Set(expectedEvents)].map((name) =>
-        this.findOrCreateEvent(dto.businessId, name),
+        this.findOrCreateEvent(businessId, name),
       ),
     );
     const rule = this.rulesRepository.create({
       ...values,
+      businessId,
       triggerEventId: trigger.id,
       triggerEventDefinition: trigger,
       expectedEventDefinitions: expected,
@@ -81,8 +87,87 @@ export class RulesService {
     return this.withEventNames(await this.rulesRepository.save(rule));
   }
 
+  async setEnabled(
+    businessId: string,
+    id: string,
+    enabled: boolean,
+  ): Promise<Rule> {
+    const rule = await this.findOne(businessId, id);
+    rule.enabled = enabled;
+    return this.withEventNames(await this.rulesRepository.save(rule));
+  }
+
   async remove(businessId: string, id: string): Promise<void> {
-    await this.rulesRepository.remove(await this.findOne(businessId, id));
+    await this.rulesRepository.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(Rule);
+      const rule = await repository.findOne({ where: { id, businessId } });
+      if (!rule) {
+        throw new NotFoundException(`Rule with id "${id}" not found`);
+      }
+      rule.enabled = false;
+      await repository.save(rule);
+      await repository.softRemove(rule);
+    });
+  }
+
+  async testDraft(businessId: string, input: TestRuleDto) {
+    const referencedIds = [
+      input.trigger.eventId,
+      ...input.outcomes.map((outcome) => outcome.eventId),
+    ];
+    const ownedEventCount = await this.eventsRepository.countBy({
+      businessId,
+      id: In(referencedIds),
+    });
+    if (ownedEventCount !== new Set(referencedIds).size) {
+      throw new NotFoundException(
+        'One or more referenced events were not found',
+      );
+    }
+
+    const workflows = await this.workflowsRepository.find({
+      where: { businessId },
+      order: { createdAt: 'DESC' },
+      take: 1000,
+    });
+    const expected = input.outcomes.map((outcome) => outcome.canonicalName);
+    let completedCount = 0;
+    let violatedCount = 0;
+    let openCount = 0;
+    const completionDurations: number[] = [];
+
+    for (const workflow of workflows) {
+      const received = Array.isArray(workflow.currentState?.receivedEvents)
+        ? workflow.currentState.receivedEvents.filter(
+            (value): value is string => typeof value === 'string',
+          )
+        : [];
+      const matched = this.matches(input.operator, expected, received);
+      if (matched || workflow.status === WorkflowStatus.COMPLETED) {
+        completedCount += 1;
+        completionDurations.push(
+          workflow.updatedAt.getTime() - workflow.createdAt.getTime(),
+        );
+      } else if (workflow.status === WorkflowStatus.OVERDUE) {
+        violatedCount += 1;
+      } else {
+        openCount += 1;
+      }
+    }
+
+    completionDurations.sort((left, right) => left - right);
+    const medianCompletionMs =
+      completionDurations.length === 0
+        ? 0
+        : completionDurations[Math.floor(completionDurations.length / 2)];
+    return {
+      evaluatedCount: workflows.length,
+      completedCount,
+      violatedCount,
+      openCount,
+      medianCompletionMs,
+      dataMode: 'api' as const,
+    };
   }
 
   async findEnabledByTriggerEvent(
@@ -144,5 +229,26 @@ export class RulesService {
     rule.expectedEvents =
       rule.expectedEventDefinitions?.map((event) => event.name) ?? [];
     return rule;
+  }
+
+  private matches(
+    operator: RuleOperator,
+    expected: string[],
+    received: string[],
+  ): boolean {
+    if (operator === RuleOperator.ANY) {
+      return expected.some((eventName) => received.includes(eventName));
+    }
+    if (operator === RuleOperator.SEQUENCE) {
+      let position = 0;
+      for (const eventName of received) {
+        if (eventName === expected[position]) position += 1;
+      }
+      return position === expected.length;
+    }
+    if (operator === RuleOperator.FORBID) {
+      return expected.every((eventName) => !received.includes(eventName));
+    }
+    return expected.every((eventName) => received.includes(eventName));
   }
 }
