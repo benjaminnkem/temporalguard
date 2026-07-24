@@ -1,4 +1,5 @@
 export interface IngestedEvent {
+  businessId: string;
   eventName: string;
   externalWorkflowId?: string;
   timestamp: string;

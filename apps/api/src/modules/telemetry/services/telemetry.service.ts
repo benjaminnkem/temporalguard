@@ -10,6 +10,7 @@ import {
   Counter,
   UpDownCounter,
   Histogram,
+  Attributes,
 } from '@opentelemetry/api';
 import {
   SPAN_WORKFLOW_CREATED,
@@ -52,7 +53,8 @@ export class TelemetryService {
 
   constructor(private readonly configService: ConfigService) {
     this.serviceName =
-      this.configService.get<string>('telemetry.serviceName') ?? 'temporalguard-api';
+      this.configService.get<string>('telemetry.serviceName') ??
+      'temporalguard-api';
     this.environment =
       this.configService.get<string>('nodeEnv') ?? 'development';
 
@@ -93,14 +95,17 @@ export class TelemetryService {
         unit: 's',
       },
     );
-    this.ruleMatchesCounter = this.meter.createCounter(METRIC_RULE_MATCHES_TOTAL, {
-      description: 'Total number of rule matches',
-    });
+    this.ruleMatchesCounter = this.meter.createCounter(
+      METRIC_RULE_MATCHES_TOTAL,
+      {
+        description: 'Total number of rule matches',
+      },
+    );
   }
 
   async trace<T>(
     name: string,
-    attributes: Record<string, any>,
+    attributes: Attributes,
     fn: () => Promise<T>,
   ): Promise<T> {
     const span = this.tracer.startSpan(name, {
@@ -115,9 +120,14 @@ export class TelemetryService {
       try {
         const result = await fn();
         return result;
-      } catch (error) {
-        span.recordException(error);
-        span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      } catch (error: unknown) {
+        const exception =
+          error instanceof Error ? error : new Error('Unknown traced error');
+        span.recordException(exception);
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: exception.message,
+        });
         throw error;
       } finally {
         span.end();
@@ -143,7 +153,10 @@ export class TelemetryService {
     });
     span.end();
 
-    const attrs = { [ATTR_RULE_NAME]: ruleName, [ATTR_WORKFLOW_STATUS]: status };
+    const attrs = {
+      [ATTR_RULE_NAME]: ruleName,
+      [ATTR_WORKFLOW_STATUS]: status,
+    };
     this.workflowsStartedCounter.add(1, attrs);
     this.activeWorkflowsCounter.add(1, attrs);
   }
@@ -167,7 +180,10 @@ export class TelemetryService {
     });
     span.end();
 
-    const attrs = { [ATTR_RULE_NAME]: ruleName, [ATTR_WORKFLOW_STATUS]: status };
+    const attrs = {
+      [ATTR_RULE_NAME]: ruleName,
+      [ATTR_WORKFLOW_STATUS]: status,
+    };
     this.workflowsCompletedCounter.add(1, attrs);
     this.activeWorkflowsCounter.add(-1, attrs);
     this.workflowDurationHistogram.record(durationMs / 1000, attrs);
@@ -191,7 +207,10 @@ export class TelemetryService {
     });
     span.end();
 
-    const attrs = { [ATTR_RULE_NAME]: ruleName, [ATTR_WORKFLOW_STATUS]: status };
+    const attrs = {
+      [ATTR_RULE_NAME]: ruleName,
+      [ATTR_WORKFLOW_STATUS]: status,
+    };
     this.workflowsOverdueCounter.add(1, attrs);
     this.activeWorkflowsCounter.add(-1, attrs);
   }
@@ -216,7 +235,10 @@ export class TelemetryService {
     });
     span.end();
 
-    this.violationsCounter.add(1, { [ATTR_RULE_NAME]: ruleName, [ATTR_SEVERITY]: severity });
+    this.violationsCounter.add(1, {
+      [ATTR_RULE_NAME]: ruleName,
+      [ATTR_SEVERITY]: severity,
+    });
   }
 
   ruleMatched(ruleId: string, ruleName: string, eventName: string): void {

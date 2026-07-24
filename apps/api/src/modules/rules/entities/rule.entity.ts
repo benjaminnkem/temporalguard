@@ -8,6 +8,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { BaseEntity } from '../../../common/entities';
+import { Business } from '../../businesses/entities';
 import { BusinessEvent } from '../../events/entities';
 import { Violation } from '../../violations/entities';
 import { Workflow } from '../../workflows/entities';
@@ -17,6 +18,15 @@ import { TimeoutUnit } from '../enums/timeout-unit.enum';
 
 @Entity('rules')
 export class Rule extends BaseEntity {
+  @Column({ type: 'uuid' })
+  businessId: string;
+
+  @ManyToOne(() => Business, (business) => business.rules, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
+
   @Column({ type: 'varchar', length: 255 })
   name: string;
 

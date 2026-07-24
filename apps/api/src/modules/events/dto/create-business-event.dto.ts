@@ -5,10 +5,15 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUUID,
 } from 'class-validator';
 import { EventType } from '../enums';
 
 export class CreateBusinessEventDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  businessId: string;
+
   @ApiProperty({ example: 'payment.authorized' })
   @IsString()
   @IsNotEmpty()

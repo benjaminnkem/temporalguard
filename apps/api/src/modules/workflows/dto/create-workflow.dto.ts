@@ -1,7 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateWorkflowDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  businessId: string;
+
   @ApiPropertyOptional({ example: 'pay_123' })
   @IsOptional()
   @IsString()

@@ -1,0 +1,253 @@
+"use client";
+
+import * as Tabs from "@radix-ui/react-tabs";
+import {
+  ArrowLeft,
+  Check,
+  Clock3,
+  Copy,
+  ExternalLink,
+  FileText,
+  Gauge,
+  ScrollText,
+} from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { DataState } from "../../components/shared/data-state";
+import { Button } from "../../components/ui/button";
+import { Badge, Card } from "../../components/ui/surface";
+import { useWorkflow } from "../../lib/queries";
+import { formatDate } from "../../lib/utils";
+
+export function WorkflowDetailView({ id }: { id: string }) {
+  const searchParams = useSearchParams();
+  const query = useWorkflow(id);
+  const workflow = query.data;
+  return (
+    <DataState
+      state={query.isLoading ? "loading" : query.isError ? "error" : "ready"}
+      title="Workflow not available"
+      onRetry={() => void query.refetch()}
+    >
+      {workflow ? (
+        <div className="grid gap-5">
+          <div>
+            <Button asChild variant="ghost" className="-ml-2 mb-3">
+              <Link href={`/workflows?${searchParams.toString()}`}>
+                <ArrowLeft className="size-4" /> Back to workflows
+              </Link>
+            </Button>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    tone={
+                      workflow.state === "violated"
+                        ? "danger"
+                        : workflow.state === "completed"
+                          ? "success"
+                          : "warning"
+                    }
+                  >
+                    {workflow.state.replace("_", " ")}
+                  </Badge>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {workflow.id}
+                  </span>
+                </div>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+                  {workflow.workflowType}
+                </h1>
+                <p className="mt-1 text-muted-foreground">
+                  {workflow.ruleName}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() =>
+                    void navigator.clipboard.writeText(location.href)
+                  }
+                >
+                  <Copy className="size-4" /> Copy link
+                </Button>
+                <Button
+                  disabled
+                  title="Available when SigNoz linking is enabled"
+                >
+                  <ExternalLink className="size-4" /> Open in SigNoz
+                </Button>
+              </div>
+            </div>
+          </div>
+          <Card className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-5">
+            {[
+              ["Entity", workflow.entityId],
+              ["Started", formatDate(workflow.startedAt)],
+              [
+                workflow.completedAt ? "Completed" : "Deadline",
+                formatDate(workflow.completedAt ?? workflow.deadlineAt ?? ""),
+              ],
+              ["Environment", workflow.environment],
+              ["Deployment", workflow.deploymentVersion ?? "—"],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="mt-1 font-medium">{value}</p>
+              </div>
+            ))}
+          </Card>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,0.7fr)]">
+            <Card className="p-5">
+              <h2 className="font-semibold">Expected workflow</h2>
+              <div className="relative mt-6 grid gap-6 pl-10">
+                <div className="absolute top-2 bottom-2 left-[18px] w-px bg-border-strong" />
+                {workflow.expectedSteps.map((step) => (
+                  <div key={step.canonicalName} className="relative">
+                    <span
+                      className={`absolute top-0.5 -left-10 grid size-8 place-items-center rounded-full border-4 border-card ${
+                        step.state === "completed"
+                          ? "bg-success text-white"
+                          : step.state === "missed" ||
+                              step.state === "forbidden_seen"
+                            ? "bg-destructive text-white"
+                            : step.state === "current"
+                              ? "bg-warning text-white"
+                              : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {step.state === "completed" ? (
+                        <Check className="size-3.5" />
+                      ) : (
+                        <Clock3 className="size-3.5" />
+                      )}
+                    </span>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{step.displayName}</p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {step.canonicalName}
+                        </p>
+                      </div>
+                      <Badge
+                        tone={
+                          step.state === "completed"
+                            ? "success"
+                            : step.state === "missed" ||
+                                step.state === "forbidden_seen"
+                              ? "danger"
+                              : "warning"
+                        }
+                      >
+                        {step.state.replace("_", " ")}
+                      </Badge>
+                    </div>
+                    {step.occurredAt ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatDate(step.occurredAt)}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card className="p-5">
+              <h2 className="font-semibold">Correlation</h2>
+              <dl className="mt-4 grid gap-4 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Key</dt>
+                  <dd className="font-mono">{workflow.correlationKey}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Value</dt>
+                  <dd className="font-mono">{workflow.correlationValue}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Operator</dt>
+                  <dd>
+                    <Badge tone="primary">{workflow.operator}</Badge>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">
+                    Trace reference
+                  </dt>
+                  <dd className="break-all font-mono text-xs">
+                    {workflow.traceId ?? "Not available"}
+                  </dd>
+                </div>
+              </dl>
+            </Card>
+          </div>
+          <Card className="p-4">
+            <Tabs.Root defaultValue="timeline">
+              <Tabs.List className="flex gap-1 overflow-x-auto border-b border-border">
+                {(
+                  [
+                    ["timeline", "Timeline", Clock3],
+                    ["trace", "Trace preview", FileText],
+                    ["logs", "Logs preview", ScrollText],
+                    ["metrics", "Metrics preview", Gauge],
+                    ["attributes", "Attributes", FileText],
+                  ] as const
+                ).map(([value, label, Icon]) => (
+                  <Tabs.Trigger
+                    key={value}
+                    value={value}
+                    className="flex min-h-10 items-center gap-2 border-b-2 border-transparent px-3 text-xs text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground"
+                  >
+                    <Icon className="size-3.5" />
+                    {label}
+                  </Tabs.Trigger>
+                ))}
+              </Tabs.List>
+              <Tabs.Content value="timeline" className="pt-4">
+                <div className="grid gap-2">
+                  {workflow.events.map((event) => (
+                    <div
+                      key={event.id}
+                      className="grid gap-2 rounded-[var(--radius-md)] bg-surface-subtle p-3 sm:grid-cols-[180px_1fr_auto]"
+                    >
+                      <span className="font-mono text-xs">
+                        {formatDate(event.occurredAt)}
+                      </span>
+                      <span className="font-medium">{event.displayName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {event.serviceName}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Tabs.Content>
+              <Tabs.Content
+                value="trace"
+                className="pt-4 text-sm text-muted-foreground"
+              >
+                Correlated trace preview for {workflow.traceId}. Deep linking is
+                deferred until server-side SigNoz query integration.
+              </Tabs.Content>
+              <Tabs.Content value="logs" className="pt-4">
+                <pre className="overflow-x-auto rounded-[var(--radius-md)] bg-surface-subtle p-4 font-mono text-xs">
+                  {`level=info service=${workflow.serviceName} workflow.id=${workflow.id}\nmessage="event handled; awaiting next expected step"`}
+                </pre>
+              </Tabs.Content>
+              <Tabs.Content
+                value="metrics"
+                className="pt-4 text-sm text-muted-foreground"
+              >
+                Mock metric summary: processing latency p95 842ms, error rate
+                1.7%, queue depth 42.
+              </Tabs.Content>
+              <Tabs.Content value="attributes" className="pt-4">
+                <pre className="overflow-x-auto rounded-[var(--radius-md)] bg-surface-subtle p-4 font-mono text-xs">
+                  {JSON.stringify(workflow.attributes, null, 2)}
+                </pre>
+              </Tabs.Content>
+            </Tabs.Root>
+          </Card>
+        </div>
+      ) : (
+        <span />
+      )}
+    </DataState>
+  );
+}

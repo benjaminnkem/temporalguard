@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -37,16 +38,21 @@ export class RulesController {
   @Get()
   @ApiOperation({ summary: 'List all rules' })
   @ApiOkResponse({ description: 'List of rules', type: [Rule] })
-  findAll(): Promise<Rule[]> {
-    return this.rulesService.findAll();
+  findAll(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
+  ): Promise<Rule[]> {
+    return this.rulesService.findAll(businessId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a rule by id' })
   @ApiOkResponse({ description: 'Rule found', type: Rule })
   @ApiNotFoundResponse({ description: 'Rule not found' })
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Rule> {
-    return this.rulesService.findOne(id);
+  findOne(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<Rule> {
+    return this.rulesService.findOne(businessId, id);
   }
 
   @Patch(':id')
@@ -54,10 +60,11 @@ export class RulesController {
   @ApiOkResponse({ description: 'Rule updated', type: Rule })
   @ApiNotFoundResponse({ description: 'Rule not found' })
   update(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateRuleDto: UpdateRuleDto,
   ): Promise<Rule> {
-    return this.rulesService.update(id, updateRuleDto);
+    return this.rulesService.update(businessId, id, updateRuleDto);
   }
 
   @Delete(':id')
@@ -65,7 +72,10 @@ export class RulesController {
   @ApiOperation({ summary: 'Delete a rule' })
   @ApiNoContentResponse({ description: 'Rule deleted' })
   @ApiNotFoundResponse({ description: 'Rule not found' })
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.rulesService.remove(id);
+  remove(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    return this.rulesService.remove(businessId, id);
   }
 }

@@ -1,5 +1,6 @@
 export interface ViolationResponse {
   id: string;
+  businessId: string;
   ruleId?: string;
   workflowId?: string;
   severity?: string;

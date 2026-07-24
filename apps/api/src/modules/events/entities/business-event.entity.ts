@@ -1,12 +1,33 @@
-import { Column, Entity, ManyToMany, OneToMany } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 import { BaseEntity } from '../../../common/entities';
+import { Business } from '../../businesses/entities';
 import { Rule } from '../../rules/entities';
 import { EventType } from '../enums/event-type.enum';
 import { EventLog } from './event-log.entity';
 
 @Entity('business_events')
+@Index('UQ_business_events_business_name', ['businessId', 'name'], {
+  unique: true,
+})
 export class BusinessEvent extends BaseEntity {
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'uuid' })
+  businessId: string;
+
+  @ManyToOne(() => Business, (business) => business.events, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
+
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @Column({ type: 'enum', enum: EventType, default: EventType.BUSINESS })

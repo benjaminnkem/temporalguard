@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -35,32 +36,39 @@ export class WorkflowsController {
   @Get()
   @ApiOperation({ summary: 'List all workflows' })
   @ApiOkResponse({ description: 'List of workflows' })
-  findAll() {
-    return this.workflowsService.findAll();
+  findAll(@Query('businessId', ParseUUIDPipe) businessId: string) {
+    return this.workflowsService.findAll(businessId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a workflow by id' })
   @ApiOkResponse({ description: 'Workflow found' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.workflowsService.findOne(id);
+  findOne(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.workflowsService.findOne(businessId, id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a workflow' })
   @ApiOkResponse({ description: 'Workflow updated' })
   update(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateWorkflowDto: UpdateWorkflowDto,
   ) {
-    return this.workflowsService.update(id, updateWorkflowDto);
+    return this.workflowsService.update(businessId, id, updateWorkflowDto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a workflow' })
   @ApiNoContentResponse({ description: 'Workflow deleted' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.workflowsService.remove(id);
+  remove(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.workflowsService.remove(businessId, id);
   }
 }

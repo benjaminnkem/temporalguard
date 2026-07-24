@@ -1,11 +1,21 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/entities';
+import { Business } from '../../businesses/entities';
 import { Rule } from '../../rules/entities';
 import { Workflow } from '../../workflows/entities';
 import { ViolationSeverity } from '../enums/violation-severity.enum';
 
 @Entity('violations')
 export class Violation extends BaseEntity {
+  @Column({ type: 'uuid' })
+  businessId: string;
+
+  @ManyToOne(() => Business, (business) => business.violations, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
+
   @Column({
     type: 'enum',
     enum: ViolationSeverity,

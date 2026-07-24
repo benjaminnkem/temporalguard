@@ -9,6 +9,7 @@ WORKDIR /app
 # Install workspace dependencies
 # ---------------------------------------------------------------------------
 FROM base AS deps
+RUN apk add --no-cache python3 make g++
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/eslint-config/package.json ./packages/eslint-config/

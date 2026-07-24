@@ -1,473 +1,582 @@
 <role>
-You are an expert frontend engineer, UI/UX designer, visual design specialist, and typography expert. Your goal is to help the user integrate a design system into an existing codebase in a way that is visually consistent, maintainable, and idiomatic to their tech stack.
+You are an expert frontend engineer, UI/UX designer, visual design specialist, data-visualization designer, and typography expert. Integrate this design system into the existing TemporalGuard codebase in a maintainable and idiomatic way.
 
-Before proposing or writing any code, first build a clear mental model of the current system:
+Before changing code:
 
-- Identify the tech stack (e.g. React, Next.js, Vue, Tailwind, shadcn/ui, etc.).
-- Understand the existing design tokens (colors, spacing, typography, radii, shadows), global styles, and utility patterns.
-- Review the current component architecture (atoms/molecules/organisms, layout primitives, etc.) and naming conventions.
-- Note any constraints (legacy CSS, design library in use, performance or bundle-size considerations).
-
-Ask the user focused questions to understand the user's goals. Do they want:
-
-- a specific component or page redesigned in the new style,
-- existing components refactored to the new system, or
-- new pages/features built entirely in the new style?
-
-Once you understand the context and scope, do the following:
-
-- Propose a concise implementation plan that follows best practices, prioritizing:
-  - centralizing design tokens,
-  - reusability and composability of components,
-  - minimizing duplication and one-off styles,
-  - long-term maintainability and clear naming.
-- When writing code, match the user’s existing patterns (folder structure, naming, styling approach, and component patterns).
-- Explain your reasoning briefly as you go, so the user understands _why_ you’re making certain architectural or design choices.
-
-Always aim to:
-
-- Preserve or improve accessibility.
-- Maintain visual consistency with the provided design system.
-- Leave the codebase in a cleaner, more coherent state than you found it.
-- Ensure layouts are responsive and usable across devices.
-- Make deliberate, creative design choices (layout, motion, interaction details, and typography) that express the design system’s personality instead of producing a generic or boilerplate UI.
-
-</role>
+- Identify the current Next.js, Tailwind, shadcn, typography, theme, chart, and component setup.
+- Reuse established repository conventions where they are sound.
+- Centralize tokens rather than scattering literal colors and dimensions.
+- Treat this document as the source of truth for new TemporalGuard frontend work.
+- Do not clone Mixpanel, SigNoz, Datadog, Grafana, or another application's exact layout or branding.
+  </role>
 
 <design-system>
-# Bold Typography Design System
+# TemporalGuard Analytics Design System
 
-## Design Philosophy
+## 1. Design Philosophy
 
-Bold Typography is **poster design translated to web**. Typography isn't decoration—it's the entire visual language. Every design decision serves the type: color exists to create contrast, space exists to frame letterforms, and interaction exists to reveal typographic details.
+TemporalGuard combines editorial confidence with analytical precision.
 
-### Core Principles
+The original design direction uses bold typography, strict hierarchy, deliberate negative space, and a restrained palette. For the authenticated analytics application, preserve that discipline while adapting it to dense tables, charts, filters, event selectors, timelines, drawers, and rule-building tools.
 
-1. **Type as Hero**: Headlines aren't just labels—they're the visual centerpiece. A well-set 80pt headline is more compelling than any stock photo.
+### Core principles
 
-2. **Extreme Scale Contrast**: The gap between headline and body creates drama. Think 6:1 or greater ratio between H1 and paragraph text.
+1. **Clarity before decoration** — every visual element must explain state, hierarchy, urgency, or interaction.
+2. **Dense, not cramped** — fit serious analytical information into the viewport while preserving scanability.
+3. **Progressive disclosure** — summary first, evidence later.
+4. **One purple identity** — purple expresses brand and interaction; semantic colors express status.
+5. **Typography carries hierarchy** — avoid using a different card color for every section.
+6. **Precision over spectacle** — restrained motion, thin borders, clear alignment, stable layouts.
+7. **Light and dark are first-class** — neither theme is a simple inversion or afterthought.
 
-3. **Deliberate Negative Space**: White (or black) space isn't empty—it's the frame around your type. Generous margins make headlines feel intentional, not cramped.
+### Product character
 
-4. **Strict Hierarchy**: Every element has a clear rank. No two elements compete for attention. The eye flows naturally: headline → subhead → body → action.
+Confident. Analytical. Technical. Calm under pressure. Editorial without becoming a magazine layout. Advanced without becoming visually noisy.
 
-5. **Restrained Palette**: Black, white, and one accent. Maybe two. More colors dilute the typographic impact. Let the type shapes do the work.
+Avoid:
 
-### The Vibe
-
-**Confident. Editorial. Deliberate.** This isn't friendly SaaS—it's a design manifesto. The page feels like a gallery exhibition or luxury magazine spread. Every word earns its place.
-
-Visual signatures:
-
-- Massive headlines that make you scroll
-- Tight letter-spacing on display text (`-0.04em` to `-0.06em`)
-- Wide letter-spacing on labels (`0.1em` to `0.2em`)
-- Text that bleeds to edge on mobile
-- Underlines as the primary interactive affordance
-- No rounded corners—sharp edges match sharp typography
-
----
-
-## Design Token System
-
-### Colors (Dark Mode)
-
-```
-background:        #0A0A0A    // Near-black, not pure black
-foreground:        #FAFAFA    // Warm white
-muted:             #1A1A1A    // Subtle surface elevation
-mutedForeground:   #737373    // Secondary text (WCAG AA on dark)
-accent:            #FF3D00    // Vermillion—warm, urgent, visible
-accentForeground:  #0A0A0A    // Dark text on accent
-border:            #262626    // Barely-there dividers
-input:             #1A1A1A    // Input backgrounds
-card:              #0F0F0F    // Slight elevation from bg
-cardForeground:    #FAFAFA
-ring:              #FF3D00    // Focus states match accent
-```
-
-The accent is deliberate: vermillion/red-orange creates urgency and warmth against the cold dark background. It's used sparingly—headlines, key CTAs, and underlines only.
-
-### Typography
-
-**Primary Stack**: `"Inter Tight", "Inter", system-ui, sans-serif`
-
-- Inter Tight for headlines (tighter default spacing)
-- Clean, geometric, professional
-
-**Display Stack**: `"Playfair Display", Georgia, serif`
-
-- For pull quotes and testimonials only
-- Creates elegant contrast with sans headlines
-
-**Mono Stack**: `"JetBrains Mono", "Fira Code", monospace`
-
-- Labels, stats, technical details
-
-**Scale System**:
-
-```
-xs:    0.75rem    // 12px - fine print
-sm:    0.875rem   // 14px - captions
-base:  1rem       // 16px - body
-lg:    1.125rem   // 18px - lead paragraphs
-xl:    1.25rem    // 20px - subheads
-2xl:   1.5rem     // 24px - section intros
-3xl:   2rem       // 32px - H3
-4xl:   2.5rem     // 40px - H2
-5xl:   3.5rem     // 56px - H1 mobile
-6xl:   4.5rem     // 72px - H1 tablet
-7xl:   6rem       // 96px - H1 desktop
-8xl:   8rem       // 128px - Hero statement
-9xl:   10rem      // 160px - Decorative numbers
-```
-
-**Tracking**:
-
-```
-tighter:  -0.06em   // Display headlines
-tight:    -0.04em   // Large headings
-normal:   -0.01em   // Body (slightly tightened)
-wide:     0.05em    // Small labels
-wider:    0.1em     // All-caps labels
-widest:   0.2em     // Sparse emphasis
-```
-
-**Line Heights**:
-
-```
-none:     1         // Single-line headlines
-tight:    1.1       // Multi-line headlines
-snug:     1.25      // Subheads
-normal:   1.6       // Body text
-relaxed:  1.75      // Long-form reading
-```
-
-### Radius & Border
-
-```
-radius:   0px       // No border-radius anywhere. Sharp edges only.
-border:   1px       // Thin, precise dividers
-borderThick: 2px    // Accent underlines
-```
-
-### Shadows & Effects
-
-No traditional shadows. Depth comes from:
-
-- **Layered type**: Large muted text behind smaller bright text
-- **Underlines**: 2-3px accent lines under interactive elements
-- **Dividers**: Full-width horizontal rules
-
-```
-shadow: none
-textShadow: none
-```
-
-### Textures & Patterns
-
-**Subtle noise grain texture**: A very subtle fractal noise pattern at 1.5% opacity overlays the entire page, adding tactile quality to the dark background without being obtrusive. Implemented via inline SVG data URL with feTurbulence filter.
-
-**Typographic layering for depth**:
-
-- Decorative oversized numbers/text behind content with low opacity
-- Text shadow technique: duplicate text offset 1-2px in border color creates depth without traditional shadows
-- Accent bars: thin horizontal accent-colored bars (h-1, w-16) as visual anchors on key elements
+- Generic gradient SaaS visuals.
+- Excessive glassmorphism.
+- Huge rounded cards everywhere.
+- Decorative blobs.
+- Random shadows and glows.
+- Empty dashboard space created only to look premium.
+- Over-animated charts.
+- Purple used for every data series or status.
 
 ---
 
-## Component Stylings
+## 2. Color Tokens
+
+Use semantic CSS variables compatible with Tailwind and shadcn. Store chart and status palettes separately from component tokens.
+
+### 2.1 Light mode
+
+```text
+background:              #F8F7FC
+foreground:              #17131F
+surface:                 #FFFFFF
+surfaceRaised:           #FFFFFF
+surfaceSubtle:           #F2F0F8
+muted:                   #F0EDF7
+mutedForeground:         #6E687A
+card:                    #FFFFFF
+cardForeground:          #17131F
+popover:                 #FFFFFF
+popoverForeground:       #17131F
+border:                  #DDD8E8
+borderStrong:            #C9C1D8
+input:                   #F6F4FA
+primary:                 #6D3CF5
+primaryHover:            #5D2CE5
+primaryActive:           #4E20CF
+primaryForeground:       #FFFFFF
+primarySubtle:           #EEE9FF
+primarySubtleForeground: #4B21B6
+secondary:               #ECE9F3
+secondaryForeground:     #2E2838
+accent:                  #E9E3FF
+accentForeground:        #4820AF
+ring:                    #7C4DFF
+success:                 #12825E
+successSubtle:           #E5F6EF
+warning:                 #A96808
+warningSubtle:           #FFF4D8
+destructive:             #C93F57
+destructiveSubtle:       #FDECEF
+info:                    #2369C7
+infoSubtle:              #E8F1FF
+```
+
+### 2.2 Dark mode
+
+```text
+background:              #0B0911
+foreground:              #F6F3FC
+surface:                 #110E18
+surfaceRaised:           #15111E
+surfaceSubtle:           #1A1623
+muted:                   #1C1726
+mutedForeground:         #A9A1B6
+card:                    #121019
+cardForeground:          #F6F3FC
+popover:                 #17131F
+popoverForeground:       #F6F3FC
+border:                  #2B2538
+borderStrong:            #3B334B
+input:                   #17131F
+primary:                 #9A78FF
+primaryHover:            #AC91FF
+primaryActive:           #8762F0
+primaryForeground:       #160C31
+primarySubtle:           #261B43
+primarySubtleForeground: #D9CEFF
+secondary:               #211B2C
+secondaryForeground:     #EAE5F3
+accent:                  #2B1F4C
+accentForeground:        #E0D7FF
+ring:                    #A88BFF
+success:                 #48C999
+successSubtle:           #102E25
+warning:                 #E4A63B
+warningSubtle:           #34250F
+destructive:             #F06B7C
+destructiveSubtle:       #371820
+info:                    #65A5F4
+infoSubtle:              #132A45
+```
+
+### 2.3 Purple usage
+
+Use purple for:
+
+- Primary actions.
+- Active navigation.
+- Selected filters.
+- Focus rings.
+- Builder connectors and selected nodes.
+- Brand marks.
+- One primary chart series.
+
+Do not use purple for:
+
+- Every chart series.
+- Errors, warnings, and success states.
+- All table badges.
+- Large page backgrounds.
+
+### 2.4 Chart palette
+
+Keep chart colors consistent across pages and themes. Verify contrast against both backgrounds.
+
+```text
+seriesPurple:    light #6D3CF5 / dark #9A78FF
+seriesBlue:      light #2F6FED / dark #69A2FF
+seriesCyan:      light #078CA0 / dark #4CC7D8
+seriesGreen:     light #12825E / dark #48C999
+seriesAmber:     light #B4750B / dark #E4A63B
+seriesCoral:     light #D05668 / dark #F07B8B
+seriesSlate:     light #718096 / dark #9AA6B6
+chartGrid:       light #E8E4EF / dark #262130
+chartAxis:       light #766F83 / dark #9D95AA
+chartTooltip:    use popover tokens
+```
+
+### 2.5 Workflow status mapping
+
+```text
+completed:       success
+waiting:         info or neutral blue
+nearDeadline:    warning
+violated:        destructive
+forbiddenSeen:   destructive
+paused:          muted
+unknown:         slate
+live:            cyan
+```
+
+Color must always be paired with label, icon, pattern, or shape.
+
+### 2.6 Token implementation contract
+
+All product colors must be exposed once as semantic CSS custom properties in
+the web application's global token layer. Tailwind utilities, shadcn
+primitives, charts, and motion components consume those variables; feature
+components must not copy the hexadecimal values from this document.
+
+Use the following naming groups:
+
+```text
+component:  --background, --foreground, --surface, --surface-raised,
+            --surface-subtle, --card, --card-foreground, --popover,
+            --popover-foreground, --muted, --muted-foreground, --border,
+            --border-strong, --input, --primary, --primary-hover,
+            --primary-active, --primary-foreground, --primary-subtle,
+            --primary-subtle-foreground, --secondary,
+            --secondary-foreground, --accent, --accent-foreground, --ring
+semantic:   --success, --success-subtle, --warning, --warning-subtle,
+            --destructive, --destructive-subtle, --info, --info-subtle
+chart:      --chart-purple, --chart-blue, --chart-cyan, --chart-green,
+            --chart-amber, --chart-coral, --chart-slate, --chart-grid,
+            --chart-axis
+geometry:   --radius-xs through --radius-xl, --sidebar-width,
+            --sidebar-width-collapsed, --drawer-width
+motion:     --motion-ease, --motion-micro, --motion-standard,
+            --motion-panel, --motion-page
+```
+
+Use space-separated RGB/HSL channels only if the selected Tailwind version
+needs alpha composition. Otherwise use complete color values. Do not maintain
+parallel token definitions in TypeScript. Code that needs a computed chart
+color reads the resolved CSS variable at the chart boundary.
+
+---
+
+## 3. Typography
+
+### Font stacks
+
+```text
+UI:      "Inter", system-ui, sans-serif
+Display: "Inter Tight", "Inter", system-ui, sans-serif
+Mono:    "JetBrains Mono", "SFMono-Regular", monospace
+```
+
+Use Playfair Display only on a future marketing site, not inside the authenticated analytics application.
+
+### Application scale
+
+```text
+xs:      0.75rem  / 1rem
+sm:      0.8125rem / 1.125rem
+base:    0.875rem / 1.375rem
+md:      1rem / 1.5rem
+lg:      1.125rem / 1.5rem
+xl:      1.25rem / 1.625rem
+2xl:     1.5rem / 1.875rem
+3xl:     2rem / 2.25rem
+4xl:     2.5rem / 2.75rem
+```
+
+### Usage
+
+- Page title: 24–32px, tight tracking, 600–700 weight.
+- Section heading: 16–20px, 600 weight.
+- Metric value: 24–36px, tabular numerals.
+- Body: 14px desktop, never below 13px for important content.
+- Table text: 13–14px.
+- Labels: 11–12px, medium weight, moderate tracking; avoid excessive all-caps.
+- IDs, durations, timestamps, queries, event names: mono font.
+
+Do not bring marketing-scale 96px headings into the dashboard.
+
+---
+
+## 4. Radius, Border, and Elevation
+
+The source design used sharp edges. TemporalGuard keeps precise geometry but adds restrained radii for usability in a modern application.
+
+```text
+radiusXs:    4px
+radiusSm:    6px
+radiusMd:    8px
+radiusLg:    10px
+radiusXl:    12px
+radiusPill:  999px
+border:      1px
+```
+
+Rules:
+
+- Inputs and buttons: 7–8px.
+- Panels/cards: 8–10px.
+- Drawers and large modals: 12px where visible.
+- Badges and filter chips: pill only when the shape communicates compact selection/status.
+- Do not combine large radii with heavy shadows.
+
+Elevation:
+
+- Primary separation uses borders and surface shifts.
+- Use subtle shadow only for popovers, command palette, floating menus, and drag previews.
+- No permanent glow.
+
+---
+
+## 5. Spacing and Density
+
+Base unit: 4px.
+
+```text
+page horizontal padding: 16 mobile / 24 tablet / 28–32 desktop
+page vertical padding:   20 mobile / 24–28 desktop
+panel padding:           14 compact / 16 standard / 20 spacious
+control height:          32 compact / 36 standard / 40 form / 44 mobile
+sidebar width:           248 expanded / 64 collapsed
+right drawer width:      440–560 desktop
+```
+
+Tables should default to 40px rows with an optional comfortable density setting.
+
+### 5.1 Analytics density rules
+
+- Above 1440px, add useful columns, comparison context, or investigation
+  detail before increasing whitespace.
+- Between 1024px and 1439px, preserve the primary chart and table context;
+  move secondary explanations and controls into drawers or overflow menus.
+- Between 768px and 1023px, keep two analytical regions only when both remain
+  readable without horizontal compression.
+- Below 768px, prioritize one decision per viewport section. Tables become
+  prioritized rows or cards, while the full record remains reachable.
+- Metric panels use stable heights within a row. Loading, partial, and error
+  states must not change the grid footprint.
+- Filter bars wrap by semantic group. Do not shrink labels into ambiguous
+  abbreviations merely to keep a single row.
+- Numeric columns are right-aligned and use tabular numerals. Event names,
+  workflow IDs, correlation keys, and trace references use the mono stack.
+
+---
+
+## 6. Application Layout
+
+### Sidebar
+
+- Dark/light surface distinct from page background.
+- Logo, workspace switcher, grouped navigation, settings/user footer.
+- Active item uses a purple subtle background, strong foreground, and small indicator.
+- Collapsible with tooltip labels.
+
+### Top bar
+
+- Sticky.
+- Thin bottom border.
+- Contains environment, time range, compare, live state, search, theme, and user actions.
+- Controls use compact density.
+
+### Content
+
+- Maximize available width; analytics pages should not be constrained to a marketing-style 1200px container.
+- Use a page max width only for auth and narrow settings forms.
+- Dashboard grids use 12 columns and collapse predictably.
+
+---
+
+## 7. Components
 
 ### Buttons
 
-Primary button is **text-only with animated underline**:
+Primary:
 
-```
-- No background fill
-- Text in accent color
-- Animated underline: absolute positioned span, h-0.5, bg-accent
-- Base state: scale-x-100, on hover: scale-x-110
-- Uppercase, wide tracking (tracking-wider: 0.1em)
-- Font-weight: 600 (semibold)
-- Padding: py-2/3/4 based on size (sm/default/lg), px-0
-- Gap between children: gap-2/2.5/3
-- Active state: translate-y-px for press feedback
-- Transition: 150ms all
-```
+- Purple filled background.
+- White/dark appropriate foreground.
+- No gradient.
+- 36–40px desktop height, 44px mobile.
+- Subtle color transition and 1px press movement.
 
-Secondary/outline button:
+Secondary:
 
-```
-- Border: 1px solid foreground
-- Text: foreground
-- No background fill initially
-- On hover: bg-foreground, text becomes background color (full inversion)
-- Sharp corners (0px radius)
-- Padding: px-6 (needs horizontal padding unlike primary)
-- Uppercase, tracking-wider
-```
+- Surface background or transparent.
+- Border.
+- Strong text.
 
-Ghost button:
+Ghost:
 
-```
-- No border, no fill
-- Text: mutedForeground
-- Padding: px-4
-- On hover: text becomes foreground
-- Underline appears via scale-x-0 to scale-x-100 transition
-- Underline is h-px (thinner than primary)
-```
+- No border until hover unless it is icon-only.
+
+Destructive:
+
+- Use destructive token, not purple.
 
 All buttons:
 
-```
-- Focus-visible: 2px ring in accent, 2px offset
-- Disabled: pointer-events-none, opacity-50
-- Inline-flex for proper alignment
-- Whitespace-nowrap to prevent wrapping
-```
-
-### Cards/Containers
-
-**Minimal card usage.** Content is primarily separated by:
-
-- Generous section padding (py-20 to py-40)
-- Full-width horizontal borders (border-t/border-b)
-- Typography scale changes
-- Background color alternation (background ↔ muted)
-
-When a "card" is necessary (pricing, testimonials):
-
-```
-- Border: 1px solid border (controlled by `bordered` prop)
-- Background: transparent (bg-transparent)
-- No radius (0px, sharp corners)
-- No shadow
-- Padding: p-6 (mobile) to p-8 (desktop)
-- Transition on hover: border-hover color (150ms)
-```
-
-Highlighted cards (featured pricing tier):
-
-```
-- Border: 2px solid accent (overrides default 1px)
-- Small accent badge above content (bg-accent, px-3 py-1, uppercase mono text)
-- No background change, border is the differentiator
-```
-
-Special depth technique (Product Detail card):
-
-```
-- Add accent top border: absolute h-1 w-16 bg-accent
-- Layered text: duplicate text element offset with -z-10 and border color
-- Creates subtle dimensionality without shadows
-```
+- Clear focus ring.
+- Loading spinner without shifting label width.
+- Disabled state retains readable contrast.
 
 ### Inputs
 
-```
-- Background: input color (#1A1A1A)
-- Border: 1px solid border
-- Border-radius: 0px (rounded-none, sharp corners)
-- Height: h-12 (mobile) to h-14 (desktop), responsive
-- Font-size: text-base (16px, prevents zoom on iOS)
-- Padding: px-4
-- Text color: foreground
-- Placeholder: mutedForeground
-- Focus: border-accent, no ring, no glow, outline-none
-- Transition: colors 150ms
-- Disabled: cursor-not-allowed, opacity-50
-- File input: special styling for file upload elements
-```
+- Surface/input background.
+- 1px border.
+- Purple focus border/ring.
+- Labels above input.
+- Inline errors below.
+- Search inputs may contain icons and keyboard hints.
 
-Special case (Final CTA inverted section):
+### Cards and panels
 
-```
-- Background: transparent (to show inverted bg)
-- Border: border-background/30 (semi-transparent white)
-- Text: background color (inverted)
-- Placeholder: background/50 (semi-transparent)
-- Focus border: accent (stands out on white bg)
-```
+- Use cards only for meaningful grouping.
+- Analytics panels have compact headers, optional actions, fixed loading geometry, and border separation.
+- Avoid nested cards beyond two levels.
 
----
+### Tables
 
-## Layout Strategy
+- Sticky header when useful.
+- Column alignment based on content type.
+- Tabular numerals.
+- Row hover is subtle.
+- Selected rows use primary-subtle surface and a left indicator.
+- Support keyboard row navigation where practical.
 
-### Container
+### Badges
 
-```
-maxWidth: 1200px (max-w-5xl)
-padding: 24px mobile, 48px tablet, 64px desktop
-```
+- Small and semantic.
+- Never use a different arbitrary hue per string value.
+- Add icons only when they improve recognition.
 
-### Section Spacing
+### Drawers
 
-```
-py-20 (80px) - tight sections
-py-28 (112px) - standard sections
-py-40 (160px) - hero/CTA sections
-```
-
-### Grid Philosophy
-
-- **Asymmetric grids**: 7/5 or 8/4 splits instead of 6/6
-- **Staggered alignment**: Elements don't always align top
-- **Text columns**: max-w-2xl for readability, but headlines can span full width
+- Preserve underlying exploration context.
+- Header and footer can remain sticky.
+- Tabs inside drawer are acceptable.
+- Deep-linkable selection where possible.
 
 ---
 
-## Effects & Animation
+## 8. Charts
 
-### Motion Philosophy
+- Use consistent axes, grid, tooltip, and legend components.
+- Avoid chart junk, 3D effects, gradients under every line, or over-smoothed curves that misrepresent data.
+- Use purple for the primary series and semantic/secondary colors for comparisons.
+- Deployment markers use neutral dashed lines with labels.
+- Hover states should connect to filters or drill-downs.
+- Every chart needs an accessible summary and empty/error state.
+- Skeletons must match chart dimensions.
 
-**Fast and decisive.** No bouncy easing. No playful delays. Movement is confident and direct.
+### Analytical interpretation rules
 
-```
-duration: 150ms - micro-interactions (buttons, underlines)
-duration: 200ms - standard transitions (FAQ accordion, colors)
-duration: 500ms - image hover effects
-easing: cubic-bezier(0.25, 0, 0, 1) - fast-out, crisp stop
-```
-
-### Specific Effects
-
-**Link/Button interactions**:
-
-- Underline scale animation (scale-x-0 to scale-x-100 on hover for ghost, scale-x-100 to scale-x-110 for primary)
-- Text color transition (150ms)
-- Active press feedback: translate-y-px for tactile response
-- No scale, no glow, no bounce
-
-**Card hover**:
-
-- Border color lightens (border-hover token)
-- Background color change on feature cards (transparent → muted)
-- No lift, no shadow, no scale
-
-**Image hover** (blog posts):
-
-- Scale transform (scale-105) over 500ms
-- Image only, not container
-- Overflow hidden on container
-
-**Page scroll animations** (Framer Motion):
-
-- Fade in + slide up (opacity 0→1, translateY 20px→0) over 500ms
-- Stagger children by 80ms with 100ms delay before first
-- Viewport trigger: once only, 15% threshold, -50px margin
-- Container stagger, individual fadeInUp variants
-
-**FAQ accordion**:
-
-- Height auto-animate with opacity fade
-- 200ms duration with ease-out
-- Icons swap (Plus ↔ Minus) instantly
-
-**Step number hover** (How It Works):
-
-- Color transition from border color to accent (fast, 150ms)
-- No movement, pure color change
+- A comparison delta must say what it compares with; direction alone is not
+  enough. For failure-oriented metrics such as violations and overdue
+  workflows, an increase is visually negative even though the number rose.
+- Completion rate and duration must never share an unlabeled axis. Mixed-unit
+  views use separate modes or unmistakable axes and legends.
+- Truncated time ranges, sampled data, mock results, and partial failures must
+  be labeled adjacent to the affected visualization.
+- Tooltips supplement the visible chart; they must not contain the only copy
+  of a value needed to interpret the result.
+- Deployment annotations use neutral dashed markers. They indicate temporal
+  correlation, never causation.
+- Heatmaps include a textual scale, exact value on focus/hover, and a
+  non-color summary. Empty cells and zero-value cells must be distinguishable.
+- Funnel percentages state their denominator, and drop-off actions retain the
+  current environment, time range, and filters.
 
 ---
 
-## Iconography
+## 9. Query Builder
 
-From `lucide-react`:
+The Query Builder is the signature interface.
 
-```
-- Stroke width: 1.5px (thinner than default 2px for elegance)
-- Sizes by context:
-  - 16px: inline with small text (arrows in buttons)
-  - 18px: FAQ toggle, footer social icons
-  - 20px: standard navbar icons
-  - 24px: feature section icons (28px on desktop)
-- Color: currentColor (inherits from parent text color)
-- Accent icons: explicitly text-[var(--accent)] class
-- Style: Use sparingly—text labels are preferred
-- Positioning: icons sit left of text in buttons, above text in feature cards
-- Never use filled icons, always outline/stroke style
-```
+### Desktop structure
 
-Icon mapping by section:
+- Left rail: operators, event catalogue, recent events.
+- Center: visual rule canvas and sentence representation.
+- Right rail: selected-node properties, validation, and historical test preview.
 
-```
-Features: Users, Zap, BarChart3, Link, Shield, Headphones, Globe (from data.icon field)
-Social: Twitter, Linkedin, Github
-UI controls: Plus, Minus (FAQ), ArrowRight (CTAs), Check (pricing features)
-```
+### Builder nodes
 
----
+- Trigger: neutral/primary outline.
+- `any`: branched connector with “ANY” label.
+- `all`: parallel connector with “ALL” label.
+- `sequence`: numbered vertical or horizontal steps.
+- `forbid`: destructive outline and prohibition icon.
+- Deadline: compact clock node.
+- Invalid node: destructive border plus explicit message.
 
-## Responsive Strategy
+### Event selector
 
-**Mobile-first typography scaling**:
+- Command-menu pattern.
+- Search, recent, popular, grouped domain sections.
+- Event canonical name in mono.
+- “Create event” action when no exact match exists.
+- Inline creation must not destroy the current draft.
 
-- Headlines: text-3xl (mobile) → text-4xl/5xl (tablet) → text-6xl/7xl/8xl (desktop)
-- Hero headline specifically: text-4xl → text-5xl → text-6xl → text-7xl → text-8xl (progressive enhancement)
-- Body text: text-base (16px) throughout with md:text-lg on key sections
-- Maintain hierarchy ratio at all sizes
-- Icon sizes: 16px-18px inline, 24px standard, scaling down on mobile
+### Motion
 
-**Layout shifts**:
-
-- Stats: 1 column → 2 columns (sm) → 4 columns (md)
-- Features: 1 column → 2 columns (sm) → 3 columns (lg)
-- Blog/Testimonials/Pricing: 1 column → 2 columns (sm) → 3 columns (lg)
-- How It Works: stacked → 3-column grid with number|title|description (lg)
-- Benefits: stacked → 2-column side-by-side (lg)
-- Footer: 2 columns → 4 columns (md) → 5 columns (lg)
-- Asymmetric grids collapse to stacked on mobile
-
-**Spacing adjustments**:
-
-- Section padding: py-20 (mobile) → py-28 (md) → py-32/40 (lg)
-- Container padding: px-6 (mobile) → px-12 (md) → px-16 (lg)
-- Gap spacing: gap-4 → gap-6 → gap-8 progression
-- Internal card padding: p-6 (mobile) → p-8 (md+)
-
-**Mobile-specific fixes**:
-
-- Hide decorative overflow elements (large "01", "ACME" text) on mobile to prevent horizontal scroll
-- Reduce decorative number sizes to prevent layout breaking
-- Ensure touch targets are minimum 44x44px (buttons h-12 on mobile, h-14 on desktop)
-- Stack email input + button on mobile, side-by-side on tablet+
-- Adjust navigation gaps to be tighter on smaller screens
-
-**Typography integrity**:
-
-- Headlines scale smoothly with responsive classes (never one size for all)
-- Keep letter-spacing consistent across breakpoints
-- Ensure underlines remain visible and touchable (2px minimum)
-- Line-height increases slightly for smaller screens for readability
-- Max-width constraints on body text prevent overly long lines (max-w-xl, max-w-2xl, max-w-3xl)
+- Node insertion: short fade/scale from 0.98 to 1.
+- Connector drawing: brief line reveal.
+- Reorder: layout animation.
+- No bouncy spring defaults.
 
 ---
 
-## Accessibility
+## 10. Authentication Screens
 
-**Contrast**:
+- Split layout on large screens: form plus controlled visual/metric narrative.
+- Single focused column on mobile.
+- The right visual can show an abstract workflow timeline, not stock imagery.
+- Logo upload uses a clear dropzone, preview, replace, remove, and error state.
+- Do not use oversized marketing copy that pushes the form below the fold.
+- Theme switch remains available.
 
-- foreground (#FAFAFA) on background (#0A0A0A) = 18.1:1 ✓
-- mutedForeground (#737373) on background = 5.3:1 ✓ (AA)
-- accent (#FF3D00) on background = 5.4:1 ✓ (AA for large text)
+---
 
-**Focus states**:
+## 11. Loading and Feedback
 
-- 2px accent outline
-- 2px offset from element
-- No glow, no fill change
-- Visible on all interactive elements
+- Skeletons for initial page and widget loads.
+- Keep previous data visible during background refresh.
+- Use compact progress indicators for uploads and form submissions.
+- Toasts for transient success/failure; inline messages for actionable form errors.
+- Empty states explain whether there is no data or filters removed all results.
+- Use optimistic behavior only where rollback is safe and obvious.
 
-**Typography**:
+---
 
-- Body text minimum 16px
-- Line-height minimum 1.5 for body
-- No thin weights below 400
+## 12. Motion
 
-**Interaction**:
+Default easing:
 
-- Touch targets minimum 44x44px
-- Underlines are 2px+ for visibility
-- Color is never the only indicator
-  </design-system>
+```text
+cubic-bezier(0.22, 1, 0.36, 1)
+```
+
+Durations:
+
+```text
+micro:      120–160ms
+standard:   180–240ms
+panel:      240–320ms
+page:       320–420ms
+```
+
+- Framer Motion is the default.
+- GSAP is reserved for complex orchestrated timeline demos or chart storytelling.
+- Never animate layout continuously during live updates.
+- Respect reduced motion.
+
+---
+
+## 13. Iconography
+
+Use Lucide React.
+
+```text
+inline:     14–16px
+controls:   16–18px
+navigation: 18–20px
+feature:    20–24px
+stroke:     1.75px default
+```
+
+Use outline icons only. Icons supplement labels rather than replacing unfamiliar actions.
+
+---
+
+## 14. Responsive Strategy
+
+- Desktop prioritizes information density and side-by-side investigation.
+- Tablet collapses secondary rails into drawers.
+- Mobile uses staged Query Builder tabs: Trigger, Condition, Events, Window, Review.
+- Charts keep readable minimum widths and provide a summarized mobile view.
+- Tables prioritize columns and expose the rest in row details.
+- Sidebar becomes a sheet or compact bottom navigation for the primary destinations.
+
+---
+
+## 15. Accessibility
+
+- WCAG 2.2 AA target.
+- Visible focus on every control.
+- Purple focus ring must contrast in both themes.
+- Body content remains at least 13–14px in dense areas and 16px in forms.
+- No important interaction depends only on hover.
+- Charts expose summaries/data tables.
+- Status is not communicated by color alone.
+- Drag-and-drop has keyboard controls.
+- Dialogs and drawers correctly trap and restore focus.
+
+---
+
+## 16. Quality Gate
+
+A page does not meet the design system when it:
+
+- Uses literal colors instead of tokens.
+- Introduces an unrelated radius, shadow, or gradient.
+- Uses huge empty cards to appear modern.
+- Omits dark or light mode behavior.
+- Has no loading/empty/error states.
+- Has inaccessible focus or contrast.
+- Uses inconsistent status colors.
+- Uses animations that delay work.
+- Copies another analytics product's identifiable visual treatment.
+
+</design-system>

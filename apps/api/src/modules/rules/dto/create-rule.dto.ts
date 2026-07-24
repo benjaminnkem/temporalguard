@@ -9,12 +9,17 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  IsUUID,
 } from 'class-validator';
 import { RuleOperator } from '../enums/rule-operator.enum';
 import { RuleSeverity } from '../enums/rule-severity.enum';
 import { TimeoutUnit } from '../enums/timeout-unit.enum';
 
 export class CreateRuleDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  businessId: string;
+
   @ApiProperty({ example: 'payment-must-resolve-within-15m' })
   @IsString()
   @IsNotEmpty()

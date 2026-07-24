@@ -24,15 +24,20 @@ export class EventLogsService {
   async ingest(
     dto: CreateEventLogDto,
   ): Promise<{ eventLog: EventLog; workflows: Workflow[] }> {
-    const event = await this.eventsService.findOrCreateByName(dto.eventName);
+    const event = await this.eventsService.findOrCreateByName(
+      dto.businessId,
+      dto.eventName,
+    );
     const externalWorkflow = dto.externalWorkflowId
       ? await this.workflowsService.findOrCreateExternalWorkflow(
+          dto.businessId,
           dto.externalWorkflowId,
         )
       : null;
 
     const eventLog = await this.logsRepository.save(
       this.logsRepository.create({
+        businessId: dto.businessId,
         eventId: event.id,
         event,
         timestamp: new Date(dto.timestamp),

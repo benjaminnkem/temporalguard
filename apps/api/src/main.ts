@@ -3,6 +3,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { APP_NAME, GLOBAL_API_PREFIX, SWAGGER_PATH } from './common/constants';
 
@@ -12,7 +13,11 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   app.setGlobalPrefix(GLOBAL_API_PREFIX);
-  app.enableCors();
+  app.enableCors({
+    origin: configService.get<string>('auth.frontendOrigin'),
+    credentials: true,
+  });
+  app.use(cookieParser());
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -41,4 +46,4 @@ async function bootstrap() {
   );
 }
 
-bootstrap();
+void bootstrap();

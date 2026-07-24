@@ -14,12 +14,16 @@ export class ViolationsService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async create(createViolationDto: CreateViolationDto | Partial<Violation>): Promise<Violation> {
-    const violation = this.violationsRepository.create(createViolationDto as DeepPartial<Violation>);
+  async create(
+    createViolationDto: CreateViolationDto | Partial<Violation>,
+  ): Promise<Violation> {
+    const violation = this.violationsRepository.create(
+      createViolationDto as DeepPartial<Violation>,
+    );
     const saved = await this.violationsRepository.save(violation);
 
     try {
-      const fullViolation = await this.findOne(saved.id);
+      const fullViolation = await this.findOne(saved.businessId, saved.id);
       this.eventEmitter.emit(EVENT_VIOLATION_CREATED, {
         violationId: fullViolation.id,
         workflowId: fullViolation.workflowId,
@@ -27,21 +31,24 @@ export class ViolationsService {
         ruleName: fullViolation.rule?.name || '',
         severity: fullViolation.severity,
       });
-    } catch (e) {}
+    } catch {
+      // Telemetry enrichment is best-effort; the violation is already saved.
+    }
 
     return saved;
   }
 
-  async findAll(): Promise<Violation[]> {
+  async findAll(businessId: string): Promise<Violation[]> {
     return this.violationsRepository.find({
+      where: { businessId },
       order: { occurredAt: 'DESC' },
       relations: { workflow: true, rule: true },
     });
   }
 
-  async findOne(id: string): Promise<Violation> {
+  async findOne(businessId: string, id: string): Promise<Violation> {
     const violation = await this.violationsRepository.findOne({
-      where: { id },
+      where: { id, businessId },
       relations: { workflow: true, rule: true },
     });
 
@@ -53,16 +60,17 @@ export class ViolationsService {
   }
 
   async update(
+    businessId: string,
     id: string,
     updateViolationDto: UpdateViolationDto,
   ): Promise<Violation> {
-    const violation = await this.findOne(id);
-    Object.assign(violation, updateViolationDto);
+    const violation = await this.findOne(businessId, id);
+    Object.assign(violation, updateViolationDto, { businessId });
     return this.violationsRepository.save(violation);
   }
 
-  async remove(id: string): Promise<void> {
-    const violation = await this.findOne(id);
+  async remove(businessId: string, id: string): Promise<void> {
+    const violation = await this.findOne(businessId, id);
     await this.violationsRepository.remove(violation);
   }
 }

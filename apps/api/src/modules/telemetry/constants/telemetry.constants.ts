@@ -21,5 +21,6 @@ export const METRIC_WORKFLOWS_COMPLETED_TOTAL = 'workflows_completed_total';
 export const METRIC_WORKFLOWS_OVERDUE_TOTAL = 'workflows_overdue_total';
 export const METRIC_VIOLATIONS_TOTAL = 'violations_total';
 export const METRIC_ACTIVE_WORKFLOWS = 'active_workflows';
-export const METRIC_WORKFLOW_COMPLETION_DURATION = 'workflow_completion_duration';
+export const METRIC_WORKFLOW_COMPLETION_DURATION =
+  'workflow_completion_duration';
 export const METRIC_RULE_MATCHES_TOTAL = 'rule_matches_total';

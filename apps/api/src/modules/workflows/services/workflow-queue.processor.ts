@@ -21,25 +21,32 @@ export class WorkflowQueueProcessor extends WorkerHost {
   }
 
   async process(
-    job: Job<{ workflowId: string; ruleId: string }>,
+    job: Job<{ businessId: string; workflowId: string; ruleId: string }>,
   ): Promise<void> {
-    const { workflowId } = job.data;
+    const { businessId, workflowId } = job.data;
 
     try {
-      const workflow = await this.workflowsService.findOne(workflowId);
+      const workflow = await this.workflowsService.findOne(
+        businessId,
+        workflowId,
+      );
 
       if (workflow.status === WorkflowStatus.WAITING) {
         await this.workflowsService.updateStatus(
+          businessId,
           workflowId,
           WorkflowStatus.OVERDUE,
         );
         this.logger.log(`Workflow ${workflowId} marked as OVERDUE`);
 
-        const expectedEventsList = workflow.currentState && Array.isArray(workflow.currentState.expectedEvents)
-          ? (workflow.currentState.expectedEvents as string[])
-          : [];
+        const expectedEventsList =
+          workflow.currentState &&
+          Array.isArray(workflow.currentState.expectedEvents)
+            ? (workflow.currentState.expectedEvents as string[])
+            : [];
 
         await this.violationsService.create({
+          businessId,
           workflowId: workflow.id,
           ruleId: workflow.rule.id,
           severity: workflow.rule.severity as unknown as ViolationSeverity,
@@ -48,9 +55,11 @@ export class WorkflowQueueProcessor extends WorkerHost {
         });
         this.logger.log(`Violation created for overdue workflow ${workflowId}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown timeout job error';
       this.logger.error(
-        `Failed to process timeout check for workflow ${workflowId}: ${error.message}`,
+        `Failed to process timeout check for workflow ${workflowId}: ${message}`,
       );
       throw error;
     }

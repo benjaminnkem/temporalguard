@@ -1,8 +1,18 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEnum,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { ViolationSeverity } from '../enums/violation-severity.enum';
 
 export class CreateViolationDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  businessId: string;
+
   @ApiPropertyOptional({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
   @IsOptional()
   @IsUUID()
@@ -13,7 +23,10 @@ export class CreateViolationDto {
   @IsUUID()
   workflowId?: string;
 
-  @ApiPropertyOptional({ enum: ViolationSeverity, example: ViolationSeverity.HIGH })
+  @ApiPropertyOptional({
+    enum: ViolationSeverity,
+    example: ViolationSeverity.HIGH,
+  })
   @IsOptional()
   @IsEnum(ViolationSeverity)
   severity?: ViolationSeverity;

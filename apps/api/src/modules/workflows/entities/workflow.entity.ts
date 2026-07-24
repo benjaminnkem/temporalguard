@@ -7,6 +7,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { BaseEntity } from '../../../common/entities';
+import { Business } from '../../businesses/entities';
 import { Rule } from '../../rules/entities';
 import { Violation } from '../../violations/entities';
 import { WorkflowStatus } from '../enums/workflow-status.enum';
@@ -18,6 +19,15 @@ import { ExternalWorkflow } from './external-workflow.entity';
   where: `"status" = 'waiting' AND "externalWorkflowId" IS NOT NULL`,
 })
 export class Workflow extends BaseEntity {
+  @Column({ type: 'uuid' })
+  businessId: string;
+
+  @ManyToOne(() => Business, (business) => business.workflows, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   externalId: string | null;
 

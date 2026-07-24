@@ -25,6 +25,7 @@ export class WorkflowEngineService {
 
     const affected = new Map<string, Workflow>();
     const triggerRules = await this.rulesService.findEnabledByTriggerEvent(
+      log.businessId,
       log.eventId,
     );
 
@@ -57,6 +58,7 @@ export class WorkflowEngineService {
     }
 
     const expectingRules = await this.rulesService.findEnabledExpectingEvent(
+      log.businessId,
       log.eventId,
     );
     const waiting =
@@ -108,6 +110,7 @@ export class WorkflowEngineService {
       rule.timeoutUnit,
     );
     return this.workflowsService.createFromRule({
+      businessId: log.businessId,
       ruleId: rule.id,
       rule,
       externalId: log.externalWorkflow!.externalId,

@@ -33,7 +33,8 @@ Monorepo powered by [Turborepo](https://turborepo.dev/) + [pnpm](https://pnpm.io
 ```
 temporalguard/
 ├── apps/
-│   └── api/                 # NestJS REST API
+│   ├── api/                 # NestJS REST API and authentication
+│   └── web/                 # Next.js product application
 ├── packages/
 │   ├── eslint-config/
 │   └── typescript-config/
@@ -47,7 +48,8 @@ temporalguard/
 
 | Layer | Technology |
 |-------|------------|
-| Runtime | Node.js ≥ 18 |
+| Runtime | Node.js ≥ 20 |
+| Web | Next.js 16, React 19, Tailwind CSS 4 |
 | API | NestJS |
 | Database | PostgreSQL 16 (TypeORM) |
 | Queue / cache | Redis 7 (BullMQ) |
@@ -59,59 +61,66 @@ temporalguard/
 
 - **Docker** Engine 20.10+ and **Docker Compose** v2
 - At least **4 GB** RAM allocated to Docker (SigNoz + ClickHouse)
-- **Node.js ≥ 18** and **pnpm 9** (only if running the API on the host)
+- **Node.js ≥ 20** and **pnpm 9** (for host development)
 
-No SigNoz Cloud account, ingestion keys, or external credentials are required.
+No SigNoz credentials are required for the default app-only mode. Cloudinary
+is required only when real HTTP signup uploads a logo.
 
 ## Quick start (full stack)
 
-Start the entire development environment with a single command:
+Start the web, API, PostgreSQL, and Redis:
 
 ```sh
-docker compose up -d
+docker compose up -d --build
 ```
 
 This starts:
 
 | Service | Role |
 |---------|------|
+| `web` | TemporalGuard Next.js application |
 | `api` | TemporalGuard NestJS API |
 | `postgres` | Application database |
 | `redis` | Cache / BullMQ |
-| `otel-collector` | OpenTelemetry Collector (SigNoz distribution) |
-| `signoz` | SigNoz UI + query service |
-| `clickhouse` | Telemetry store |
-| `zookeeper-1` | ClickHouse coordination |
-| `init-clickhouse` / migrator | One-shot SigNoz schema setup |
+
+Add `--profile observability-local` for the bundled SigNoz stack, or
+`--profile observability-cloud` for the cloud collector. Exact commands are in
+[`docs/IMPLEMENTATION_REPORT.md`](docs/IMPLEMENTATION_REPORT.md).
 
 ### Service URLs
 
 | Service | URL |
 |---------|-----|
-| **API** | http://localhost:3000 |
-| **API Swagger** | http://localhost:3000/docs |
-| **API health** | http://localhost:3000/api/health |
+| **Web** | http://localhost:3000 |
+| **API** | http://localhost:4000 |
+| **API Swagger** | http://localhost:4000/docs |
+| **API health** | http://localhost:4000/api/health |
 | **SigNoz** | http://localhost:3301 |
 | **PostgreSQL** | localhost:5432 |
 | **Redis** | localhost:6379 |
 | **OTLP gRPC** | localhost:4317 |
 | **OTLP HTTP** | localhost:4318 |
 
-On first visit to SigNoz (`http://localhost:3301`), complete the local admin signup. There is no cloud login.
+When running the local profile, complete the local admin signup on the first
+visit to SigNoz. Cloud mode uses the configured SigNoz Cloud workspace.
 
 Once the API receives traffic, the **temporalguard-api** service appears under Services / Traces in the SigNoz UI.
 
 ## Docker commands
 
 ```sh
-# Start (detached)
-docker compose up -d
+# Start app services (detached)
+docker compose up -d --build
+
+# Start app plus local SigNoz
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 \
+  docker compose --profile observability-local up -d --build
 
 # Follow logs
 docker compose logs -f
 
-# Follow API + collector only
-docker compose logs -f api otel-collector
+# Follow web + API
+docker compose logs -f web api
 
 # Status / health
 docker compose ps

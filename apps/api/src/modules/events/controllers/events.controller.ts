@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -35,27 +36,34 @@ export class EventsController {
   @Get()
   @ApiOperation({ summary: 'List business event definitions' })
   @ApiOkResponse({ description: 'List of event definitions' })
-  findAll() {
-    return this.eventsService.findAll();
+  findAll(@Query('businessId', ParseUUIDPipe) businessId: string) {
+    return this.eventsService.findAll(businessId);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.eventsService.findOne(id);
+  findOne(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.eventsService.findOne(businessId, id);
   }
 
   @Patch(':id')
   update(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateBusinessEventDto,
   ) {
-    return this.eventsService.update(id, dto);
+    return this.eventsService.update(businessId, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Event definition deleted' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.eventsService.remove(id);
+  remove(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.eventsService.remove(businessId, id);
   }
 }

@@ -67,7 +67,7 @@ describe('WorkflowEngineService', () => {
         expectedEvents: ['payment.captured', 'payment.reversed'],
         operator: rule.operator,
       },
-    }) as Workflow;
+    }) as unknown as Workflow;
 
   beforeEach(() => {
     rulesService = {

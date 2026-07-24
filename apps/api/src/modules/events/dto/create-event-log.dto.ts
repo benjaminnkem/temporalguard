@@ -5,9 +5,14 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateEventLogDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  businessId: string;
+
   @ApiProperty({ example: 'payment.authorized' })
   @IsString()
   @IsNotEmpty()

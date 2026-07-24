@@ -18,4 +18,21 @@ export default () => ({
     exporterProtocol:
       process.env.OTEL_EXPORTER_OTLP_PROTOCOL ?? 'http/protobuf',
   },
+  auth: {
+    accessSecret: process.env.JWT_ACCESS_SECRET ?? 'development-access-secret',
+    accessTtl: process.env.JWT_ACCESS_TTL ?? '15m',
+    refreshSecret:
+      process.env.JWT_REFRESH_SECRET ?? 'development-refresh-secret',
+    refreshTtl: process.env.JWT_REFRESH_TTL ?? '30d',
+    cookieSecure: process.env.COOKIE_SECURE === 'true',
+    cookieSameSite: process.env.COOKIE_SAME_SITE ?? 'lax',
+    cookieDomain: process.env.COOKIE_DOMAIN || undefined,
+    frontendOrigin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000',
+  },
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET,
+    folder: process.env.CLOUDINARY_FOLDER ?? 'temporalguard/workspaces',
+  },
 });

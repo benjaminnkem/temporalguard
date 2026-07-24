@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -35,32 +36,39 @@ export class ViolationsController {
   @Get()
   @ApiOperation({ summary: 'List all violations' })
   @ApiOkResponse({ description: 'List of violations' })
-  findAll() {
-    return this.violationsService.findAll();
+  findAll(@Query('businessId', ParseUUIDPipe) businessId: string) {
+    return this.violationsService.findAll(businessId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a violation by id' })
   @ApiOkResponse({ description: 'Violation found' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.violationsService.findOne(id);
+  findOne(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.violationsService.findOne(businessId, id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a violation' })
   @ApiOkResponse({ description: 'Violation updated' })
   update(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateViolationDto: UpdateViolationDto,
   ) {
-    return this.violationsService.update(id, updateViolationDto);
+    return this.violationsService.update(businessId, id, updateViolationDto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a violation' })
   @ApiNoContentResponse({ description: 'Violation deleted' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.violationsService.remove(id);
+  remove(
+    @Query('businessId', ParseUUIDPipe) businessId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.violationsService.remove(businessId, id);
   }
 }

@@ -27,9 +27,15 @@ export class WorkflowsService {
   ) {}
 
   async create(createWorkflowDto: CreateWorkflowDto): Promise<Workflow> {
-    const rule = await this.rulesService.findOne(createWorkflowDto.ruleId);
+    const rule = await this.rulesService.findOne(
+      createWorkflowDto.businessId,
+      createWorkflowDto.ruleId,
+    );
     const externalWorkflow = createWorkflowDto.externalId
-      ? await this.findOrCreateExternalWorkflow(createWorkflowDto.externalId)
+      ? await this.findOrCreateExternalWorkflow(
+          createWorkflowDto.businessId,
+          createWorkflowDto.externalId,
+        )
       : null;
     if (externalWorkflow) {
       const existing = await this.findWaitingForRuleAndExternalWorkflow(
@@ -58,6 +64,7 @@ export class WorkflowsService {
     const saved = await this.workflowsRepository.save(workflow);
 
     await this.workflowQueueService.scheduleTimeout(
+      saved.businessId,
       saved.id,
       rule.id,
       saved.deadline,
@@ -73,8 +80,9 @@ export class WorkflowsService {
     return saved;
   }
 
-  async findAll(): Promise<Workflow[]> {
+  async findAll(businessId: string): Promise<Workflow[]> {
     return this.workflowsRepository.find({
+      where: { businessId },
       order: { createdAt: 'DESC' },
       relations: {
         rule: {
@@ -86,9 +94,9 @@ export class WorkflowsService {
     });
   }
 
-  async findOne(id: string): Promise<Workflow> {
+  async findOne(businessId: string, id: string): Promise<Workflow> {
     const workflow = await this.workflowsRepository.findOne({
-      where: { id },
+      where: { id, businessId },
       relations: {
         rule: {
           triggerEventDefinition: true,
@@ -106,12 +114,13 @@ export class WorkflowsService {
   }
 
   async update(
+    businessId: string,
     id: string,
     updateWorkflowDto: UpdateWorkflowDto,
   ): Promise<Workflow> {
-    const workflow = await this.findOne(id);
+    const workflow = await this.findOne(businessId, id);
     const oldStatus = workflow.status;
-    Object.assign(workflow, updateWorkflowDto);
+    Object.assign(workflow, updateWorkflowDto, { businessId });
     const saved = await this.workflowsRepository.save(workflow);
 
     if (oldStatus !== saved.status) {
@@ -121,8 +130,12 @@ export class WorkflowsService {
     return saved;
   }
 
-  async updateStatus(id: string, status: WorkflowStatus): Promise<Workflow> {
-    const workflow = await this.findOne(id);
+  async updateStatus(
+    businessId: string,
+    id: string,
+    status: WorkflowStatus,
+  ): Promise<Workflow> {
+    const workflow = await this.findOne(businessId, id);
     const oldStatus = workflow.status;
     workflow.status = status;
     const saved = await this.workflowsRepository.save(workflow);
@@ -134,8 +147,8 @@ export class WorkflowsService {
     return saved;
   }
 
-  async remove(id: string): Promise<void> {
-    const workflow = await this.findOne(id);
+  async remove(businessId: string, id: string): Promise<void> {
+    const workflow = await this.findOne(businessId, id);
     await this.workflowsRepository.remove(workflow);
   }
 
@@ -146,12 +159,13 @@ export class WorkflowsService {
     const saved = await this.workflowsRepository.save(workflow);
 
     await this.workflowQueueService.scheduleTimeout(
+      saved.businessId,
       saved.id,
       data.ruleId,
       saved.deadline,
     );
 
-    const rule = await this.rulesService.findOne(data.ruleId);
+    const rule = await this.rulesService.findOne(saved.businessId, data.ruleId);
     this.eventEmitter.emit(EVENT_WORKFLOW_CREATED, {
       workflowId: saved.id,
       ruleId: rule.id,
@@ -163,21 +177,22 @@ export class WorkflowsService {
   }
 
   async findOrCreateExternalWorkflow(
+    businessId: string,
     externalId: string,
   ): Promise<ExternalWorkflow> {
     const existing = await this.externalWorkflowsRepository.findOne({
-      where: { externalId },
+      where: { businessId, externalId },
     });
     if (existing) return existing;
     try {
       return await this.externalWorkflowsRepository.save(
-        this.externalWorkflowsRepository.create({ externalId }),
+        this.externalWorkflowsRepository.create({ businessId, externalId }),
       );
     } catch (error) {
       if ((error as { code?: string }).code === '23505') {
         const concurrentlyCreated =
           await this.externalWorkflowsRepository.findOne({
-            where: { externalId },
+            where: { businessId, externalId },
           });
         if (concurrentlyCreated) return concurrentlyCreated;
       }

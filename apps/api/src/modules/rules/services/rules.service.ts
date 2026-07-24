@@ -16,9 +16,11 @@ export class RulesService {
 
   async create(dto: CreateRuleDto): Promise<Rule> {
     const { triggerEvent, expectedEvents, ...values } = dto;
-    const trigger = await this.findOrCreateEvent(triggerEvent);
+    const trigger = await this.findOrCreateEvent(dto.businessId, triggerEvent);
     const expected = await Promise.all(
-      [...new Set(expectedEvents)].map((name) => this.findOrCreateEvent(name)),
+      [...new Set(expectedEvents)].map((name) =>
+        this.findOrCreateEvent(dto.businessId, name),
+      ),
     );
     const rule = this.rulesRepository.create({
       ...values,
@@ -29,8 +31,9 @@ export class RulesService {
     return this.withEventNames(await this.rulesRepository.save(rule));
   }
 
-  async findAll(): Promise<Rule[]> {
+  async findAll(businessId: string): Promise<Rule[]> {
     const rules = await this.rulesRepository.find({
+      where: { businessId },
       order: { createdAt: 'DESC' },
       relations: {
         triggerEventDefinition: true,
@@ -40,9 +43,9 @@ export class RulesService {
     return rules.map((rule) => this.withEventNames(rule));
   }
 
-  async findOne(id: string): Promise<Rule> {
+  async findOne(businessId: string, id: string): Promise<Rule> {
     const rule = await this.rulesRepository.findOne({
-      where: { id },
+      where: { id, businessId },
       relations: {
         triggerEventDefinition: true,
         expectedEventDefinitions: true,
@@ -54,33 +57,40 @@ export class RulesService {
     return this.withEventNames(rule);
   }
 
-  async update(id: string, dto: UpdateRuleDto): Promise<Rule> {
-    const rule = await this.findOne(id);
+  async update(
+    businessId: string,
+    id: string,
+    dto: UpdateRuleDto,
+  ): Promise<Rule> {
+    const rule = await this.findOne(businessId, id);
     const { triggerEvent, expectedEvents, ...values } = dto;
-    Object.assign(rule, values);
+    Object.assign(rule, values, { businessId });
 
     if (triggerEvent !== undefined) {
-      const event = await this.findOrCreateEvent(triggerEvent);
+      const event = await this.findOrCreateEvent(businessId, triggerEvent);
       rule.triggerEventId = event.id;
       rule.triggerEventDefinition = event;
     }
     if (expectedEvents !== undefined) {
       rule.expectedEventDefinitions = await Promise.all(
         [...new Set(expectedEvents)].map((name) =>
-          this.findOrCreateEvent(name),
+          this.findOrCreateEvent(businessId, name),
         ),
       );
     }
     return this.withEventNames(await this.rulesRepository.save(rule));
   }
 
-  async remove(id: string): Promise<void> {
-    await this.rulesRepository.remove(await this.findOne(id));
+  async remove(businessId: string, id: string): Promise<void> {
+    await this.rulesRepository.remove(await this.findOne(businessId, id));
   }
 
-  async findEnabledByTriggerEvent(eventId: string): Promise<Rule[]> {
+  async findEnabledByTriggerEvent(
+    businessId: string,
+    eventId: string,
+  ): Promise<Rule[]> {
     return this.rulesRepository.find({
-      where: { triggerEventId: eventId, enabled: true },
+      where: { businessId, triggerEventId: eventId, enabled: true },
       relations: {
         triggerEventDefinition: true,
         expectedEventDefinitions: true,
@@ -88,7 +98,10 @@ export class RulesService {
     });
   }
 
-  async findEnabledExpectingEvent(eventId: string): Promise<Rule[]> {
+  async findEnabledExpectingEvent(
+    businessId: string,
+    eventId: string,
+  ): Promise<Rule[]> {
     return this.rulesRepository
       .createQueryBuilder('rule')
       .innerJoin('rule.expectedEventDefinitions', 'matchedExpectedEvent')
@@ -98,21 +111,27 @@ export class RulesService {
       )
       .leftJoinAndSelect('rule.triggerEventDefinition', 'triggerEvent')
       .where('rule.enabled = :enabled', { enabled: true })
+      .andWhere('rule.businessId = :businessId', { businessId })
       .andWhere('matchedExpectedEvent.id = :eventId', { eventId })
       .getMany();
   }
 
-  private async findOrCreateEvent(name: string): Promise<BusinessEvent> {
-    const existing = await this.eventsRepository.findOne({ where: { name } });
+  private async findOrCreateEvent(
+    businessId: string,
+    name: string,
+  ): Promise<BusinessEvent> {
+    const existing = await this.eventsRepository.findOne({
+      where: { businessId, name },
+    });
     if (existing) return existing;
     try {
       return await this.eventsRepository.save(
-        this.eventsRepository.create({ name }),
+        this.eventsRepository.create({ businessId, name }),
       );
     } catch (error) {
       if ((error as { code?: string }).code === '23505') {
         const created = await this.eventsRepository.findOne({
-          where: { name },
+          where: { businessId, name },
         });
         if (created) return created;
       }

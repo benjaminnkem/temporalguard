@@ -8,9 +8,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const nodeEnv = configService.get<string>('nodeEnv');
-        const isDevelopment = nodeEnv === 'development';
-
         return {
           type: 'postgres' as const,
           host: configService.get<string>('database.host'),
@@ -19,7 +16,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
           password: configService.get<string>('database.password'),
           database: configService.get<string>('database.database'),
           autoLoadEntities: true,
-          synchronize: isDevelopment,
+          synchronize: false,
         };
       },
     }),

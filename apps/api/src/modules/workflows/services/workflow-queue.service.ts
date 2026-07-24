@@ -14,6 +14,7 @@ export class WorkflowQueueService {
   ) {}
 
   async scheduleTimeout(
+    businessId: string,
     workflowId: string,
     ruleId: string,
     deadline: Date,
@@ -21,7 +22,7 @@ export class WorkflowQueueService {
     const delay = Math.max(0, deadline.getTime() - Date.now());
     await this.workflowsQueue.add(
       TIMEOUT_CHECK_JOB,
-      { workflowId, ruleId },
+      { businessId, workflowId, ruleId },
       { delay },
     );
   }
