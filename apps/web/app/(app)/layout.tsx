@@ -1,5 +1,6 @@
-import { AppShell } from "../../features/shell/app-shell";
 import { Suspense } from "react";
+import { Spinner } from "@/components/ui/spinner";
+import { AppShell } from "@/features/shell/app-shell";
 
 export default function AuthenticatedLayout({
   children,
@@ -9,7 +10,8 @@ export default function AuthenticatedLayout({
   return (
     <Suspense
       fallback={
-        <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">
+        <div className="grid min-h-svh place-items-center gap-3 text-sm text-muted-foreground">
+          <Spinner className="size-5" />
           Loading TemporalGuard…
         </div>
       }

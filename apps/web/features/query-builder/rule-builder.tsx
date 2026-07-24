@@ -38,8 +38,10 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { EventSelector } from "../events/event-selector";
 import { DataState } from "../../components/shared/data-state";
+import { FormField } from "../../components/shared/form-field";
 import { Button } from "../../components/ui/button";
-import { Field, Input, Textarea } from "../../components/ui/input";
+import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
 import { Badge, Card } from "../../components/ui/surface";
 import {
   ruleDraftSchema,
@@ -431,7 +433,7 @@ export function RuleBuilder() {
             Select known events or create one without losing this draft.
           </p>
           <div className="mt-5 grid gap-4">
-            <Field
+            <FormField
               label="Trigger"
               error={form.formState.errors.trigger?.message}
             >
@@ -453,8 +455,8 @@ export function RuleBuilder() {
                     );
                 }}
               />
-            </Field>
-            <Field
+            </FormField>
+            <FormField
               label={
                 draft.operator === "forbid" ? "Forbidden event" : "Outcome"
               }
@@ -465,7 +467,7 @@ export function RuleBuilder() {
                 usedIds={usedIds}
                 onSelect={addOutcome}
               />
-            </Field>
+            </FormField>
             <div>
               <p className="mb-2 text-xs font-medium">Operator</p>
               <div className="grid grid-cols-2 gap-2">
@@ -596,16 +598,16 @@ export function RuleBuilder() {
         >
           <h2 className="font-semibold">Properties & validation</h2>
           <div className="mt-4 grid gap-4">
-            <Field
+            <FormField
               label="Rule name"
               error={form.formState.errors.name?.message}
             >
               <Input {...form.register("name")} />
-            </Field>
-            <Field label="Description">
+            </FormField>
+            <FormField label="Description">
               <Textarea {...form.register("description")} />
-            </Field>
-            <Field
+            </FormField>
+            <FormField
               label="Correlation key"
               error={form.formState.errors.correlationKey?.message}
             >
@@ -613,9 +615,9 @@ export function RuleBuilder() {
                 className="font-mono"
                 {...form.register("correlationKey")}
               />
-            </Field>
+            </FormField>
             <div className="grid grid-cols-[1fr_1.25fr] gap-2">
-              <Field
+              <FormField
                 label="Window"
                 error={form.formState.errors.window?.value?.message}
               >
@@ -624,8 +626,8 @@ export function RuleBuilder() {
                   min={1}
                   {...form.register("window.value", { valueAsNumber: true })}
                 />
-              </Field>
-              <Field label="Unit">
+              </FormField>
+              <FormField label="Unit">
                 <select
                   className="min-h-10 rounded-[var(--radius-md)] border border-border bg-input px-2"
                   {...form.register("window.unit")}
@@ -634,10 +636,10 @@ export function RuleBuilder() {
                     <option key={unit}>{unit}</option>
                   ))}
                 </select>
-              </Field>
+              </FormField>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Severity">
+              <FormField label="Severity">
                 <select
                   className="min-h-10 rounded-[var(--radius-md)] border border-border bg-input px-2"
                   {...form.register("severity")}
@@ -646,8 +648,8 @@ export function RuleBuilder() {
                   <option value="warning">Warning</option>
                   <option value="critical">Critical</option>
                 </select>
-              </Field>
-              <Field label="Environment">
+              </FormField>
+              <FormField label="Environment">
                 <select
                   className="min-h-10 rounded-[var(--radius-md)] border border-border bg-input px-2"
                   value={draft.environments[0]}
@@ -661,7 +663,7 @@ export function RuleBuilder() {
                   <option value="staging">Staging</option>
                   <option value="development">Development</option>
                 </select>
-              </Field>
+              </FormField>
             </div>
             {Object.keys(form.formState.errors).length > 0 ? (
               <div className="rounded-[var(--radius-md)] bg-destructive-subtle p-3 text-xs text-destructive">

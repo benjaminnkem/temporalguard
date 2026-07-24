@@ -1,5 +1,9 @@
 "use client";
 
+import { ArrowDownRight, ArrowUpRight, CircleHelp } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -7,30 +11,74 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { DataState } from "@/components/shared/data-state";
+import { PageHeader } from "@/components/shared/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  ArrowDownRight,
-  ArrowUpRight,
-  CircleHelp,
-  RefreshCw,
-} from "lucide-react";
-import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
-import { useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { PageHeader } from "../../components/shared/page-header";
-import { DataState } from "../../components/shared/data-state";
-import { Badge, Card, Skeleton } from "../../components/ui/surface";
-import { Button } from "../../components/ui/button";
-import { useDashboard } from "../../lib/queries";
-import { formatDate, formatDuration } from "../../lib/utils";
-import type { ViolationSummary } from "../../lib/contracts";
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { ViolationSummary } from "@/lib/contracts";
+import { useDashboard } from "@/lib/queries";
+import { cn, formatDate, formatDuration, statusVariant } from "@/lib/utils";
 
 const modes = ["volume", "completionRate", "violations", "duration"] as const;
+type Mode = (typeof modes)[number];
+
+const modeLabels: Record<Mode, string> = {
+  volume: "Volume",
+  completionRate: "Completion rate",
+  violations: "Violations",
+  duration: "Duration",
+};
+
+const reliabilityChartConfig = {
+  volume: { label: "Volume", color: "var(--primary)" },
+  completionRate: { label: "Completion rate", color: "var(--primary)" },
+  violations: { label: "Violations", color: "var(--destructive)" },
+  duration: { label: "Duration", color: "var(--chart-2)" },
+} satisfies ChartConfig;
+
+const deadlineChartConfig = {
+  count: { label: "Workflows", color: "var(--primary)" },
+} satisfies ChartConfig;
+
+const deadlineFills = [
+  "var(--warning)",
+  "var(--warning)",
+  "var(--primary)",
+  "var(--destructive)",
+];
 
 function violationComposition(items: ViolationSummary[]) {
   const counts = new Map<string, number>();
@@ -61,9 +109,81 @@ function violationHeatmap(items: ViolationSummary[]) {
   }));
 }
 
+function MetricCards({
+  metrics,
+}: {
+  metrics: NonNullable<ReturnType<typeof useDashboard>["data"]>["metrics"];
+}) {
+  return (
+    <section
+      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
+      aria-label="Summary metrics"
+    >
+      {metrics.map((metric) => {
+        const favorable =
+          metric.favorable === "up" ? metric.delta >= 0 : metric.delta <= 0;
+        return (
+          <Card key={metric.id} size="sm" className="relative gap-3 py-4">
+            <CardHeader className="px-4">
+              <CardDescription className="text-xs font-medium">
+                {metric.label}
+              </CardDescription>
+              <CardAction>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                        aria-label={metric.description}
+                      />
+                    }
+                  >
+                    <CircleHelp className="size-3.5" />
+                  </TooltipTrigger>
+                  <TooltipContent>{metric.description}</TooltipContent>
+                </Tooltip>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="px-4">
+              <p className="text-2xl font-semibold tracking-tight tabular-nums">
+                {metric.value}
+              </p>
+              <div className="mt-2 flex items-center gap-1.5 text-xs">
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-0.5 font-medium",
+                    favorable ? "text-success" : "text-destructive",
+                  )}
+                >
+                  {metric.delta >= 0 ? (
+                    <ArrowUpRight className="size-3.5" />
+                  ) : (
+                    <ArrowDownRight className="size-3.5" />
+                  )}
+                  {Math.abs(metric.delta)}%
+                </span>
+                <span className="text-muted-foreground">vs previous</span>
+              </div>
+            </CardContent>
+            <div className="absolute inset-x-0 bottom-0 h-1 bg-muted">
+              <div
+                className={cn(
+                  "h-full w-2/3",
+                  favorable ? "bg-primary/50" : "bg-destructive/50",
+                )}
+              />
+            </div>
+          </Card>
+        );
+      })}
+    </section>
+  );
+}
+
 export function OverviewDashboard() {
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<(typeof modes)[number]>("volume");
+  const [mode, setMode] = useState<Mode>("volume");
   const environment = searchParams.get("environment") ?? "production";
   const requestedState = searchParams.get("state") ?? undefined;
   const query = useDashboard({ environment, state: requestedState });
@@ -72,6 +192,23 @@ export function OverviewDashboard() {
     : query.isError
       ? "error"
       : "ready";
+
+  const composition = useMemo(
+    () =>
+      query.data ? violationComposition(query.data.recentViolations) : [],
+    [query.data],
+  );
+  const heatmap = useMemo(
+    () => (query.data ? violationHeatmap(query.data.recentViolations) : []),
+    [query.data],
+  );
+
+  const reliabilityMin = query.data
+    ? Math.min(...query.data.reliabilitySeries.map((point) => point[mode]))
+    : 0;
+  const reliabilityMax = query.data
+    ? Math.max(...query.data.reliabilitySeries.map((point) => point[mode]))
+    : 0;
 
   return (
     <div className="grid gap-6">
@@ -82,17 +219,18 @@ export function OverviewDashboard() {
         actions={
           <>
             {query.isFetching && !query.isLoading ? (
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <RefreshCw className="size-3 animate-spin" />
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Spinner className="size-3" />
                 Refreshing
               </span>
             ) : null}
-            <Button asChild variant="primary">
-              <Link href="/explore">Build analysis</Link>
+            <Button size="sm" render={<Link href="/explore" />}>
+              Build analysis
             </Button>
           </>
         }
       />
+
       <DataState
         state={dataState}
         title="Dashboard unavailable"
@@ -100,311 +238,232 @@ export function OverviewDashboard() {
       >
         {query.data ? (
           <>
-            <section
-              className="metric-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
-              aria-label="Summary metrics"
-            >
-              {query.data.metrics.map((metric, index) => {
-                const favorable =
-                  metric.favorable === "up"
-                    ? metric.delta >= 0
-                    : metric.delta <= 0;
-                return (
-                  <Card
-                    key={metric.id}
-                    className="sketch-enter group relative min-h-36 overflow-hidden p-4 transition-colors hover:border-border-strong"
-                    style={
-                      {
-                        animationDelay: `${index * 45}ms`,
-                      } as React.CSSProperties
-                    }
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        {metric.label}
-                      </p>
-                      <CircleHelp
-                        className="size-3.5 text-muted-foreground"
-                        aria-label={metric.description}
-                      />
-                    </div>
-                    <p className="mt-4 text-2xl font-semibold tracking-tight tabular-nums">
-                      {metric.value}
-                    </p>
-                    <div className="mt-3 flex items-center gap-1.5 text-xs">
-                      <span
-                        className={
-                          favorable ? "text-success" : "text-destructive"
-                        }
-                      >
-                        {metric.delta >= 0 ? (
-                          <ArrowUpRight className="inline size-3.5" />
-                        ) : (
-                          <ArrowDownRight className="inline size-3.5" />
-                        )}
-                        {Math.abs(metric.delta)}%
-                      </span>
-                      <span className="text-muted-foreground">
-                        vs previous period
-                      </span>
-                    </div>
-                    <div className="absolute right-0 bottom-0 left-0 h-1 bg-primary-subtle">
-                      <div className="h-full w-2/3 bg-primary opacity-50" />
-                    </div>
-                  </Card>
-                );
-              })}
-            </section>
+            <MetricCards metrics={query.data.metrics} />
 
             <section className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
-              <Card className="min-w-0 p-4 sm:p-5">
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="font-semibold">Reliability over time</h2>
-                    <p className="text-xs text-muted-foreground">
-                      Previous-period comparison · deployment markers enabled
-                    </p>
+              <Card className="min-w-0">
+                <CardHeader className="border-b">
+                  <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div>
+                      <CardTitle>Reliability over time</CardTitle>
+                      <CardDescription>
+                        Previous-period comparison · deployment markers enabled
+                      </CardDescription>
+                    </div>
+                    <Tabs
+                      value={mode}
+                      onValueChange={(value) => {
+                        if (
+                          value === "volume" ||
+                          value === "completionRate" ||
+                          value === "violations" ||
+                          value === "duration"
+                        ) {
+                          setMode(value);
+                        }
+                      }}
+                    >
+                      <TabsList className="h-auto w-full flex-wrap sm:w-auto">
+                        {modes.map((item) => (
+                          <TabsTrigger
+                            key={item}
+                            value={item}
+                            className="px-2.5 text-xs sm:text-sm"
+                          >
+                            {modeLabels[item]}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
                   </div>
-                  <div className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--radius-md)] bg-muted p-1">
-                    {modes.map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => setMode(item)}
-                        className={`relative rounded-[var(--radius-sm)] border-2 border-transparent px-2.5 py-1.5 text-sm font-medium whitespace-nowrap ${
-                          mode === item
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {mode === item ? (
-                          <motion.span
-                            layoutId="dashboard-mode"
-                            className="absolute inset-0 border border-primary bg-surface"
-                            transition={{
-                              duration: 0.1,
-                            }}
-                          />
-                        ) : null}
-                        <span className="relative z-10">
-                          {item === "completionRate"
-                            ? "Completion rate"
-                            : item.charAt(0).toUpperCase() + item.slice(1)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={mode}
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    transition={{ duration: 0.16 }}
-                    className="h-72 w-full"
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <ChartContainer
+                    config={reliabilityChartConfig}
+                    className="aspect-auto h-72 w-full"
                     aria-hidden="true"
                   >
-                    <ResponsiveContainer>
-                      <AreaChart data={query.data.reliabilitySeries}>
-                        <defs>
-                          <linearGradient
-                            id="purpleFill"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
-                            <stop
-                              offset="5%"
-                              stopColor="var(--chart-purple)"
-                              stopOpacity={0.24}
-                            />
-                            <stop
-                              offset="95%"
-                              stopColor="var(--chart-purple)"
-                              stopOpacity={0}
-                            />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid
-                          stroke="var(--chart-grid)"
-                          vertical={false}
-                        />
-                        <XAxis
-                          dataKey="timestamp"
-                          stroke="var(--chart-axis)"
-                          fontSize={11}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis
-                          stroke="var(--chart-axis)"
-                          fontSize={11}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            background: "var(--popover)",
-                            border: "1px solid var(--border-strong)",
-                          }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey={mode}
-                          stroke="var(--chart-purple)"
-                          fill="url(#purpleFill)"
-                          strokeWidth={2}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </motion.div>
-                </AnimatePresence>
-                <p className="sr-only">
-                  Reliability chart showing {mode} over twelve two-hour periods.
-                  Values range from{" "}
-                  {Math.min(
-                    ...query.data.reliabilitySeries.map((point) => point[mode]),
-                  )}{" "}
-                  to{" "}
-                  {Math.max(
-                    ...query.data.reliabilitySeries.map((point) => point[mode]),
-                  )}
-                  . The latest value is{" "}
-                  {query.data.reliabilitySeries.at(-1)?.[mode]}.
-                </p>
+                    <AreaChart
+                      data={query.data.reliabilitySeries}
+                      margin={{ left: 8, right: 8, top: 8, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient
+                          id="reliabilityFill"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor={`var(--color-${mode})`}
+                            stopOpacity={0.28}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor={`var(--color-${mode})`}
+                            stopOpacity={0.02}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="timestamp"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        minTickGap={24}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        width={40}
+                      />
+                      <ChartTooltip
+                        cursor={false}
+                        content={
+                          <ChartTooltipContent
+                            labelKey="timestamp"
+                            indicator="line"
+                          />
+                        }
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey={mode}
+                        stroke={`var(--color-${mode})`}
+                        fill="url(#reliabilityFill)"
+                        strokeWidth={2}
+                      />
+                    </AreaChart>
+                  </ChartContainer>
+                  <p className="sr-only">
+                    Reliability chart showing {modeLabels[mode]} over twelve
+                    two-hour periods. Values range from {reliabilityMin} to{" "}
+                    {reliabilityMax}. The latest value is{" "}
+                    {query.data.reliabilitySeries.at(-1)?.[mode]}.
+                  </p>
+                </CardContent>
               </Card>
 
-              <Card className="p-4 sm:p-5">
-                <div className="mb-4">
-                  <h2 className="font-semibold">Deadline pressure</h2>
-                  <p className="text-xs text-muted-foreground">
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle>Deadline pressure</CardTitle>
+                  <CardDescription>
                     Open workflows by remaining time
-                  </p>
-                </div>
-                <div className="h-72" aria-hidden="true">
-                  <ResponsiveContainer>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <ChartContainer
+                    config={deadlineChartConfig}
+                    className="aspect-auto h-72 w-full"
+                    aria-hidden="true"
+                  >
                     <BarChart
                       data={query.data.deadlineBuckets}
                       layout="vertical"
-                      margin={{ left: 8 }}
+                      margin={{ left: 4, right: 12, top: 8, bottom: 0 }}
                     >
-                      <CartesianGrid
-                        stroke="var(--chart-grid)"
-                        horizontal={false}
-                      />
-                      <XAxis
-                        type="number"
-                        stroke="var(--chart-axis)"
-                        fontSize={11}
-                        axisLine={false}
-                        tickLine={false}
-                      />
+                      <CartesianGrid horizontal={false} />
+                      <XAxis type="number" tickLine={false} axisLine={false} />
                       <YAxis
                         dataKey="bucket"
                         type="category"
-                        width={58}
-                        stroke="var(--chart-axis)"
-                        fontSize={11}
-                        axisLine={false}
+                        width={64}
                         tickLine={false}
+                        axisLine={false}
                       />
-                      <Tooltip
-                        contentStyle={{
-                          background: "var(--popover)",
-                          border: "1px solid var(--border-strong)",
-                        }}
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent hideLabel />}
                       />
-                      <Bar dataKey="count" radius={0}>
+                      <Bar dataKey="count" radius={6}>
                         {query.data.deadlineBuckets.map((bucket, index) => (
                           <Cell
                             key={bucket.bucket}
                             fill={
-                              index === 3
-                                ? "var(--destructive)"
-                                : index < 2
-                                  ? "var(--warning)"
-                                  : "var(--chart-blue)"
+                              deadlineFills[index] ?? "var(--color-count)"
                             }
                           />
                         ))}
                       </Bar>
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <ul className="sr-only">
-                  {query.data.deadlineBuckets.map((bucket) => (
-                    <li key={bucket.bucket}>
-                      {bucket.bucket}: {bucket.count} workflows
-                    </li>
-                  ))}
-                </ul>
+                  </ChartContainer>
+                  <ul className="sr-only">
+                    {query.data.deadlineBuckets.map((bucket) => (
+                      <li key={bucket.bucket}>
+                        {bucket.bucket}: {bucket.count} workflows
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
               </Card>
             </section>
 
             <section className="grid gap-4 xl:grid-cols-2">
-              <Card className="p-4 sm:p-5">
-                <div className="mb-5 flex items-center justify-between">
-                  <div>
-                    <h2 className="font-semibold">Violation composition</h2>
-                    <p className="text-xs text-muted-foreground">
-                      Types observed in the selected period
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle>Violation composition</CardTitle>
+                  <CardDescription>
+                    Types observed in the selected period
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 pt-5">
+                  {composition.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No violation types were observed in this period.
                     </p>
-                  </div>
-                </div>
-                <div className="grid gap-3">
-                  {violationComposition(query.data.recentViolations).map(
-                    ({ label, count, percent }) => (
-                      <div key={label}>
-                        <div className="mb-1 flex justify-between text-xs">
+                  ) : (
+                    composition.map(({ label, count, percent }) => (
+                      <div key={label} className="grid gap-1.5">
+                        <div className="flex items-center justify-between text-xs">
                           <span className="capitalize">{label}</span>
-                          <span className="text-muted-foreground">{count}</span>
+                          <span className="tabular-nums text-muted-foreground">
+                            {count}
+                          </span>
                         </div>
-                        <div className="h-7 overflow-hidden rounded-[var(--radius-sm)] bg-muted">
+                        <div className="h-2 overflow-hidden rounded-full bg-muted">
                           <div
-                            className="h-full bg-primary"
+                            className="h-full rounded-full bg-primary transition-[width]"
                             style={{ width: `${percent}%` }}
                           />
                         </div>
                       </div>
-                    ),
+                    ))
                   )}
-                  {query.data.recentViolations.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No violation types were observed in this period.
-                    </p>
-                  ) : null}
-                </div>
+                </CardContent>
               </Card>
 
-              <Card className="p-4 sm:p-5">
-                <div className="mb-5">
-                  <h2 className="font-semibold">Violation heatmap</h2>
-                  <p className="text-xs text-muted-foreground">
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle>Violation heatmap</CardTitle>
+                  <CardDescription>
                     Rule by hour · darker cells indicate more violations
-                  </p>
-                </div>
-                <div
-                  className="grid grid-cols-[110px_repeat(8,minmax(24px,1fr))] gap-1 text-xs"
-                  role="img"
-                  aria-label="Violation counts grouped by rule and three-hour time bucket."
-                >
-                  <span />
-                  {["00", "03", "06", "09", "12", "15", "18", "21"].map(
-                    (hour) => (
-                      <span
-                        key={hour}
-                        className="text-center text-[10px] text-muted-foreground"
-                      >
-                        {hour}
-                      </span>
-                    ),
-                  )}
-                  {violationHeatmap(query.data.recentViolations).flatMap(
-                    ({ label, values }) => [
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-5">
+                  <div
+                    className="grid grid-cols-[minmax(96px,110px)_repeat(8,minmax(24px,1fr))] gap-1 text-xs"
+                    role="img"
+                    aria-label="Violation counts grouped by rule and three-hour time bucket."
+                  >
+                    <span />
+                    {["00", "03", "06", "09", "12", "15", "18", "21"].map(
+                      (hour) => (
+                        <span
+                          key={hour}
+                          className="text-center text-[10px] text-muted-foreground"
+                        >
+                          {hour}
+                        </span>
+                      ),
+                    )}
+                    {heatmap.flatMap(({ label, values }) => [
                       <span
                         key={`${label}-label`}
-                        className="truncate py-2"
+                        className="truncate py-2 pr-1"
                         title={label}
                       >
                         {label}
@@ -413,120 +472,128 @@ export function OverviewDashboard() {
                         <span
                           key={`${label}-${index}`}
                           title={`${label}: ${value} violations`}
-                          className="min-h-8 rounded-[var(--radius-xs)] border border-border"
+                          className="min-h-8 rounded-md border border-border"
                           style={{
                             background:
                               value === 0
-                                ? "var(--surface-subtle)"
-                                : `color-mix(in srgb, var(--destructive) ${Math.min(90, 20 + value * 15)}%, var(--surface))`,
+                                ? "var(--muted)"
+                                : `color-mix(in srgb, var(--destructive) ${Math.min(90, 20 + value * 15)}%, var(--card))`,
                           }}
                         />
                       )),
-                    ],
-                  )}
-                </div>
-                <div className="mt-4 flex items-center justify-end gap-2 text-[10px] text-muted-foreground">
-                  <span>Fewer</span>
-                  {[15, 35, 55, 75].map((opacity) => (
-                    <span
-                      key={opacity}
-                      className="size-3 rounded-[2px]"
-                      style={{
-                        background: `color-mix(in srgb, var(--destructive) ${opacity}%, var(--surface))`,
-                      }}
-                    />
-                  ))}
-                  <span>More</span>
-                </div>
+                    ])}
+                  </div>
+                  <div className="mt-4 flex items-center justify-end gap-2 text-[10px] text-muted-foreground">
+                    <span>Fewer</span>
+                    {[15, 35, 55, 75].map((opacity) => (
+                      <span
+                        key={opacity}
+                        className="size-3 rounded-sm"
+                        style={{
+                          background: `color-mix(in srgb, var(--destructive) ${opacity}%, var(--card))`,
+                        }}
+                      />
+                    ))}
+                    <span>More</span>
+                  </div>
+                </CardContent>
               </Card>
             </section>
 
-            <Card className="overflow-hidden">
-              <div className="flex items-center justify-between border-b border-border p-4 sm:px-5">
+            <Card className="gap-0 py-0">
+              <CardHeader className="border-b py-4">
                 <div>
-                  <h2 className="font-semibold">Recent violations</h2>
-                  <p className="text-xs text-muted-foreground">
+                  <CardTitle>Recent violations</CardTitle>
+                  <CardDescription>
                     Open a record without losing dashboard context
-                  </p>
+                  </CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/violations">View all</Link>
-                </Button>
-              </div>
+                <CardAction>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    render={<Link href="/violations" />}
+                  >
+                    View all
+                  </Button>
+                </CardAction>
+              </CardHeader>
               {requestedState === "partial" ? (
-                <div className="border-b border-warning bg-warning-subtle p-3 text-sm text-warning">
+                <div className="border-b border-warning/30 bg-warning-subtle px-4 py-3 text-sm text-warning">
                   Recent violations are delayed. Other dashboard data is
                   current.
                 </div>
-              ) : query.data.recentViolations.length === 0 ? (
-                <DataState state="empty" title="No violations in this period">
-                  <span />
-                </DataState>
+              ) : null}
+              {query.data.recentViolations.length === 0 ? (
+                <CardContent className="py-6">
+                  <DataState
+                    state="empty"
+                    title="No violations in this period"
+                  >
+                    <span />
+                  </DataState>
+                </CardContent>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-                    <thead className="bg-surface-subtle text-xs text-muted-foreground">
-                      <tr>
-                        <th className="px-4 py-3 font-medium">Severity</th>
-                        <th className="px-4 py-3 font-medium">Violation</th>
-                        <th className="px-4 py-3 font-medium">Workflow</th>
-                        <th className="px-4 py-3 font-medium">Service</th>
-                        <th className="px-4 py-3 font-medium">Overdue</th>
-                        <th className="px-4 py-3 font-medium">Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {query.data.recentViolations.map((violation) => (
-                        <tr
-                          key={violation.id}
-                          className="border-t border-border hover:bg-surface-subtle"
-                        >
-                          <td className="px-4 py-3">
-                            <Badge
-                              tone={
-                                violation.severity === "critical"
-                                  ? "danger"
-                                  : "warning"
-                              }
-                            >
-                              {violation.severity}
-                            </Badge>
-                          </td>
-                          <td className="max-w-md px-4 py-3">
-                            <Link
-                              href={`/violations/${violation.id}?${searchParams.toString()}`}
-                              className="font-medium hover:text-primary"
-                            >
-                              {violation.explanation}
-                            </Link>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {violation.ruleName}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3 font-mono text-xs">
-                            {violation.workflowId}
-                          </td>
-                          <td className="px-4 py-3">{violation.serviceName}</td>
-                          <td className="px-4 py-3 tabular-nums">
-                            {violation.overdueMs
-                              ? formatDuration(violation.overdueMs)
-                              : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground">
-                            {formatDate(violation.occurredAt)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Severity</TableHead>
+                      <TableHead>Violation</TableHead>
+                      <TableHead>Workflow</TableHead>
+                      <TableHead>Service</TableHead>
+                      <TableHead>Overdue</TableHead>
+                      <TableHead>Time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {query.data.recentViolations.map((violation) => (
+                      <TableRow key={violation.id}>
+                        <TableCell>
+                          <Badge
+                            variant={statusVariant(violation.severity)}
+                            className="capitalize"
+                          >
+                            {violation.severity}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-md whitespace-normal">
+                          <Link
+                            href={`/violations/${violation.id}?${searchParams.toString()}`}
+                            className="font-medium hover:text-primary"
+                          >
+                            {violation.explanation}
+                          </Link>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {violation.ruleName}
+                          </p>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {violation.workflowId}
+                        </TableCell>
+                        <TableCell>{violation.serviceName}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {violation.overdueMs
+                            ? formatDuration(violation.overdueMs)
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatDate(violation.occurredAt)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </Card>
           </>
         ) : (
-          <div className="grid gap-3">
-            <Skeleton className="h-32" />
-            <Skeleton className="h-72" />
+          <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-32 w-full rounded-2xl" />
+              ))}
+            </div>
+            <Skeleton className="h-80 w-full rounded-2xl" />
           </div>
         )}
       </DataState>

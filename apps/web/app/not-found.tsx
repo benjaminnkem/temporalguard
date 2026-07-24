@@ -10,8 +10,8 @@ export default function NotFound() {
         <p className="mt-2 mb-5 text-muted-foreground">
           The workflow context may have expired or the route does not exist.
         </p>
-        <Button asChild variant="primary">
-          <Link href="/overview">Return to overview</Link>
+        <Button render={<Link href="/overview" />}>
+          Return to overview
         </Button>
       </div>
     </main>

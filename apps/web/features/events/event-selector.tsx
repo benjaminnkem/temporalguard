@@ -14,8 +14,10 @@ import {
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { FormField } from "../../components/shared/form-field";
 import { Button } from "../../components/ui/button";
-import { Field, Input, Textarea } from "../../components/ui/input";
+import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
 import { Badge } from "../../components/ui/surface";
 import {
   type CreateEventInput,
@@ -136,18 +138,18 @@ function EventCreator({
         </div>
       ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field
+        <FormField
           label="Canonical name"
           error={form.formState.errors.canonicalName?.message}
         >
           <Input className="font-mono" {...form.register("canonicalName")} />
-        </Field>
-        <Field
+        </FormField>
+        <FormField
           label="Display name"
           error={form.formState.errors.displayName?.message}
         >
           <Input {...form.register("displayName")} />
-        </Field>
+        </FormField>
       </div>
       {duplicates.near.length > 0 ? (
         <div className="flex gap-2 rounded-[var(--radius-md)] bg-warning-subtle p-3 text-sm text-warning">
@@ -162,10 +164,10 @@ function EventCreator({
         </div>
       ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Domain" error={form.formState.errors.domain?.message}>
+        <FormField label="Domain" error={form.formState.errors.domain?.message}>
           <Input {...form.register("domain")} />
-        </Field>
-        <Field
+        </FormField>
+        <FormField
           label="Source service"
           error={form.formState.errors.sourceService?.message}
         >
@@ -173,9 +175,9 @@ function EventCreator({
             placeholder="documents-api"
             {...form.register("sourceService")}
           />
-        </Field>
+        </FormField>
       </div>
-      <Field
+      <FormField
         label="Description"
         error={form.formState.errors.description?.message}
       >
@@ -183,27 +185,27 @@ function EventCreator({
           placeholder="Describe the business fact represented by this event."
           {...form.register("description")}
         />
-      </Field>
+      </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field
+        <FormField
           label="Suggested correlation key"
           error={form.formState.errors.correlationKey?.message}
         >
           <Input className="font-mono" {...form.register("correlationKey")} />
-        </Field>
-        <Field label="First attribute (optional)">
+        </FormField>
+        <FormField label="First attribute (optional)">
           <Input
             className="font-mono"
             placeholder="document.type"
             {...form.register("attributeKey")}
           />
-        </Field>
+        </FormField>
       </div>
       <div className="flex justify-end gap-2 border-t border-border pt-4">
         <Button type="button" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" variant="primary" disabled={mutation.isPending}>
+        <Button type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? (
             <LoaderCircle className="size-4 animate-spin" />
           ) : (

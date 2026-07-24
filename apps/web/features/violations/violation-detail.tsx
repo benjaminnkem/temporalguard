@@ -30,10 +30,12 @@ export function ViolationDetailView({ id }: { id: string }) {
       {violation ? (
         <div className="grid gap-5">
           <div>
-            <Button asChild variant="ghost" className="-ml-2 mb-3">
-              <Link href={`/violations?${searchParams.toString()}`}>
-                <ArrowLeft className="size-4" /> Back to violations
-              </Link>
+            <Button
+              variant="ghost"
+              className="-ml-2 mb-3"
+              render={<Link href={`/violations?${searchParams.toString()}`} />}
+            >
+              <ArrowLeft className="size-4" /> Back to violations
             </Button>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -196,14 +198,16 @@ export function ViolationDetailView({ id }: { id: string }) {
                 7 records share this rule and deployment context.
               </p>
             </div>
-            <Button asChild>
-              <Link
-                href={`/violations?rule=${violation.ruleId}&deployment=${encodeURIComponent(
-                  violation.deploymentVersion ?? "",
-                )}&${searchParams.toString()}`}
-              >
-                View affected cohort
-              </Link>
+            <Button
+              render={
+                <Link
+                  href={`/violations?rule=${violation.ruleId}&deployment=${encodeURIComponent(
+                    violation.deploymentVersion ?? "",
+                  )}&${searchParams.toString()}`}
+                />
+              }
+            >
+              View affected cohort
             </Button>
           </Card>
         </div>

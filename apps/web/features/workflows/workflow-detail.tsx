@@ -52,10 +52,12 @@ export function WorkflowDetailView({ id }: { id: string }) {
       {workflow ? (
         <div className="grid gap-5">
           <div>
-            <Button asChild variant="ghost" className="-ml-2 mb-3">
-              <Link href={`/workflows?${searchParams.toString()}`}>
-                <ArrowLeft className="size-4" /> Back to workflows
-              </Link>
+            <Button
+              variant="ghost"
+              className="-ml-2 mb-3"
+              render={<Link href={`/workflows?${searchParams.toString()}`} />}
+            >
+              <ArrowLeft className="size-4" /> Back to workflows
             </Button>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -91,10 +93,12 @@ export function WorkflowDetailView({ id }: { id: string }) {
                   <Copy className="size-4" /> Copy link
                 </Button>
                 {signozUrl ? (
-                  <Button asChild>
-                    <a href={signozUrl} target="_blank" rel="noreferrer">
-                      <ExternalLink className="size-4" /> Open in SigNoz
-                    </a>
+                  <Button
+                    render={
+                      <a href={signozUrl} target="_blank" rel="noreferrer" />
+                    }
+                  >
+                    <ExternalLink className="size-4" /> Open in SigNoz
                   </Button>
                 ) : (
                   <Button disabled title="Configure NEXT_PUBLIC_SIGNOZ_UI_URL">
@@ -366,10 +370,13 @@ function ObservabilityPanel({
           Live query · {formatDate(preview.start)} to {formatDate(preview.end)}
         </p>
         {explorerUrl ? (
-          <Button asChild variant="ghost">
-            <a href={explorerUrl} target="_blank" rel="noreferrer">
-              <ExternalLink className="size-4" /> Open {label} in SigNoz
-            </a>
+          <Button
+            variant="ghost"
+            render={
+              <a href={explorerUrl} target="_blank" rel="noreferrer" />
+            }
+          >
+            <ExternalLink className="size-4" /> Open {label} in SigNoz
           </Button>
         ) : null}
       </div>

@@ -226,13 +226,17 @@ export function WorkflowsView({ live = false }: { live?: boolean }) {
                         {workflow.deploymentVersion}
                       </td>
                       <td>
-                        <Button size="icon" variant="ghost" asChild>
-                          <Link
-                            href={`/workflows/${workflow.id}?${searchParams.toString()}`}
-                            aria-label={`Open ${workflow.id}`}
-                          >
-                            <ChevronRight className="size-4" />
-                          </Link>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          render={
+                            <Link
+                              href={`/workflows/${workflow.id}?${searchParams.toString()}`}
+                              aria-label={`Open ${workflow.id}`}
+                            />
+                          }
+                        >
+                          <ChevronRight className="size-4" />
                         </Button>
                       </td>
                     </tr>

@@ -32,10 +32,8 @@ export function RulesView() {
         title="Rules"
         description="Time-bound expectations that turn event streams into explainable workflow health."
         actions={
-          <Button asChild variant="primary">
-            <Link href="/explore">
-              <Plus className="size-4" /> New rule
-            </Link>
+          <Button render={<Link href="/explore" />}>
+            <Plus className="size-4" /> New rule
           </Button>
         }
       />
