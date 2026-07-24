@@ -70,15 +70,15 @@ local data reset.
 ## Non-negotiable boundaries
 
 - Product pages and product-domain hooks remain behind
-  `TemporalGuardDataSource` and use deterministic mock data in this release.
-  Do not call the existing events, rules, workflows, violations, or dashboard
-  API controllers from the frontend.
-- Backend feature work for this release is authentication only: registration,
-  login, refresh, logout, current user, workspace/business ownership, refresh
-  sessions, and server-side logo media handling.
-- Frontend authentication uses one `AuthClient` boundary with mock and HTTP
-  adapters selected centrally by environment. Components must not branch on
-  mock mode.
+  `TemporalGuardDataSource`. Implement the NestJS events, rules, workflows,
+  violations, and dashboard APIs against the contracts in
+  `docs/API_AND_DATA_CONTRACTS.md`, and select the HTTP data source centrally.
+- Backend work includes authentication plus the product APIs required by the
+  PRD: registration, login, refresh, logout, current user, workspace/business
+  ownership, refresh sessions, server-side logo media handling, events, rules,
+  workflows, violations, and dashboard analytics.
+- Frontend authentication uses one `AuthClient` boundary with the HTTP adapter
+  selected centrally. Components must not contain transport-specific branches.
 - Do not implement Monnify, Telegram, billing, notification delivery, or live
   SigNoz product queries.
 - Never place database, JWT, refresh-token, Cloudinary, SigNoz ingestion, or
@@ -92,7 +92,7 @@ local data reset.
   cross-component state in Zustand, and shareable analytics state in the URL.
 - Prefer server components. Add `"use client"` only at the smallest boundary
   that needs browser state, event handlers, charts, or animation.
-- Validate external, mock, persisted, and form data with Zod where practical.
+- Validate external, API, persisted, and form data with Zod where practical.
   Keep TypeScript strict and do not use `any` without an explicit external
   boundary and narrowing.
 - Page files compose feature modules; they do not contain complete features.
@@ -111,8 +111,9 @@ local data reset.
   layer.
 - Store password and refresh-token hashes only. Never log credentials or raw
   tokens.
-- Product contracts in `docs/API_AND_DATA_CONTRACTS.md` are distinct from the
-  existing backend product entities during the mock-backed release.
+- Product contracts in `docs/API_AND_DATA_CONTRACTS.md` are the target API
+  contracts. Adapt or migrate existing backend product entities explicitly;
+  do not expose legacy entity shapes directly to the frontend.
 
 ## Verification expectations
 

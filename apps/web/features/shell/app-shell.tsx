@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useUiStore } from "../../stores/ui-store";
@@ -46,7 +47,7 @@ const deferred = [
 function Brand() {
   return (
     <Link href="/overview" className="flex items-center gap-2.5 font-semibold">
-      <span className="grid size-8 place-items-center rounded-[var(--radius-md)] bg-primary text-sm font-bold text-primary-foreground">
+      <span className="grid size-9 -rotate-2 place-items-center rounded-[var(--radius-md)] border-2 border-border bg-primary text-lg font-bold text-primary-foreground shadow-[3px_3px_0_var(--shadow-ink)] transition-transform duration-100 hover:rotate-1">
         T
       </span>
       <span>TemporalGuard</span>
@@ -60,11 +61,11 @@ function Sidebar({ mobile = false }: { mobile?: boolean }) {
   return (
     <aside
       className={cn(
-        "flex h-full w-[var(--sidebar-width)] flex-col border-r border-border bg-surface",
+        "flex h-full w-[var(--sidebar-width)] flex-col border-r-2 border-border bg-surface",
         mobile ? "w-full border-r-0" : "hidden lg:flex",
       )}
     >
-      <div className="flex h-16 items-center justify-between border-b border-border px-4">
+      <div className="flex h-16 items-center justify-between border-b-2 border-dashed border-border px-4">
         <Brand />
         {mobile ? (
           <Button
@@ -95,9 +96,9 @@ function Sidebar({ mobile = false }: { mobile?: boolean }) {
                 href={href}
                 onClick={() => close(false)}
                 className={cn(
-                  "flex min-h-10 items-center gap-3 rounded-[var(--radius-md)] px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                  "flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] border-2 border-transparent px-3 text-base font-medium text-muted-foreground transition-[background,border,transform,box-shadow] duration-100 hover:rotate-[0.3deg] hover:border-border hover:bg-warning-subtle hover:text-foreground",
                   active &&
-                    "bg-primary-subtle text-primary-subtle-foreground before:h-4 before:w-0.5 before:rounded-full before:bg-primary",
+                    "-rotate-[0.5deg] border-border bg-primary-subtle text-primary-subtle-foreground shadow-[3px_3px_0_var(--shadow-ink)] before:h-4 before:w-0.5 before:rounded-full before:bg-primary",
                 )}
                 aria-current={active ? "page" : undefined}
               >
@@ -123,7 +124,7 @@ function Sidebar({ mobile = false }: { mobile?: boolean }) {
           ))}
         </div>
       </nav>
-      <div className="border-t border-border p-3">
+      <div className="border-t-2 border-dashed border-border p-3">
         <button className="flex w-full items-center gap-3 rounded-[var(--radius-md)] p-2 text-left hover:bg-muted">
           <span className="grid size-9 place-items-center rounded-full bg-primary-subtle font-semibold text-primary-subtle-foreground">
             AO
@@ -155,7 +156,7 @@ function ContextSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="hidden items-center gap-1.5 rounded-[var(--radius-md)] border border-border bg-surface px-2 xl:flex">
+    <label className="hidden min-h-11 items-center gap-1.5 rounded-[var(--radius-md)] border-2 border-border bg-surface px-2 shadow-[2px_2px_0_var(--shadow-ink)] xl:flex">
       <span className="sr-only">{label}</span>
       <select
         className="h-8 bg-transparent text-xs font-medium outline-none"
@@ -163,7 +164,10 @@ function ContextSelect({
         onChange={(event) => onChange(event.target.value)}
       >
         {options.map((option) => (
-          <option key={option} value={option.toLowerCase().replaceAll(" ", "_")}>
+          <option
+            key={option}
+            value={option.toLowerCase().replaceAll(" ", "_")}
+          >
             {option}
           </option>
         ))}
@@ -201,7 +205,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [setCommandOpen]);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-transparent">
       <Sidebar />
       <Dialog.Root open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <Dialog.Portal>
@@ -213,7 +217,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Dialog.Portal>
       </Dialog.Root>
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-background/95 px-3 backdrop-blur sm:px-5">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b-2 border-dashed border-border bg-background/95 px-3 sm:px-5">
           <Button
             size="icon"
             variant="ghost"
@@ -261,10 +265,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ) : (
                 <Pause className="size-3.5" />
               )}
-              <span
+              <motion.span
+                layout
                 className={cn(
                   "size-1.5 rounded-full",
-                  livePaused ? "bg-muted-foreground" : "bg-success",
+                  livePaused ? "bg-muted-foreground" : "live-dot bg-success",
                 )}
               />
               {livePaused ? "Resume" : "Live"}
@@ -291,7 +296,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Dialog.Root open={commandOpen} onOpenChange={setCommandOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-          <Dialog.Content className="fixed top-[15vh] left-1/2 z-50 w-[min(92vw,620px)] -translate-x-1/2 overflow-hidden rounded-[var(--radius-xl)] border border-border bg-popover shadow-2xl">
+          <Dialog.Content className="fixed top-[15vh] left-1/2 z-50 w-[min(92vw,620px)] -translate-x-1/2 overflow-hidden rounded-[var(--radius-xl)] border-2 border-border bg-popover shadow-[8px_8px_0_var(--shadow-ink)]">
             <Dialog.Title className="sr-only">Command palette</Dialog.Title>
             <div className="flex items-center gap-2 border-b border-border px-4">
               <Command className="size-4 text-muted-foreground" />

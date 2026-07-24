@@ -46,16 +46,16 @@ temporalguard/
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js ≥ 20 |
-| Web | Next.js 16, React 19, Tailwind CSS 4 |
-| API | NestJS |
-| Database | PostgreSQL 16 (TypeORM) |
-| Queue / cache | Redis 7 (BullMQ) |
-| Telemetry | OpenTelemetry SDK → OTLP/HTTP |
-| Observability | Self-hosted SigNoz + ClickHouse |
-| Language | TypeScript 5.9 |
+| Layer         | Technology                           |
+| ------------- | ------------------------------------ |
+| Runtime       | Node.js ≥ 20                         |
+| Web           | Next.js 16, React 19, Tailwind CSS 4 |
+| API           | NestJS                               |
+| Database      | PostgreSQL 16 (TypeORM)              |
+| Queue / cache | Redis 7 (BullMQ)                     |
+| Telemetry     | OpenTelemetry SDK → OTLP/HTTP        |
+| Observability | Self-hosted SigNoz + ClickHouse      |
+| Language      | TypeScript 5.9                       |
 
 ## Prerequisites
 
@@ -76,12 +76,12 @@ docker compose up -d --build
 
 This starts:
 
-| Service | Role |
-|---------|------|
-| `web` | TemporalGuard Next.js application |
-| `api` | TemporalGuard NestJS API |
-| `postgres` | Application database |
-| `redis` | Cache / BullMQ |
+| Service    | Role                              |
+| ---------- | --------------------------------- |
+| `web`      | TemporalGuard Next.js application |
+| `api`      | TemporalGuard NestJS API          |
+| `postgres` | Application database              |
+| `redis`    | Cache / BullMQ                    |
 
 Add `--profile observability-local` for the bundled SigNoz stack, or
 `--profile observability-cloud` for the cloud collector. Exact commands are in
@@ -89,17 +89,17 @@ Add `--profile observability-local` for the bundled SigNoz stack, or
 
 ### Service URLs
 
-| Service | URL |
-|---------|-----|
-| **Web** | http://localhost:3000 |
-| **API** | http://localhost:4000 |
-| **API Swagger** | http://localhost:4000/docs |
-| **API health** | http://localhost:4000/api/health |
-| **SigNoz** | http://localhost:3301 |
-| **PostgreSQL** | localhost:5432 |
-| **Redis** | localhost:6379 |
-| **OTLP gRPC** | localhost:4317 |
-| **OTLP HTTP** | localhost:4318 |
+| Service         | URL                              |
+| --------------- | -------------------------------- |
+| **Web**         | http://localhost:3000            |
+| **API**         | http://localhost:4000            |
+| **API Swagger** | http://localhost:4000/docs       |
+| **API health**  | http://localhost:4000/api/health |
+| **SigNoz**      | http://localhost:3301            |
+| **PostgreSQL**  | localhost:5432                   |
+| **Redis**       | localhost:6379                   |
+| **OTLP gRPC**   | localhost:4317                   |
+| **OTLP HTTP**   | localhost:4318                   |
 
 When running the local profile, complete the local admin signup on the first
 visit to SigNoz. Cloud mode uses the configured SigNoz Cloud workspace.
@@ -160,10 +160,10 @@ SIGNOZ_UI_PORT=3301
 
 Inside Docker, the API talks to other services by **service name**:
 
-| Variable | Docker value | Host-local value |
-|----------|--------------|------------------|
-| `DB_HOST` | `postgres` | `localhost` |
-| `REDIS_HOST` | `redis` | `localhost` |
+| Variable                      | Docker value                 | Host-local value        |
+| ----------------------------- | ---------------------------- | ----------------------- |
+| `DB_HOST`                     | `postgres`                   | `localhost`             |
+| `REDIS_HOST`                  | `redis`                      | `localhost`             |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | `http://localhost:4318` |
 
 ## Hybrid mode (API on host)
@@ -204,25 +204,25 @@ BusinessEvent ──< EventLog >── ExternalWorkflow ──< Workflow >──
                                                                   Violation
 ```
 
-| Entity | Table | Description |
-|--------|-------|-------------|
-| **BusinessEvent** | `business_events` | Reusable event definition identified by a unique name |
-| **EventLog** | `event_logs` | Independent record that a business event occurred |
-| **ExternalWorkflow** | `external_workflows` | External business-process identity used to correlate logs |
-| **Rule** | `rules` | Temporal invariant linked to trigger and expected event definitions |
-| **Workflow** | `workflows` | Evaluation of one rule for an external business process |
-| **Violation** | `violations` | Recorded breach when a workflow fails its rule |
+| Entity               | Table                | Description                                                         |
+| -------------------- | -------------------- | ------------------------------------------------------------------- |
+| **BusinessEvent**    | `business_events`    | Reusable event definition identified by a unique name               |
+| **EventLog**         | `event_logs`         | Independent record that a business event occurred                   |
+| **ExternalWorkflow** | `external_workflows` | External business-process identity used to correlate logs           |
+| **Rule**             | `rules`              | Temporal invariant linked to trigger and expected event definitions |
+| **Workflow**         | `workflows`          | Evaluation of one rule for an external business process             |
+| **Violation**        | `violations`         | Recorded breach when a workflow fails its rule                      |
 
 ### Enums
 
-| Enum | Values |
-|------|--------|
-| `RuleSeverity` | `low`, `medium`, `high`, `critical` |
-| `RuleOperator` | `any`, `all` |
-| `TimeoutUnit` | `seconds`, `minutes`, `hours`, `days` |
-| `WorkflowStatus` | `waiting`, `completed`, `overdue`, `cancelled` |
-| `EventType` | `business`, `system` |
-| `ViolationSeverity` | `low`, `medium`, `high`, `critical` |
+| Enum                | Values                                         |
+| ------------------- | ---------------------------------------------- |
+| `RuleSeverity`      | `low`, `medium`, `high`, `critical`            |
+| `RuleOperator`      | `any`, `all`                                   |
+| `TimeoutUnit`       | `seconds`, `minutes`, `hours`, `days`          |
+| `WorkflowStatus`    | `waiting`, `completed`, `overdue`, `cancelled` |
+| `EventType`         | `business`, `system`                           |
+| `ViolationSeverity` | `low`, `medium`, `high`, `critical`            |
 
 ## API reference
 
@@ -230,13 +230,13 @@ Base path: `/api`
 
 ### Rules
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/rules` | Create a rule |
-| `GET` | `/api/rules` | List all rules |
-| `GET` | `/api/rules/:id` | Get a rule by ID |
-| `PATCH` | `/api/rules/:id` | Update a rule |
-| `DELETE` | `/api/rules/:id` | Delete a rule |
+| Method   | Endpoint         | Description      |
+| -------- | ---------------- | ---------------- |
+| `POST`   | `/api/rules`     | Create a rule    |
+| `GET`    | `/api/rules`     | List all rules   |
+| `GET`    | `/api/rules/:id` | Get a rule by ID |
+| `PATCH`  | `/api/rules/:id` | Update a rule    |
+| `DELETE` | `/api/rules/:id` | Delete a rule    |
 
 #### Create rule — example payload
 
@@ -260,23 +260,23 @@ Base path: `/api`
 
 ### Workflows
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/workflows` | Create a workflow |
-| `GET` | `/api/workflows` | List all workflows |
-| `GET` | `/api/workflows/:id` | Get a workflow by ID |
-| `PATCH` | `/api/workflows/:id` | Update a workflow |
-| `DELETE` | `/api/workflows/:id` | Delete a workflow |
+| Method   | Endpoint             | Description          |
+| -------- | -------------------- | -------------------- |
+| `POST`   | `/api/workflows`     | Create a workflow    |
+| `GET`    | `/api/workflows`     | List all workflows   |
+| `GET`    | `/api/workflows/:id` | Get a workflow by ID |
+| `PATCH`  | `/api/workflows/:id` | Update a workflow    |
+| `DELETE` | `/api/workflows/:id` | Delete a workflow    |
 
 ### Events
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/events` | Create or reuse an event definition |
-| `GET` | `/api/events` | List event definitions |
-| `GET` | `/api/events/:id` | Get an event definition |
-| `PATCH` | `/api/events/:id` | Update an event definition |
-| `DELETE` | `/api/events/:id` | Delete an event definition |
+| Method   | Endpoint          | Description                         |
+| -------- | ----------------- | ----------------------------------- |
+| `POST`   | `/api/events`     | Create or reuse an event definition |
+| `GET`    | `/api/events`     | List event definitions              |
+| `GET`    | `/api/events/:id` | Get an event definition             |
+| `PATCH`  | `/api/events/:id` | Update an event definition          |
+| `DELETE` | `/api/events/:id` | Delete an event definition          |
 
 #### Create event definition
 
@@ -294,8 +294,8 @@ automatically.
 
 ### Event logs
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
+| Method | Endpoint          | Description                            |
+| ------ | ----------------- | -------------------------------------- |
 | `POST` | `/api/event-logs` | Record and process an event occurrence |
 
 ```json
@@ -317,13 +317,13 @@ workflows. Event logs are never owned by an individual TemporalGuard workflow.
 
 ### Violations
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/violations` | Create a violation |
-| `GET` | `/api/violations` | List all violations |
-| `GET` | `/api/violations/:id` | Get a violation by ID |
-| `PATCH` | `/api/violations/:id` | Update a violation |
-| `DELETE` | `/api/violations/:id` | Delete a violation |
+| Method   | Endpoint              | Description           |
+| -------- | --------------------- | --------------------- |
+| `POST`   | `/api/violations`     | Create a violation    |
+| `GET`    | `/api/violations`     | List all violations   |
+| `GET`    | `/api/violations/:id` | Get a violation by ID |
+| `PATCH`  | `/api/violations/:id` | Update a violation    |
+| `DELETE` | `/api/violations/:id` | Delete a violation    |
 
 ## Development scripts
 
@@ -343,13 +343,13 @@ pnpm format
 
 ## Troubleshooting
 
-| Symptom | What to check |
-|---------|----------------|
-| SigNoz UI not loading | `docker compose ps` — wait until `signoz` is healthy; allow ~1–2 minutes on first start |
+| Symptom                          | What to check                                                                                              |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| SigNoz UI not loading            | `docker compose ps` — wait until `signoz` is healthy; allow ~1–2 minutes on first start                    |
 | No `temporalguard-api` in SigNoz | Hit any API endpoint, then refresh Services; confirm collector is up: `docker compose logs otel-collector` |
-| API unhealthy | `docker compose logs api` — usually waiting on Postgres/Redis |
-| Out of memory / restarts | Give Docker ≥ 4 GB RAM |
-| Port already in use | Change `API_HOST_PORT`, `POSTGRES_PORT`, `SIGNOZ_UI_PORT`, etc. in `.env` |
+| API unhealthy                    | `docker compose logs api` — usually waiting on Postgres/Redis                                              |
+| Out of memory / restarts         | Give Docker ≥ 4 GB RAM                                                                                     |
+| Port already in use              | Change `API_HOST_PORT`, `POSTGRES_PORT`, `SIGNOZ_UI_PORT`, etc. in `.env`                                  |
 
 ## License
 

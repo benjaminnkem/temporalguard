@@ -1,16 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
+import "@fontsource/kalam/400.css";
+import "@fontsource/kalam/700.css";
+import "@fontsource/patrick-hand/400.css";
 import "./globals.css";
 import { Providers } from "./providers";
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -34,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>

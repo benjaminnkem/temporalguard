@@ -202,7 +202,7 @@ type RuleTestResult = {
     completedAt?: string;
     violatedAt?: string;
   }>;
-  dataMode: "mock" | "live";
+  dataMode: "api";
 };
 ```
 
@@ -355,7 +355,7 @@ type DashboardOverview = {
 
 ## 6. Pagination and Query Contracts
 
-Use cursor-ready results even in mock mode:
+Use cursor-ready API results:
 
 ```ts
 type Paginated<T> = {
@@ -384,13 +384,12 @@ type AnalyticsContext = {
 
 ---
 
-## 7. Mock Persistence
+## 7. Client Persistence and Server Ownership
 
-Use browser storage only through a typed adapter:
+Use browser storage only for local UI drafts and preferences through a typed adapter:
 
 ```text
-temporalguard.mock.events.v1
-temporalguard.mock.ruleDrafts.v1
+temporalguard.ruleDrafts.v1
 temporalguard.preferences.v1
 ```
 
@@ -399,6 +398,6 @@ Requirements:
 - Parse with Zod.
 - Migrate or discard invalid versions safely.
 - Never read local storage during server rendering.
-- Seed deterministic events.
-- Custom events must survive refresh.
-- A reset action must restore seed state.
+- Events and saved rules are persisted by the API and scoped to the authenticated workspace.
+- Draft rules must survive refresh without being confused with server-saved rules.
+- Deterministic seeds and reset behavior belong to test databases and test harnesses only.

@@ -1,6 +1,7 @@
 "use client";
 
 import { Laptop, Moon, Sun } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
@@ -25,7 +26,18 @@ export function ThemeSwitch() {
       aria-label={`Theme: ${theme}. Switch to ${next}.`}
       title={`Theme: ${theme}`}
     >
-      <Icon className="size-4" />
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={theme}
+          initial={{ rotate: -35, scale: 0.55, opacity: 0 }}
+          animate={{ rotate: 0, scale: 1, opacity: 1 }}
+          exit={{ rotate: 35, scale: 0.55, opacity: 0 }}
+          transition={{ duration: 0.16 }}
+          className="grid place-items-center"
+        >
+          <Icon className="size-5" strokeWidth={2.5} />
+        </motion.span>
+      </AnimatePresence>
     </Button>
   );
 }

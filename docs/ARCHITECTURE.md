@@ -185,7 +185,7 @@ Business-aware components stay within feature folders:
 
 ## 6. Data Access Boundary
 
-The frontend must not hard-code mock data inside pages.
+The frontend must not hard-code product data or call HTTP endpoints directly inside pages.
 
 Define a data-source contract:
 
@@ -196,7 +196,9 @@ interface TemporalGuardDataSource {
   createEvent(input: CreateEventInput): Promise<EventDefinition>;
   listWorkflows(input: WorkflowListQuery): Promise<Paginated<WorkflowSummary>>;
   getWorkflow(id: string): Promise<WorkflowDetail>;
-  listViolations(input: ViolationListQuery): Promise<Paginated<ViolationSummary>>;
+  listViolations(
+    input: ViolationListQuery,
+  ): Promise<Paginated<ViolationSummary>>;
   getViolation(id: string): Promise<ViolationDetail>;
   testRule(input: RuleDraft): Promise<RuleTestResult>;
   listRules(input: RuleListQuery): Promise<Paginated<RuleSummary>>;
@@ -206,13 +208,14 @@ interface TemporalGuardDataSource {
 Implement:
 
 ```text
-MockTemporalGuardDataSource  — active now
-HttpTemporalGuardDataSource  — interface/stub only, no product API calls yet
+HttpTemporalGuardDataSource  — real api calls
 ```
 
 TanStack Query hooks depend on the contract, not on static arrays.
 
-MSW is recommended because it lets the UI behave as though it is calling stable endpoints while remaining disconnected from the actual backend.
+The application factory selects `HttpTemporalGuardDataSource`. MSW is reserved
+for isolated frontend tests and must implement the same contracts as the real
+API.
 
 ---
 
@@ -257,11 +260,11 @@ For the Query Builder, use one React Hook Form tree or a well-defined reducer in
 
 Use a versioned storage adapter for:
 
-- User-created mock events.
 - Draft rules.
 - Optional UI preferences.
 
-Handle migrations and corrupted storage.
+Events and saved rules are server state and must be persisted by the API.
+Handle migrations and corrupted storage for the remaining local-only values.
 
 ---
 
@@ -429,12 +432,9 @@ interface AuthClient {
 }
 ```
 
-Implement:
-
-- `MockAuthClient` active by default for frontend development.
-- `HttpAuthClient` ready for later activation or used only if the repository already integrates auth.
-
-Select with an environment-controlled factory. Do not scatter mock conditions inside components.
+Use `HttpAuthClient` as the application implementation. A test double may be
+injected by tests, but runtime components must not select or branch on a mock
+mode.
 
 ---
 
@@ -483,7 +483,7 @@ Select with an environment-controlled factory. Do not scatter mock conditions in
 ### E2E
 
 - Signup validation and logo flow.
-- Login success/failure in mock mode.
+- Login success/failure against the API, with network requests intercepted only in isolated frontend tests.
 - Theme persistence.
 - Dashboard navigation.
 - Create an event inline and use it in a rule.
@@ -502,7 +502,7 @@ Use Playwright screenshots for key pages in both themes and common viewport size
 
 - Route-level `error.tsx` where appropriate.
 - Widget-level error boundaries for dashboards.
-- Structured client error reporting adapter, even if it is console/mock now.
+- Structured client error reporting adapter with a console implementation allowed locally.
 - Do not allow one chart failure to blank the dashboard.
 - Future OpenTelemetry browser instrumentation should plug into a central telemetry module.
 
@@ -538,6 +538,6 @@ Do not embed cloud ingestion keys in frontend build arguments.
 - No duplicated data models.
 - No excessive index-barrel files that create cycles.
 - Prefer named exports for feature components.
-- Validate external/mock responses at the data boundary when practical.
+- Validate external/API responses at the data boundary when practical.
 - Avoid premature generic abstraction; abstract repeated stable patterns.
 - Document non-obvious architecture decisions.

@@ -12,7 +12,7 @@ export default function AuthLayout({
         <div className="absolute top-4 right-4">
           <ThemeSwitch />
         </div>
-        <div className="w-full max-w-md">{children}</div>
+        <div className="paper-panel w-full max-w-md p-5 sm:p-7">{children}</div>
       </section>
       <AuthVisual />
     </main>

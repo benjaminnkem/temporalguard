@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { PageHeader } from "../../components/shared/page-header";
@@ -71,10 +72,10 @@ export function OverviewDashboard() {
         {query.data ? (
           <>
             <section
-              className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
+              className="metric-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
               aria-label="Summary metrics"
             >
-              {query.data.metrics.map((metric) => {
+              {query.data.metrics.map((metric, index) => {
                 const favorable =
                   metric.favorable === "up"
                     ? metric.delta >= 0
@@ -82,7 +83,15 @@ export function OverviewDashboard() {
                 return (
                   <Card
                     key={metric.id}
-                    className="group relative min-h-36 overflow-hidden p-4 transition-colors hover:border-border-strong"
+                    decoration={
+                      index === 0 ? "tape" : index === 4 ? "tack" : "none"
+                    }
+                    className="sketch-enter group relative min-h-36 overflow-hidden p-4 transition-colors hover:border-border-strong"
+                    style={
+                      {
+                        animationDelay: `${index * 45}ms`,
+                      } as React.CSSProperties
+                    }
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-xs font-medium text-muted-foreground">
@@ -135,76 +144,100 @@ export function OverviewDashboard() {
                       <button
                         key={item}
                         onClick={() => setMode(item)}
-                        className={`rounded-[var(--radius-sm)] px-2.5 py-1.5 text-xs font-medium whitespace-nowrap ${
+                        className={`relative rounded-[var(--radius-sm)] border-2 border-transparent px-2.5 py-1.5 text-sm font-medium whitespace-nowrap ${
                           mode === item
-                            ? "bg-surface text-foreground shadow-sm"
+                            ? "text-foreground"
                             : "text-muted-foreground"
                         }`}
                       >
-                        {item === "completionRate"
-                          ? "Completion rate"
-                          : item.charAt(0).toUpperCase() + item.slice(1)}
+                        {mode === item ? (
+                          <motion.span
+                            layoutId="dashboard-mode"
+                            className="absolute inset-0 rounded-[var(--radius-sm)] border-2 border-border bg-surface shadow-[2px_2px_0_var(--shadow-ink)]"
+                            transition={{
+                              type: "spring",
+                              bounce: 0.25,
+                              duration: 0.35,
+                            }}
+                          />
+                        ) : null}
+                        <span className="relative z-10">
+                          {item === "completionRate"
+                            ? "Completion rate"
+                            : item.charAt(0).toUpperCase() + item.slice(1)}
+                        </span>
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="h-72 w-full" aria-hidden="true">
-                  <ResponsiveContainer>
-                    <AreaChart data={query.data.reliabilitySeries}>
-                      <defs>
-                        <linearGradient
-                          id="purpleFill"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="var(--chart-purple)"
-                            stopOpacity={0.24}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="var(--chart-purple)"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        stroke="var(--chart-grid)"
-                        vertical={false}
-                      />
-                      <XAxis
-                        dataKey="timestamp"
-                        stroke="var(--chart-axis)"
-                        fontSize={11}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        stroke="var(--chart-axis)"
-                        fontSize={11}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          background: "var(--popover)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey={mode}
-                        stroke="var(--chart-purple)"
-                        fill="url(#purpleFill)"
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={mode}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.16 }}
+                    className="h-72 w-full"
+                    aria-hidden="true"
+                  >
+                    <ResponsiveContainer>
+                      <AreaChart data={query.data.reliabilitySeries}>
+                        <defs>
+                          <linearGradient
+                            id="purpleFill"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="5%"
+                              stopColor="var(--chart-purple)"
+                              stopOpacity={0.24}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor="var(--chart-purple)"
+                              stopOpacity={0}
+                            />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid
+                          stroke="var(--chart-grid)"
+                          vertical={false}
+                        />
+                        <XAxis
+                          dataKey="timestamp"
+                          stroke="var(--chart-axis)"
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis
+                          stroke="var(--chart-axis)"
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            background: "var(--popover)",
+                            border: "2px solid var(--border)",
+                            borderRadius: "var(--radius-md)",
+                            boxShadow: "4px 4px 0 var(--shadow-ink)",
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey={mode}
+                          stroke="var(--chart-purple)"
+                          fill="url(#purpleFill)"
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </motion.div>
+                </AnimatePresence>
                 <p className="sr-only">
                   Reliability chart showing {mode} over twelve two-hour periods.
                   Values range from{" "}
@@ -257,11 +290,12 @@ export function OverviewDashboard() {
                       <Tooltip
                         contentStyle={{
                           background: "var(--popover)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "8px",
+                          border: "2px solid var(--border)",
+                          borderRadius: "var(--radius-md)",
+                          boxShadow: "4px 4px 0 var(--shadow-ink)",
                         }}
                       />
-                      <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                      <Bar dataKey="count" radius={[0, 8, 3, 0]}>
                         {query.data.deadlineBuckets.map((bucket, index) => (
                           <Cell
                             key={bucket.bucket}

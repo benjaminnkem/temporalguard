@@ -74,7 +74,10 @@ Keep repo-specific conventions in `AGENTS.md`; use a skill for repeatable specia
 
 ### SigNoz agent skills
 
-Useful later when implementing actual OpenTelemetry instrumentation, dashboards, alerts, and MCP-assisted investigation. It is not necessary for the current mock frontend slice.
+Useful when implementing OpenTelemetry instrumentation, dashboards, alerts,
+and MCP-assisted investigation. Product API work may prepare the backend
+boundary, but live SigNoz querying remains out of scope unless explicitly
+approved.
 
 ### Browser developer-tools MCP
 
@@ -106,10 +109,10 @@ Codex should create or update a root `AGENTS.md` after auditing the repository. 
 - Architecture boundaries.
 - Design-system source of truth.
 - Strict TypeScript and test requirements.
-- Mock-data rule for product features.
-- Auth-only backend scope.
+- API-backed product data with mocks limited to tests.
+- Authentication and product-domain backend scope.
 - No-secret policy.
-- No product API integration yet.
+- Product API contracts, migrations, and integration-test requirements.
 - Required final report.
 
 ## 6. Tool Safety

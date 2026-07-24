@@ -24,7 +24,7 @@
   Router, local Geist fonts, and a root-level `app` directory.
 - It remains the stock Turborepo starter with one static `/` route and CSS
   Modules. It has no Tailwind, shadcn configuration, theme provider, chart
-  library, form library, query client, Zustand store, mock service layer,
+  library, form library, query client, Zustand store, API data-source layer,
   frontend test runner, or Playwright setup.
 - `packages/ui` contains only three starter components. Its button contains a
   demo alert and is not a production design system.
@@ -49,9 +49,10 @@
 - Current migrations are
   `1721811600000-DecoupleEventsAndLogs.ts` and the uncommitted
   `1721900000000-AddBusinessTenancy.ts`.
-- Existing API product contracts differ from the new frontend contracts:
-  backend rules currently expose only `any` and `all`, for example. Product
-  pages therefore remain mock-backed as required.
+- Existing API product contracts differ from the target frontend contracts:
+  backend rules currently expose only `any` and `all`, for example. The API
+  implementation must close these gaps explicitly before each frontend surface
+  switches to it.
 
 ### Tests and quality
 
@@ -86,7 +87,7 @@
 | ------------- | ---------------------------------- | ----------------------------------------------- |
 | Web product   | Starter page                       | Auth, app shell, analytics routes, builder      |
 | Design system | Starter CSS                        | Central purple light/dark tokens and primitives |
-| Product data  | No frontend boundary               | Typed deterministic mock data source            |
+| Product data  | No frontend boundary               | Typed HTTP data source backed by NestJS APIs    |
 | Forms/state   | None                               | RHF/Zod, TanStack Query, scoped Zustand         |
 | Charts        | None                               | Reusable accessible Recharts wrappers           |
 | Auth backend  | None                               | Secure cookie sessions, rotation, Cloudinary    |
@@ -103,8 +104,8 @@
    instead of creating a duplicate UI package. Product-aware components stay
    in `apps/web`.
 4. Add `packages/contracts` for Zod-validated frontend/product contracts shared
-   by mocks and future HTTP adapters. Do not make the existing product API
-   implement these contracts in this release.
+   by the NestJS API, HTTP adapter, and test fixtures. Update the existing
+   product API to implement these contracts without leaking entity shapes.
 5. Use Tailwind CSS with shadcn conventions, `next-themes`, Recharts,
    TanStack Query, React Hook Form, Zod, Zustand, Framer Motion, Lucide, and MSW
    because no accepted equivalents exist.
@@ -113,10 +114,11 @@
    and builder presentation state.
 7. Use one `RuleDraft` form model. Canvas nodes and readable sentences are
    derived views, never independently persisted graph state.
-8. Use versioned local-storage adapters for custom events, rule drafts, and
-   preferences. All reads occur in client-safe boundaries and parse with Zod.
-9. Frontend auth defaults to mock mode. The HTTP adapter exists but is selected
-   only through a central environment factory.
+8. Persist custom events and saved rules through the API. Use versioned
+   local-storage adapters only for unsaved rule drafts and preferences; all
+   reads occur in client-safe boundaries and parse with Zod.
+9. Frontend auth uses the HTTP adapter selected through a central factory.
+   Tests inject a test double or intercept HTTP without component branches.
 10. Extend the existing `Business` entity rather than creating a competing
     workspace entity. The UI may say “workspace”; storage remains `businesses`.
 11. Use Argon2id, hashed rotating refresh sessions, and HTTP-only same-site
@@ -202,7 +204,7 @@ Add:
 - `packages/contracts/package.json`
 - `packages/contracts/src/{common,analytics,dashboard,events,rules,workflows,violations,auth}.ts`
 
-Deliver central tokens, light/dark/system theme, query provider, mock data
+Deliver central tokens, light/dark/system theme, query provider, HTTP data
 boundary, shell primitives, data-state boundary, chart wrappers, motion
 tokens, skeletons, and a validation route only.
 
@@ -249,7 +251,7 @@ Add:
 - `apps/web/app/(auth)/login/page.tsx`
 - `apps/web/app/(auth)/signup/page.tsx`
 - `apps/web/features/auth/{api,components,schemas,types}/*`
-- `apps/web/features/auth/api/{auth-client,mock-auth-client,http-auth-client,factory}.ts`
+- `apps/web/features/auth/api/{auth-client,http-auth-client,factory}.ts`
 - Auth component tests and Playwright flows
 
 The logo field supports accessible selection/drop, preview, replace, remove,
@@ -264,7 +266,7 @@ Add:
 - `apps/web/app/(app)/overview/page.tsx`
 - `apps/web/features/shell/*`
 - `apps/web/features/dashboard/{api,components,hooks,mappers,types}/*`
-- deterministic dashboard scenarios and tests
+- dashboard API implementation, deterministic fixtures, and tests
 
 Implement URL-backed global context, navigation, metric cards, reliability
 chart modes, funnel, deadline pressure, heatmap, recent violations, widget
@@ -300,8 +302,9 @@ Add:
 - `apps/web/features/violations/{api,components,types}/*`
 - route loading/error files and E2E coverage
 
-Cross-links carry current analytical search parameters. Mock polling is seeded
-and pausable; evidence is explicitly labeled correlated, not causal.
+Cross-links carry current analytical search parameters. API polling is
+pausable and cache-aware; evidence is explicitly labeled correlated, not
+causal.
 
 ### Milestone 7 — Docker, QA, and handoff
 
@@ -329,20 +332,22 @@ Local observability remains the default. Cloud mode exports through the
 collector with a server-side ingestion header and does not start the local
 SigNoz data plane unless explicitly requested.
 
-## 6. Data-source and mock strategy
+## 6. Data-source and API strategy
 
 - `TemporalGuardDataSource` exposes dashboard, event, workflow, violation,
   rule, and rule-test operations described in `docs/ARCHITECTURE.md`.
-- `MockTemporalGuardDataSource` is active and validates seeded/persisted data
-  against `packages/contracts`.
-- `HttpTemporalGuardDataSource` is a non-active adapter stub with typed method
-  boundaries. It must not be selected in this release.
-- TanStack Query hooks depend on the interface/factory, not arrays or MSW
-  handlers.
-- MSW models HTTP-like latency and errors for component/E2E scenarios where
-  useful, but the data source remains the application boundary.
-- Seed time is fixed and advanced by a deterministic clock. IDs are stable.
-- Scenarios cover healthy, partial, forbidden, out-of-order, waiting,
+- `HttpTemporalGuardDataSource` is the active implementation and validates API
+  responses against `packages/contracts`.
+- The NestJS controllers and services implement the same contracts with
+  authentication, workspace isolation, validation, pagination, and explicit
+  migrations.
+- TanStack Query hooks depend on the interface/factory, not endpoint calls or
+  MSW handlers.
+- MSW models HTTP latency and errors only in isolated frontend tests; API
+  integration and E2E tests run against the NestJS application.
+- Test seed time is fixed and advanced by a deterministic clock. Fixture IDs
+  are stable.
+- Test scenarios cover healthy, partial, forbidden, out-of-order, waiting,
   near-deadline, overdue, recovered, deployment-adjacent, empty, filtered
   empty, slow, partial failure, and total failure states.
 

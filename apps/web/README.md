@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# TemporalGuard Web
 
-## Getting Started
+Next.js 16 App Router frontend for TemporalGuard’s workflow-reliability
+experience.
 
-First, run the development server:
+## Run locally
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+From the repository root:
+
+```sh
+corepack enable
+corepack prepare pnpm@9.0.0 --activate
+pnpm install --frozen-lockfile
+pnpm --filter web dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Product-domain screens use the typed `HttpTemporalGuardDataSource`, and
+authentication uses `HttpAuthClient`. Both remain behind component-facing
+interfaces so tests can inject isolated doubles:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load Inter, a custom Google Font.
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+```
 
-## Learn More
+Ensure the NestJS API is running at `NEXT_PUBLIC_API_BASE_URL` before starting
+the web application.
 
-To learn more about Next.js, take a look at the following resources:
+## Design system
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The source of truth is `../../docs/DESIGN.MD`. Semantic tokens, light/dark
+paper themes, wobbly radii, hard shadows, motion timing, and font mappings live
+in `app/globals.css`. Kalam and Patrick Hand are bundled through Fontsource;
+feature components should consume semantic utilities and shared primitives
+instead of adding literal colors or a second motion system.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Checks
 
-## Deploy on Vercel
+```sh
+pnpm --filter web check-types
+pnpm --filter web lint
+pnpm --filter web test
+pnpm --filter web test:e2e
+pnpm --filter web build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Responsive QA covers 390×844, 768×1024, 1440×900, and 1920×1080 in light and
+dark themes.

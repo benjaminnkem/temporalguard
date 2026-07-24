@@ -18,7 +18,7 @@ A rule may say:
 
 Traditional observability may show healthy servers and successful HTTP responses while the actual business process remains unfinished. TemporalGuard provides a product-analytics experience for discovering failed or slow workflows and an observability experience for investigating the technical evidence behind them.
 
-The first release covered by this PRD creates a polished frontend and the minimum backend authentication foundation. Product data must use a well-structured mock layer for now, while all component and type boundaries remain ready for later API integration.
+The release covered by this PRD delivers a polished frontend backed by the NestJS API. Authentication and product-domain data must use typed, validated HTTP contracts; deterministic fixtures remain limited to automated tests and local test seeding.
 
 ---
 
@@ -82,8 +82,8 @@ They need to verify time-bound obligations such as access revocation, account de
 - Support the four initial operators: `any`, `all`, `sequence`, and `forbid`.
 - Make the frontend realistic, responsive, accessible, and visually deliberate.
 - Provide detailed loading, empty, success, partial, error, and retry states.
-- Keep product features mock-backed while preserving future API compatibility.
-- Add secure authentication endpoints to the existing NestJS backend.
+- Integrate product features with versioned, validated NestJS APIs.
+- Add secure authentication and product-domain endpoints to the existing NestJS backend.
 - Support workspace/business logo upload through Cloudinary during signup.
 - Preserve the existing local SigNoz setup and document a clean cloud/local switch.
 
@@ -93,8 +93,8 @@ They need to verify time-bound obligations such as access revocation, account de
 - Keep server state in TanStack Query and UI state in Zustand.
 - Use React Hook Form and Zod for all forms.
 - Centralize themes, chart tokens, spacing, status colors, and motion.
-- Make mock data deterministic and scenario-driven.
-- Add testable data-source interfaces so real APIs can replace mocks later.
+- Make test fixtures deterministic and scenario-driven.
+- Keep testable data-source interfaces so HTTP transport details do not leak into components.
 - Avoid unnecessary client components and excessive animation.
 - Maintain strict TypeScript and avoid `any` except at external library boundaries with explicit narrowing.
 
@@ -131,7 +131,7 @@ The following are explicitly outside this phase:
 
 ### 7.2 Backend work
 
-Only the authentication and signup foundation:
+Authentication, signup, and product API foundations:
 
 - Register workspace owner.
 - Login.
@@ -141,13 +141,18 @@ Only the authentication and signup foundation:
 - Cloudinary-backed business logo upload.
 - Secure password handling.
 - Required TypeORM migrations and entities, adapted to existing repository conventions.
+- Event catalogue creation and listing.
+- Rule creation, listing, and historical evaluation.
+- Workflow listing and detail.
+- Violation listing and detail.
+- Dashboard analytics and reliability summaries.
 
 ### 7.3 Data mode
 
-- Auth backend endpoints are real.
-- Frontend auth screens should use an adapter boundary and default to mock behavior in this phase unless the repository already has a working auth integration that can be preserved safely.
-- All observability/product data is mock-backed.
-- No product API integration should be introduced accidentally.
+- Auth and product backend endpoints are real.
+- Frontend auth screens use the `AuthClient` boundary with the HTTP adapter active.
+- Observability/product data is loaded through `HttpTemporalGuardDataSource`.
+- Test doubles may be used only in unit, component, and E2E tests.
 
 ---
 
@@ -270,7 +275,7 @@ Support:
 - Time granularity switching.
 - Hover details.
 - Comparison period.
-- Deployment annotations in mock data.
+- Deployment annotations from the dashboard API.
 - Click-through to affected workflows.
 
 ### 10.3 Workflow funnel
@@ -328,7 +333,7 @@ Open a detail drawer without losing dashboard context.
 
 ## 11. Live Workflows
 
-- Real-time visual treatment using deterministic mock polling or simulated updates.
+- Real-time visual treatment using API polling, with pause/resume and retry behavior.
 - Tabs: all, waiting, near deadline, overdue, completed.
 - Search by workflow ID, event, rule, service, or entity.
 - Filter chips.
@@ -373,7 +378,7 @@ States:
 - Rule evaluation.
 - Attributes.
 
-Data is mocked, but components must use typed models matching future API contracts.
+Data comes from the API, and components consume validated typed models rather than persistence entities.
 
 ---
 
@@ -470,8 +475,8 @@ Creation behavior:
 - Warn when the new event differs only by punctuation, tense, or casing.
 - Preserve the rule draft if creation is cancelled or fails.
 - Add a successfully created event immediately to the catalogue and select it in the current builder node.
-- In mock mode, persist custom events in browser storage with an explicit schema version.
-- Provide a reset-to-seed-data developer action.
+- Persist custom events through the API and invalidate the relevant TanStack Query caches after creation.
+- Test fixtures may expose a reset action only in test environments.
 
 ### 14.3 Event details preview
 
@@ -485,7 +490,7 @@ Before selecting an event, users can inspect:
 - Existing rules using the event.
 - Suggested correlation keys.
 
-These values are mocked in the current phase.
+These values are returned by the event catalogue API.
 
 ---
 
@@ -588,7 +593,7 @@ Warn, but do not necessarily block, when:
 
 ### 15.7 Historical test preview
 
-Use mock results:
+Return an API-backed historical evaluation result:
 
 - Workflows evaluated.
 - Would complete.
@@ -597,7 +602,7 @@ Use mock results:
 - Median completion duration.
 - Sample matches.
 
-The preview must clearly say it is simulated/mock data in this release.
+The preview must clearly identify the evaluated time range and distinguish historical evaluation from a saved or active rule.
 
 ### 15.8 Draft persistence
 
@@ -611,16 +616,25 @@ The preview must clearly say it is simulated/mock data in this release.
 
 ## 16. Visual and Interaction Requirements
 
-- Use the tokens in `docs/design.md`.
-- Purple is the primary brand color.
+- Use the tracked `docs/DESIGN.MD` as the visual source of truth.
+- Use the warm paper, pencil-black, correction-red, post-it-yellow, and
+  ballpoint-blue semantic token palette defined there.
 - Support light, dark, and system theme.
-- The application should be dense but not cramped.
-- Use restrained radii, thin borders, deliberate typography, and high-quality chart treatment.
-- Avoid excessive gradients, glassmorphism, random floating cards, huge empty hero blocks inside the authenticated app, decorative blobs, and inconsistent shadows.
+- Use Kalam for headings and Patrick Hand for body copy.
+- Use irregular wobbly radii, heavy ink borders, paper texture, and hard offset
+  shadows consistently rather than one-off feature styles.
+- Preserve the analytical hierarchy and density while expressing the
+  hand-drawn sketchbook character.
+- Avoid soft shadows, glassmorphism, random gradients, perfect geometric cards,
+  huge empty dashboard regions, and inconsistent visual effects.
 - The interface must not look generated from a generic SaaS template.
-- Use Lucide icons with consistent stroke weight.
+- Use Lucide icons with a hand-drawn-compatible 2.5–3 stroke weight where
+  practical.
 - Framer Motion is the default motion system.
 - Use GSAP only for a small number of timeline/chart transitions that clearly benefit from sequencing; do not use GSAP and Framer Motion on the same element.
+- Motion should feel fast and tactile: pressed buttons lose their shadow,
+  selections slide or spring into place, and live/chart changes transition
+  without delaying investigation.
 - Respect `prefers-reduced-motion`.
 
 ---
@@ -701,7 +715,7 @@ Recommended where not already present:
 
 - Recharts for product charts.
 - `next-themes` for theme management.
-- MSW for API-compatible frontend mocks.
+- MSW for isolated frontend tests of API success, error, empty, and latency states.
 - Vitest and React Testing Library for unit/component tests.
 - Playwright for E2E and visual interaction testing.
 
@@ -802,15 +816,15 @@ The frontend must not receive secrets.
 - Debounce search and draft persistence.
 - Avoid rerendering the entire builder for one field change.
 - Memoize derived chart data where meaningful, not indiscriminately.
-- Keep mock API shapes paginated and cursor-ready.
-- Simulate background refresh without replacing stable data.
+- Keep API responses paginated and cursor-ready.
+- Refresh server data without replacing stable cached data unnecessarily.
 - Ensure animations do not block interaction.
 
 ---
 
-## 25. Mock Data Requirements
+## 25. API Data and Test Fixture Requirements
 
-Create deterministic scenarios:
+The backend and its deterministic test fixtures must cover:
 
 - Healthy document verification.
 - Missing scan completion.
@@ -821,7 +835,7 @@ Create deterministic scenarios:
 - Deployment health check missing.
 - Completed, waiting, near-deadline, overdue, and recovered workflows.
 
-The mock layer should support:
+The API must support:
 
 - Pagination.
 - Filtering.
@@ -833,6 +847,9 @@ The mock layer should support:
 - Empty datasets.
 - Slow responses.
 
+Deterministic fixtures and MSW handlers may reproduce these states in
+automated tests, but they are not an application runtime data source.
+
 ---
 
 ## 26. Acceptance Criteria
@@ -843,14 +860,14 @@ The release is acceptable when:
 - Login and signup are complete, responsive, validated, and accessible.
 - Signup includes a logo picker, preview, validation, and loading/error states.
 - NestJS auth endpoints, entities, migration, Cloudinary service, and tests exist without breaking the current backend.
-- The authenticated shell and all in-scope dashboard routes work with typed mock data.
+- The authenticated shell and all in-scope dashboard routes work with validated API data.
 - Query Builder supports `any`, `all`, `sequence`, and `forbid`.
 - Every event selector uses the shared Event Catalogue.
 - Users can create an event inline and immediately use it in the active rule.
 - Draft rules survive refresh.
 - Dashboard widgets have skeleton, empty, error, and retry states.
 - Core paths are covered by automated tests.
-- No real product API integration was accidentally added.
+- Product API endpoints enforce authentication, workspace isolation, validation, pagination, and safe errors.
 - Environment examples and Docker instructions are documented.
 - Codex produces a final implementation report listing files changed, commands run, tests, assumptions, environment variables, and remaining work.
 

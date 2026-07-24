@@ -34,7 +34,7 @@ function ErrorSummary({ messages }: { messages: string[] }) {
   return (
     <div
       role="alert"
-      className="rounded-[var(--radius-md)] border border-destructive bg-destructive-subtle p-3 text-sm text-destructive"
+      className="rounded-[var(--radius-md)] border-2 border-destructive bg-destructive-subtle p-3 text-sm text-destructive shadow-[3px_3px_0_var(--shadow-ink)]"
       tabIndex={-1}
     >
       <p className="font-semibold">Please check the form</p>
@@ -299,7 +299,7 @@ export function SignupForm() {
           onChange={(event) => chooseFile(event.target.files?.[0])}
         />
         {preview && logo ? (
-          <div className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface-subtle p-3">
+          <div className="flex items-center gap-3 rounded-[var(--radius-md)] border-2 border-border bg-surface-subtle p-3 shadow-[3px_3px_0_var(--shadow-ink)]">
             <Image
               src={preview}
               alt="Business logo preview"
@@ -343,7 +343,7 @@ export function SignupForm() {
         ) : (
           <button
             type="button"
-            className="grid min-h-28 place-items-center rounded-[var(--radius-md)] border border-dashed border-border-strong bg-surface-subtle p-4 text-center transition-colors hover:border-primary"
+            className="grid min-h-28 place-items-center rounded-[var(--radius-md)] border-[3px] border-dashed border-border-strong bg-surface-subtle p-4 text-center shadow-[3px_3px_0_var(--shadow-ink)] transition-[border,transform,box-shadow] duration-100 hover:-rotate-[0.4deg] hover:border-primary hover:shadow-[5px_5px_0_var(--shadow-ink)]"
             onClick={() => inputRef.current?.click()}
             onDrop={(event) => {
               event.preventDefault();
@@ -402,13 +402,13 @@ export function SignupForm() {
 
 export function AuthVisual() {
   return (
-    <div className="relative hidden min-h-screen overflow-hidden border-l border-border bg-surface-subtle p-10 lg:flex lg:flex-col lg:justify-between">
+    <div className="relative hidden min-h-screen overflow-hidden border-l-[3px] border-dashed border-border bg-surface-subtle p-10 lg:flex lg:flex-col lg:justify-between">
       <div>
-        <div className="inline-flex items-center gap-2 rounded-full bg-primary-subtle px-3 py-1 text-xs font-medium text-primary-subtle-foreground">
+        <div className="inline-flex -rotate-1 items-center gap-2 rounded-[var(--radius-md)] border-2 border-border bg-primary-subtle px-3 py-1 text-sm font-medium text-primary-subtle-foreground shadow-[3px_3px_0_var(--shadow-ink)]">
           <ShieldCheck className="size-3.5" />
           Workflow reliability, made explicit
         </div>
-        <h2 className="mt-5 max-w-lg text-3xl font-semibold tracking-tight">
+        <h2 className="mt-7 max-w-lg text-4xl font-bold tracking-tight">
           See the business promise that infrastructure dashboards miss.
         </h2>
         <p className="mt-3 max-w-lg text-muted-foreground">
@@ -416,7 +416,11 @@ export function AuthVisual() {
           investigate correlated technical evidence without losing context.
         </p>
       </div>
-      <div className="mx-auto w-full max-w-xl rounded-[var(--radius-xl)] border border-border bg-card p-5">
+      <div className="relative mx-auto w-full max-w-xl rotate-1 rounded-[var(--radius-xl)] border-[3px] border-border bg-card p-6 shadow-[8px_8px_0_var(--shadow-ink)]">
+        <span
+          aria-hidden="true"
+          className="absolute -top-3 left-1/2 h-6 w-24 -translate-x-1/2 -rotate-2 bg-muted/80"
+        />
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 className="size-4 text-primary" />

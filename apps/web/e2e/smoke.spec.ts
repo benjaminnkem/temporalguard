@@ -51,9 +51,7 @@ test("create an inline event without losing the rule draft", async ({
     .getByLabel("Description")
     .fill("An invoice record was created.");
   await eventDialog.getByLabel("Source service").fill("billing-api");
-  await eventDialog
-    .getByRole("button", { name: "Create and select" })
-    .click();
+  await eventDialog.getByRole("button", { name: "Create and select" }).click();
   if (await propertiesPane.isVisible()) await propertiesPane.click();
   await expect(page.getByLabel("Rule name")).toHaveValue(
     "Invoice reconciliation policy",

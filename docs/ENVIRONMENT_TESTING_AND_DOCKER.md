@@ -8,8 +8,6 @@ Suggested names; adapt to existing naming conventions:
 
 ```bash
 NEXT_PUBLIC_APP_NAME=TemporalGuard
-NEXT_PUBLIC_DATA_MODE=mock
-NEXT_PUBLIC_AUTH_MODE=mock
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 NEXT_PUBLIC_DEFAULT_ENVIRONMENT=production
 NEXT_PUBLIC_SIGNOZ_MODE=local
@@ -18,8 +16,9 @@ NEXT_PUBLIC_SIGNOZ_UI_URL=http://localhost:3301
 
 Rules:
 
-- `NEXT_PUBLIC_DATA_MODE` remains `mock` for product features in this release.
-- `NEXT_PUBLIC_AUTH_MODE` may be `mock` initially. The real client remains behind the same interface.
+- Product and authentication requests use `NEXT_PUBLIC_API_BASE_URL`; there is
+  no browser runtime mock mode.
+- Tests may inject adapters or intercept requests without changing component code.
 - No SigNoz API key, ingestion key, Cloudinary API secret, JWT secret, or database credential may use `NEXT_PUBLIC_`.
 
 ## 2. Backend Environment Variables
@@ -203,8 +202,8 @@ production build
 ### E2E tests
 
 1. Open signup, submit invalid fields, verify accessible errors.
-2. Select a valid logo, verify preview, complete mock signup.
-3. Login with mock success and failure scenarios.
+2. Select a valid logo, verify preview, and complete signup through the API.
+3. Login through the API and verify success and safe failure scenarios.
 4. Switch light/dark theme and reload.
 5. Navigate dashboard routes.
 6. Use global time/environment filters.

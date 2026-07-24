@@ -6,23 +6,23 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "../../lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex min-h-9 items-center justify-center gap-2 rounded-[var(--radius-md)] px-3 text-sm font-medium transition-[background,color,border,transform] duration-150 disabled:pointer-events-none disabled:opacity-50 active:translate-y-px",
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border-2 px-3 text-base font-medium shadow-[4px_4px_0_var(--shadow-ink)] transition-[background,color,border,box-shadow,transform] duration-100 disabled:pointer-events-none disabled:opacity-50 hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_var(--shadow-ink)] active:translate-x-1 active:translate-y-1 active:shadow-none",
   {
     variants: {
       variant: {
         primary:
-          "bg-primary text-primary-foreground hover:bg-primary-hover border border-transparent",
+          "border-border bg-primary text-primary-foreground hover:bg-primary-hover",
         secondary:
-          "border border-border-strong bg-surface text-foreground hover:bg-surface-subtle",
-        ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
-        destructive:
-          "bg-destructive text-white hover:opacity-90 border border-transparent",
+          "border-border bg-surface text-foreground hover:bg-info hover:text-white",
+        ghost:
+          "border-transparent bg-transparent text-muted-foreground shadow-none hover:border-border hover:bg-muted hover:text-foreground hover:shadow-[2px_2px_0_var(--shadow-ink)]",
+        destructive: "border-border bg-destructive text-white hover:opacity-90",
       },
       size: {
-        sm: "min-h-8 px-2.5 text-xs",
-        md: "min-h-9 px-3",
-        lg: "min-h-10 px-4",
-        icon: "size-9 p-0",
+        sm: "min-h-10 px-2.5 text-sm",
+        md: "min-h-11 px-3",
+        lg: "min-h-12 px-5 text-lg",
+        icon: "size-11 p-0",
       },
     },
     defaultVariants: { variant: "secondary", size: "md" },

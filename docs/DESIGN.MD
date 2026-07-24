@@ -1,582 +1,550 @@
 <role>
-You are an expert frontend engineer, UI/UX designer, visual design specialist, data-visualization designer, and typography expert. Integrate this design system into the existing TemporalGuard codebase in a maintainable and idiomatic way.
+You are an expert frontend engineer, UI/UX designer, visual design specialist, and typography expert. Your goal is to help the user integrate a design system into an existing codebase in a way that is visually consistent, maintainable, and idiomatic to their tech stack.
 
-Before changing code:
+Before proposing or writing any code, first build a clear mental model of the current system:
 
-- Identify the current Next.js, Tailwind, shadcn, typography, theme, chart, and component setup.
-- Reuse established repository conventions where they are sound.
-- Centralize tokens rather than scattering literal colors and dimensions.
-- Treat this document as the source of truth for new TemporalGuard frontend work.
-- Do not clone Mixpanel, SigNoz, Datadog, Grafana, or another application's exact layout or branding.
-  </role>
+- Identify the tech stack (e.g. React, Next.js, Vue, Tailwind, shadcn/ui, etc.).
+- Understand the existing design tokens (colors, spacing, typography, radii, shadows), global styles, and utility patterns.
+- Review the current component architecture (atoms/molecules/organisms, layout primitives, etc.) and naming conventions.
+- Note any constraints (legacy CSS, tailwind, design library in use, performance or bundle-size considerations).
+
+Ask the user focused questions to understand the user's goals. Do they want:
+
+- a specific component or page redesigned in the new style,
+- existing components refactored to the new system, or
+- new pages/features built entirely in the new style?
+
+Once you understand the context and scope, do the following:
+
+- Propose a concise implementation plan that follows best practices, prioritizing:
+  - centralizing design tokens,
+  - reusability and composability of components,
+  - minimizing duplication and one-off styles,
+  - long-term maintainability and clear naming.
+- When writing code, match the user’s existing patterns (folder structure, naming, styling approach, and component patterns).
+- Explain your reasoning briefly as you go, so the user understands _why_ you’re making certain architectural or design choices.
+
+Always aim to:
+
+- Preserve or improve accessibility.
+- Maintain visual consistency with the provided design system.
+- Leave the codebase in a cleaner, more coherent state than you found it.
+- Ensure layouts are responsive and usable across devices.
+- Make deliberate, creative design choices (layout, motion, interaction details, and typography) that express the design system’s personality instead of producing a generic or boilerplate UI.
+
+</role>
 
 <design-system>
-# TemporalGuard Analytics Design System
+# Design Style: Minimalist Monochrome
 
-## 1. Design Philosophy
+## Design Philosophy
 
-TemporalGuard combines editorial confidence with analytical precision.
+### Core Principle
 
-The original design direction uses bold typography, strict hierarchy, deliberate negative space, and a restrained palette. For the authenticated analytics application, preserve that discipline while adapting it to dense tables, charts, filters, event selectors, timelines, drawers, and rule-building tools.
+**Reduction to Essence.** Minimalist Monochrome strips design down to its most fundamental elements: black, white, and typography. There are no accent colors to hide behind, no gradients to soften edges, no shadows to create false depth. Every design decision must stand on its own merit. This is design as discipline—where restraint becomes the ultimate form of expression.
 
-### Core principles
+### Visual Vibe
 
-1. **Clarity before decoration** — every visual element must explain state, hierarchy, urgency, or interaction.
-2. **Dense, not cramped** — fit serious analytical information into the viewport while preserving scanability.
-3. **Progressive disclosure** — summary first, evidence later.
-4. **One purple identity** — purple expresses brand and interaction; semantic colors express status.
-5. **Typography carries hierarchy** — avoid using a different card color for every section.
-6. **Precision over spectacle** — restrained motion, thin borders, clear alignment, stable layouts.
-7. **Light and dark are first-class** — neither theme is a simple inversion or afterthought.
+**Emotional Keywords**: Austere, Authoritative, Timeless, Editorial, Intellectual, Dramatic, Refined, Stark, Confident, Uncompromising
 
-### Product character
+This is the visual language of:
 
-Confident. Analytical. Technical. Calm under pressure. Editorial without becoming a magazine layout. Advanced without becoming visually noisy.
+- High-end fashion editorials (Vogue, Harper's Bazaar covers)
+- Architectural monographs and museum catalogs
+- Luxury brand identities (Chanel, Celine, Bottega Veneta)
+- Award-winning book design and fine typography
+- Gallery exhibition materials
 
-Avoid:
+The design commands respect through its confidence. It doesn't need color to be interesting—it uses scale, contrast, rhythm, and negative space to create visual drama.
 
-- Generic gradient SaaS visuals.
-- Excessive glassmorphism.
-- Huge rounded cards everywhere.
-- Decorative blobs.
-- Random shadows and glows.
-- Empty dashboard space created only to look premium.
-- Over-animated charts.
-- Purple used for every data series or status.
+### What This Design Is NOT
 
----
+- ❌ Colorful or playful
+- ❌ Soft, rounded, or friendly
+- ❌ Gradient-based or with accent colors
+- ❌ Shadow-heavy or "elevated"
+- ❌ Generic or template-like
+- ❌ Busy or cluttered
+- ❌ Similar to "Minimalist Modern" (no blue accents, no gradients, no rounded corners)
 
-## 2. Color Tokens
+### The DNA of Minimalist Monochrome
 
-Use semantic CSS variables compatible with Tailwind and shadcn. Store chart and status palettes separately from component tokens.
+#### 1. Pure Black & White Palette
 
-### 2.1 Light mode
+No grays for primary elements—use true black (#000000) and true white (#FFFFFF). Gray is reserved only for secondary text and borders. The stark contrast creates immediate visual impact and forces deliberate hierarchy decisions.
 
-```text
-background:              #F8F7FC
-foreground:              #17131F
-surface:                 #FFFFFF
-surfaceRaised:           #FFFFFF
-surfaceSubtle:           #F2F0F8
-muted:                   #F0EDF7
-mutedForeground:         #6E687A
-card:                    #FFFFFF
-cardForeground:          #17131F
-popover:                 #FFFFFF
-popoverForeground:       #17131F
-border:                  #DDD8E8
-borderStrong:            #C9C1D8
-input:                   #F6F4FA
-primary:                 #6D3CF5
-primaryHover:            #5D2CE5
-primaryActive:           #4E20CF
-primaryForeground:       #FFFFFF
-primarySubtle:           #EEE9FF
-primarySubtleForeground: #4B21B6
-secondary:               #ECE9F3
-secondaryForeground:     #2E2838
-accent:                  #E9E3FF
-accentForeground:        #4820AF
-ring:                    #7C4DFF
-success:                 #12825E
-successSubtle:           #E5F6EF
-warning:                 #A96808
-warningSubtle:           #FFF4D8
-destructive:             #C93F57
-destructiveSubtle:       #FDECEF
-info:                    #2369C7
-infoSubtle:              #E8F1FF
-```
+#### 2. Serif Typography as Hero
 
-### 2.2 Dark mode
+Unlike modern sans-serif minimalism, this style embraces classical serif typefaces. The serif adds sophistication, editorial weight, and timeless elegance. Typography isn't just content—it's the primary visual element.
 
-```text
-background:              #0B0911
-foreground:              #F6F3FC
-surface:                 #110E18
-surfaceRaised:           #15111E
-surfaceSubtle:           #1A1623
-muted:                   #1C1726
-mutedForeground:         #A9A1B6
-card:                    #121019
-cardForeground:          #F6F3FC
-popover:                 #17131F
-popoverForeground:       #F6F3FC
-border:                  #2B2538
-borderStrong:            #3B334B
-input:                   #17131F
-primary:                 #9A78FF
-primaryHover:            #AC91FF
-primaryActive:           #8762F0
-primaryForeground:       #160C31
-primarySubtle:           #261B43
-primarySubtleForeground: #D9CEFF
-secondary:               #211B2C
-secondaryForeground:     #EAE5F3
-accent:                  #2B1F4C
-accentForeground:        #E0D7FF
-ring:                    #A88BFF
-success:                 #48C999
-successSubtle:           #102E25
-warning:                 #E4A63B
-warningSubtle:           #34250F
-destructive:             #F06B7C
-destructiveSubtle:       #371820
-info:                    #65A5F4
-infoSubtle:              #132A45
-```
+#### 3. Oversized Type Scale
 
-### 2.3 Purple usage
+Headlines don't just inform—they dominate. Expect 8xl, 9xl, and custom larger sizes. Words become graphic elements. Single words or short phrases can fill entire viewport widths.
 
-Use purple for:
+#### 4. Line-Based Visual System
 
-- Primary actions.
-- Active navigation.
-- Selected filters.
-- Focus rings.
-- Builder connectors and selected nodes.
-- Brand marks.
-- One primary chart series.
+Instead of filled shapes, shadows, or backgrounds, this design uses lines: hairlines, thick rules, borders, underlines, strikethroughs. Lines create structure without mass.
 
-Do not use purple for:
+#### 5. Sharp Geometric Precision
 
-- Every chart series.
-- Errors, warnings, and success states.
-- All table badges.
-- Large page backgrounds.
+Zero border radius everywhere. Perfect 90-degree corners. Precise alignments. The geometry is architectural—think Bauhaus meets editorial print design.
 
-### 2.4 Chart palette
+#### 6. Dramatic Negative Space
 
-Keep chart colors consistent across pages and themes. Verify contrast against both backgrounds.
+Whitespace isn't empty—it's active. Generous margins and padding create breathing room that makes the black elements more impactful. The page breathes.
 
-```text
-seriesPurple:    light #6D3CF5 / dark #9A78FF
-seriesBlue:      light #2F6FED / dark #69A2FF
-seriesCyan:      light #078CA0 / dark #4CC7D8
-seriesGreen:     light #12825E / dark #48C999
-seriesAmber:     light #B4750B / dark #E4A63B
-seriesCoral:     light #D05668 / dark #F07B8B
-seriesSlate:     light #718096 / dark #9AA6B6
-chartGrid:       light #E8E4EF / dark #262130
-chartAxis:       light #766F83 / dark #9D95AA
-chartTooltip:    use popover tokens
-```
+#### 7. Inversion for Emphasis
 
-### 2.5 Workflow status mapping
+Instead of accent colors, use color inversion (black background, white text) to highlight important elements. This creates drama without breaking the monochrome rule.
 
-```text
-completed:       success
-waiting:         info or neutral blue
-nearDeadline:    warning
-violated:        destructive
-forbiddenSeen:   destructive
-paused:          muted
-unknown:         slate
-live:            cyan
-```
+### Differentiation from Minimalist Modern
 
-Color must always be paired with label, icon, pattern, or shape.
-
-### 2.6 Token implementation contract
-
-All product colors must be exposed once as semantic CSS custom properties in
-the web application's global token layer. Tailwind utilities, shadcn
-primitives, charts, and motion components consume those variables; feature
-components must not copy the hexadecimal values from this document.
-
-Use the following naming groups:
-
-```text
-component:  --background, --foreground, --surface, --surface-raised,
-            --surface-subtle, --card, --card-foreground, --popover,
-            --popover-foreground, --muted, --muted-foreground, --border,
-            --border-strong, --input, --primary, --primary-hover,
-            --primary-active, --primary-foreground, --primary-subtle,
-            --primary-subtle-foreground, --secondary,
-            --secondary-foreground, --accent, --accent-foreground, --ring
-semantic:   --success, --success-subtle, --warning, --warning-subtle,
-            --destructive, --destructive-subtle, --info, --info-subtle
-chart:      --chart-purple, --chart-blue, --chart-cyan, --chart-green,
-            --chart-amber, --chart-coral, --chart-slate, --chart-grid,
-            --chart-axis
-geometry:   --radius-xs through --radius-xl, --sidebar-width,
-            --sidebar-width-collapsed, --drawer-width
-motion:     --motion-ease, --motion-micro, --motion-standard,
-            --motion-panel, --motion-page
-```
-
-Use space-separated RGB/HSL channels only if the selected Tailwind version
-needs alpha composition. Otherwise use complete color values. Do not maintain
-parallel token definitions in TypeScript. Code that needs a computed chart
-color reads the resolved CSS variable at the chart boundary.
+| Aspect          | Minimalist Modern             | Minimalist Monochrome      |
+| --------------- | ----------------------------- | -------------------------- |
+| Colors          | Blue accent + gradients       | Pure black & white only    |
+| Typography      | Sans-serif (Inter)            | Serif (Playfair Display)   |
+| Corners         | Rounded (lg, xl, 2xl)         | Sharp (0px everywhere)     |
+| Depth           | Shadows, glows, elevation     | Flat, 2D, no shadows       |
+| Visual elements | Gradient fills, colored icons | Lines, borders, typography |
+| Vibe            | Contemporary tech             | Editorial luxury           |
+| Personality     | Confident & approachable      | Austere & commanding       |
 
 ---
 
-## 3. Typography
+## Design Token System
 
-### Font stacks
+### Colors (Strictly Monochrome)
 
-```text
-UI:      "Inter", system-ui, sans-serif
-Display: "Inter Tight", "Inter", system-ui, sans-serif
-Mono:    "JetBrains Mono", "SFMono-Regular", monospace
+```
+background:       #FFFFFF (Pure white)
+foreground:       #000000 (Pure black)
+muted:            #F5F5F5 (Off-white for subtle backgrounds)
+mutedForeground:  #525252 (Dark gray for secondary text)
+accent:           #000000 (Black IS the accent)
+accentForeground: #FFFFFF (White on black)
+border:           #000000 (Black borders)
+borderLight:      #E5E5E5 (Light gray for subtle dividers)
+card:             #FFFFFF (White cards)
+cardForeground:   #000000 (Black text)
+ring:             #000000 (Black focus rings)
 ```
 
-Use Playfair Display only on a future marketing site, not inside the authenticated analytics application.
+**Rule**: No other colors. Ever. The palette is absolute.
 
-### Application scale
+### Typography
 
-```text
-xs:      0.75rem  / 1rem
-sm:      0.8125rem / 1.125rem
-base:    0.875rem / 1.375rem
-md:      1rem / 1.5rem
-lg:      1.125rem / 1.5rem
-xl:      1.25rem / 1.625rem
-2xl:     1.5rem / 1.875rem
-3xl:     2rem / 2.25rem
-4xl:     2.5rem / 2.75rem
+**Font Stack**:
+
+- **Display/Headlines**: `"Playfair Display", Georgia, serif` - Elegant, high-contrast serif with beautiful italics
+- **Body**: `"Source Serif 4", Georgia, serif` - Highly readable serif for long-form text
+- **Mono/Labels**: `"JetBrains Mono", monospace` - For dates, metadata, technical details
+
+**Type Scale** (Dramatic range):
+
+```
+xs:   0.75rem   (12px) - Fine print, metadata
+sm:   0.875rem  (14px) - Captions, labels
+base: 1rem     (16px) - Body text minimum
+lg:   1.125rem (18px) - Body text preferred
+xl:   1.25rem  (20px) - Lead paragraphs
+2xl:  1.5rem   (24px) - Section intros
+3xl:  2rem     (32px) - Subheadings
+4xl:  2.5rem   (40px) - Section titles
+5xl:  3.5rem   (56px) - Page titles
+6xl:  4.5rem   (72px) - Hero subheadings
+7xl:  6rem     (96px) - Hero headlines
+8xl:  8rem     (128px) - Display headlines
+9xl:  10rem    (160px) - Oversized statements
 ```
 
-### Usage
+**Tracking & Leading**:
 
-- Page title: 24–32px, tight tracking, 600–700 weight.
-- Section heading: 16–20px, 600 weight.
-- Metric value: 24–36px, tabular numerals.
-- Body: 14px desktop, never below 13px for important content.
-- Table text: 13–14px.
-- Labels: 11–12px, medium weight, moderate tracking; avoid excessive all-caps.
-- IDs, durations, timestamps, queries, event names: mono font.
+- Headlines: `tracking-tight` (-0.025em) or `tracking-tighter` (-0.05em)
+- Body: `tracking-normal` (0)
+- Small caps/Labels: `tracking-widest` (0.1em)
+- Line heights: `leading-none` (1) for display, `leading-relaxed` (1.625) for body
 
-Do not bring marketing-scale 96px headings into the dashboard.
+### Border Radius
+
+```
+ALL VALUES: 0px
+```
+
+No exceptions. Every element has sharp, 90-degree corners. This is non-negotiable and defines the style's architectural character.
+
+### Borders & Lines
+
+```
+hairline:  1px solid #E5E5E5  (Subtle dividers)
+thin:      1px solid #000000  (Standard borders)
+medium:    2px solid #000000  (Emphasis borders)
+thick:     4px solid #000000  (Heavy rules, section dividers)
+ultra:     8px solid #000000  (Maximum impact)
+```
+
+**Usage**:
+
+- Horizontal rules between sections (thick or ultra)
+- Vertical dividers between columns (thin)
+- Card borders (thin or medium)
+- Underlines for links (thin, on hover)
+
+### Shadows
+
+```
+NONE
+```
+
+This design has zero drop shadows. Depth is created through:
+
+- Color inversion (black/white swap)
+- Border weight variation
+- Scale contrast
+- Negative space
+
+### Textures & Patterns
+
+**CRITICAL**: These textures are REQUIRED to prevent flat design. Apply strategically across sections.
+
+**Primary Pattern: Horizontal Lines (Global)**
+
+```css
+background-image: repeating-linear-gradient(
+  0deg,
+  transparent,
+  transparent 1px,
+  #000 1px,
+  #000 2px
+);
+background-size: 100% 4px;
+opacity: 0.015;
+```
+
+**Secondary Pattern: Grid (for editorial sections like Product Detail)**
+
+```css
+background-image:
+  linear-gradient(#00000008 1px, transparent 1px),
+  linear-gradient(90deg, #00000008 1px, transparent 1px);
+background-size: 40px 40px;
+opacity: 0.015;
+```
+
+**Diagonal Lines (for process/timeline sections)**
+
+```css
+background-image: repeating-linear-gradient(
+  45deg,
+  transparent,
+  transparent 40px,
+  #00000008 40px,
+  #00000008 42px
+);
+opacity: 0.01;
+```
+
+**Noise Texture (global, for paper-like quality)**
+
+```css
+background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+opacity: 0.02;
+```
+
+**Inverted Section Textures**
+For dark backgrounds (Stats, Final CTA), use white-based textures:
+
+```css
+/* Vertical lines for Stats */
+background-image: repeating-linear-gradient(
+  90deg,
+  transparent,
+  transparent 1px,
+  #fff 1px,
+  #fff 2px
+);
+background-size: 4px 100%;
+opacity: 0.03;
+
+/* Radial gradient for Final CTA */
+background-image: radial-gradient(
+  circle at top center,
+  #ffffff,
+  transparent 70%
+);
+opacity: 0.05;
+```
 
 ---
 
-## 4. Radius, Border, and Elevation
-
-The source design used sharp edges. TemporalGuard keeps precise geometry but adds restrained radii for usability in a modern application.
-
-```text
-radiusXs:    4px
-radiusSm:    6px
-radiusMd:    8px
-radiusLg:    10px
-radiusXl:    12px
-radiusPill:  999px
-border:      1px
-```
-
-Rules:
-
-- Inputs and buttons: 7–8px.
-- Panels/cards: 8–10px.
-- Drawers and large modals: 12px where visible.
-- Badges and filter chips: pill only when the shape communicates compact selection/status.
-- Do not combine large radii with heavy shadows.
-
-Elevation:
-
-- Primary separation uses borders and surface shifts.
-- Use subtle shadow only for popovers, command palette, floating menus, and drag previews.
-- No permanent glow.
-
----
-
-## 5. Spacing and Density
-
-Base unit: 4px.
-
-```text
-page horizontal padding: 16 mobile / 24 tablet / 28–32 desktop
-page vertical padding:   20 mobile / 24–28 desktop
-panel padding:           14 compact / 16 standard / 20 spacious
-control height:          32 compact / 36 standard / 40 form / 44 mobile
-sidebar width:           248 expanded / 64 collapsed
-right drawer width:      440–560 desktop
-```
-
-Tables should default to 40px rows with an optional comfortable density setting.
-
-### 5.1 Analytics density rules
-
-- Above 1440px, add useful columns, comparison context, or investigation
-  detail before increasing whitespace.
-- Between 1024px and 1439px, preserve the primary chart and table context;
-  move secondary explanations and controls into drawers or overflow menus.
-- Between 768px and 1023px, keep two analytical regions only when both remain
-  readable without horizontal compression.
-- Below 768px, prioritize one decision per viewport section. Tables become
-  prioritized rows or cards, while the full record remains reachable.
-- Metric panels use stable heights within a row. Loading, partial, and error
-  states must not change the grid footprint.
-- Filter bars wrap by semantic group. Do not shrink labels into ambiguous
-  abbreviations merely to keep a single row.
-- Numeric columns are right-aligned and use tabular numerals. Event names,
-  workflow IDs, correlation keys, and trace references use the mono stack.
-
----
-
-## 6. Application Layout
-
-### Sidebar
-
-- Dark/light surface distinct from page background.
-- Logo, workspace switcher, grouped navigation, settings/user footer.
-- Active item uses a purple subtle background, strong foreground, and small indicator.
-- Collapsible with tooltip labels.
-
-### Top bar
-
-- Sticky.
-- Thin bottom border.
-- Contains environment, time range, compare, live state, search, theme, and user actions.
-- Controls use compact density.
-
-### Content
-
-- Maximize available width; analytics pages should not be constrained to a marketing-style 1200px container.
-- Use a page max width only for auth and narrow settings forms.
-- Dashboard grids use 12 columns and collapse predictably.
-
----
-
-## 7. Components
+## Component Stylings
 
 ### Buttons
 
-Primary:
+**Primary Button**:
 
-- Purple filled background.
-- White/dark appropriate foreground.
-- No gradient.
-- 36–40px desktop height, 44px mobile.
-- Subtle color transition and 1px press movement.
+```
+- Background: #000000 (black)
+- Text: #FFFFFF (white)
+- Border: none
+- Padding: px-8 py-4 (generous)
+- Font: uppercase, tracking-widest, font-medium, text-sm
+- Hover: Invert to white bg, black text, black border
+- Transition: Instant (no easing, 0ms or 100ms max)
+```
 
-Secondary:
+**Secondary/Outline Button**:
 
-- Surface background or transparent.
-- Border.
-- Strong text.
+```
+- Background: transparent
+- Text: #000000
+- Border: 2px solid #000000
+- Hover: Fill black, text white
+```
 
-Ghost:
+**Ghost Button**:
 
-- No border until hover unless it is icon-only.
+```
+- Background: transparent
+- Text: #000000
+- Border: none
+- Text decoration: underline on hover
+- Style: Looks like a text link
+```
 
-Destructive:
+**Button Shape**: Always rectangular, never rounded. Consider adding a small arrow (→) for CTAs.
 
-- Use destructive token, not purple.
+### Cards/Containers
 
-All buttons:
+**Standard Card**:
 
-- Clear focus ring.
-- Loading spinner without shifting label width.
-- Disabled state retains readable contrast.
+```
+- Background: #FFFFFF
+- Border: 1px solid #000000
+- Padding: p-6 or p-8
+- No shadow, no radius
+```
+
+**Inverted Card** (for emphasis):
+
+```
+- Background: #000000
+- Text: #FFFFFF
+- Border: none
+- Use sparingly for highlighted content
+```
+
+**Borderless Card**:
+
+```
+- No border, no background
+- Content separated by generous whitespace
+- Use horizontal rules above/below if needed
+```
 
 ### Inputs
 
-- Surface/input background.
-- 1px border.
-- Purple focus border/ring.
-- Labels above input.
-- Inline errors below.
-- Search inputs may contain icons and keyboard hints.
+**Text Input**:
 
-### Cards and panels
-
-- Use cards only for meaningful grouping.
-- Analytics panels have compact headers, optional actions, fixed loading geometry, and border separation.
-- Avoid nested cards beyond two levels.
-
-### Tables
-
-- Sticky header when useful.
-- Column alignment based on content type.
-- Tabular numerals.
-- Row hover is subtle.
-- Selected rows use primary-subtle surface and a left indicator.
-- Support keyboard row navigation where practical.
-
-### Badges
-
-- Small and semantic.
-- Never use a different arbitrary hue per string value.
-- Add icons only when they improve recognition.
-
-### Drawers
-
-- Preserve underlying exploration context.
-- Header and footer can remain sticky.
-- Tabs inside drawer are acceptable.
-- Deep-linkable selection where possible.
-
----
-
-## 8. Charts
-
-- Use consistent axes, grid, tooltip, and legend components.
-- Avoid chart junk, 3D effects, gradients under every line, or over-smoothed curves that misrepresent data.
-- Use purple for the primary series and semantic/secondary colors for comparisons.
-- Deployment markers use neutral dashed lines with labels.
-- Hover states should connect to filters or drill-downs.
-- Every chart needs an accessible summary and empty/error state.
-- Skeletons must match chart dimensions.
-
-### Analytical interpretation rules
-
-- A comparison delta must say what it compares with; direction alone is not
-  enough. For failure-oriented metrics such as violations and overdue
-  workflows, an increase is visually negative even though the number rose.
-- Completion rate and duration must never share an unlabeled axis. Mixed-unit
-  views use separate modes or unmistakable axes and legends.
-- Truncated time ranges, sampled data, mock results, and partial failures must
-  be labeled adjacent to the affected visualization.
-- Tooltips supplement the visible chart; they must not contain the only copy
-  of a value needed to interpret the result.
-- Deployment annotations use neutral dashed markers. They indicate temporal
-  correlation, never causation.
-- Heatmaps include a textual scale, exact value on focus/hover, and a
-  non-color summary. Empty cells and zero-value cells must be distinguishable.
-- Funnel percentages state their denominator, and drop-off actions retain the
-  current environment, time range, and filters.
-
----
-
-## 9. Query Builder
-
-The Query Builder is the signature interface.
-
-### Desktop structure
-
-- Left rail: operators, event catalogue, recent events.
-- Center: visual rule canvas and sentence representation.
-- Right rail: selected-node properties, validation, and historical test preview.
-
-### Builder nodes
-
-- Trigger: neutral/primary outline.
-- `any`: branched connector with “ANY” label.
-- `all`: parallel connector with “ALL” label.
-- `sequence`: numbered vertical or horizontal steps.
-- `forbid`: destructive outline and prohibition icon.
-- Deadline: compact clock node.
-- Invalid node: destructive border plus explicit message.
-
-### Event selector
-
-- Command-menu pattern.
-- Search, recent, popular, grouped domain sections.
-- Event canonical name in mono.
-- “Create event” action when no exact match exists.
-- Inline creation must not destroy the current draft.
-
-### Motion
-
-- Node insertion: short fade/scale from 0.98 to 1.
-- Connector drawing: brief line reveal.
-- Reorder: layout animation.
-- No bouncy spring defaults.
-
----
-
-## 10. Authentication Screens
-
-- Split layout on large screens: form plus controlled visual/metric narrative.
-- Single focused column on mobile.
-- The right visual can show an abstract workflow timeline, not stock imagery.
-- Logo upload uses a clear dropzone, preview, replace, remove, and error state.
-- Do not use oversized marketing copy that pushes the form below the fold.
-- Theme switch remains available.
-
----
-
-## 11. Loading and Feedback
-
-- Skeletons for initial page and widget loads.
-- Keep previous data visible during background refresh.
-- Use compact progress indicators for uploads and form submissions.
-- Toasts for transient success/failure; inline messages for actionable form errors.
-- Empty states explain whether there is no data or filters removed all results.
-- Use optimistic behavior only where rollback is safe and obvious.
-
----
-
-## 12. Motion
-
-Default easing:
-
-```text
-cubic-bezier(0.22, 1, 0.36, 1)
+```
+- Background: #FFFFFF
+- Border: 2px solid #000000 (bottom only, or full)
+- No radius
+- Placeholder: #525252 italic
+- Focus: Border thickens to 3px or 4px
+- No colored focus ring—just border change
 ```
 
-Durations:
+**Textarea**: Same as input, with visible resize handle.
 
-```text
-micro:      120–160ms
-standard:   180–240ms
-panel:      240–320ms
-page:       320–420ms
+---
+
+## Layout Strategy
+
+### Container
+
+```
+max-width: max-w-6xl (72rem / 1152px)
+padding: px-6 md:px-8 lg:px-12
 ```
 
-- Framer Motion is the default.
-- GSAP is reserved for complex orchestrated timeline demos or chart storytelling.
-- Never animate layout continuously during live updates.
-- Respect reduced motion.
+### Section Spacing
 
----
-
-## 13. Iconography
-
-Use Lucide React.
-
-```text
-inline:     14–16px
-controls:   16–18px
-navigation: 18–20px
-feature:    20–24px
-stroke:     1.75px default
+```
+Vertical padding: py-24 md:py-32 lg:py-40
+Between sections: Thick horizontal rule (4px or 8px black)
 ```
 
-Use outline icons only. Icons supplement labels rather than replacing unfamiliar actions.
+### Grid System
+
+- Use CSS Grid for precise control
+- 12-column base grid for flexibility
+- Strong alignment to vertical rhythm
 
 ---
 
-## 14. Responsive Strategy
+## Effects & Animation
 
-- Desktop prioritizes information density and side-by-side investigation.
-- Tablet collapses secondary rails into drawers.
-- Mobile uses staged Query Builder tabs: Trigger, Condition, Events, Window, Review.
-- Charts keep readable minimum widths and provide a summarized mobile view.
-- Tables prioritize columns and expose the rest in row details.
-- Sidebar becomes a sheet or compact bottom navigation for the primary destinations.
+**Motion Philosophy**: **Minimal and Instant**
+
+This design favors stillness and instant state changes. When animation exists, it's:
+
+- **Instant**: 0-100ms transitions maximum
+- **Binary**: Sharp on/off states, not gradual
+- **Purposeful**: Only for state changes (hover, focus)
+
+**Hover Effects** (Applied):
+
+- **Cards/Features**: Full color inversion (bg, text, borders) with 100ms transition
+- **Buttons**: Color inversion with transition-none for instant feedback
+- **Blog Images**: Border thickens (2px → 4px), image scales 105% and removes grayscale (300ms)
+- **Links**: Underline appearance (instant)
+- **Testimonials**: Quote mark opacity increases, bottom border thickens
+
+**Focus States** (Accessibility Required):
+
+- **Buttons**: 3px solid outline with 3px offset
+- **Inputs**: Border thickens from 2px to 4px (bottom only)
+- **Links**: Border appears/thickens
+- **Interactive elements**: 3px solid outline with 2px offset
+- All outlines use `focus-visible` to avoid mouse click outlines
+
+**Specific Implementations**:
+
+```tsx
+// Feature card hover
+className =
+  "group bg-[var(--background)] p-8 transition-colors duration-100 hover:bg-[var(--foreground)] hover:text-[var(--background)]";
+
+// Blog image hover
+className = "border-2 transition-all duration-100 group-hover:border-[4px]";
+className =
+  "grayscale transition-all duration-300 group-hover:scale-105 group-hover:grayscale-0";
+
+// Testimonial hover
+className = "group-hover:opacity-20 transition-opacity duration-100"; // quote mark
+className = "transition-all duration-100 group-hover:border-t-[3px]"; // border
+```
+
+**No**:
+
+- Bouncy animations
+- Floating elements
+- Parallax scrolling
+- Slow easing functions
+- Gradient animations
 
 ---
 
-## 15. Accessibility
+## Iconography
 
-- WCAG 2.2 AA target.
-- Visible focus on every control.
-- Purple focus ring must contrast in both themes.
-- Body content remains at least 13–14px in dense areas and 16px in forms.
-- No important interaction depends only on hover.
-- Charts expose summaries/data tables.
-- Status is not communicated by color alone.
-- Drag-and-drop has keyboard controls.
-- Dialogs and drawers correctly trap and restore focus.
+**Style**: Outlined, thin strokes (strokeWidth: 1 or 1.5)
+
+**Usage**:
+
+- Icons inside circles with black stroke, white fill
+- Or standalone with no container
+- Size: Consistent 20px or 24px
+- Color: Always black (#000000)
+
+**Lucide Icons Settings**:
+
+```tsx
+<Icon size={20} strokeWidth={1.5} className="text-black" />
+```
 
 ---
 
-## 16. Quality Gate
+## Responsive Strategy
 
-A page does not meet the design system when it:
+**Mobile Adaptations**:
 
-- Uses literal colors instead of tokens.
-- Introduces an unrelated radius, shadow, or gradient.
-- Uses huge empty cards to appear modern.
-- Omits dark or light mode behavior.
-- Has no loading/empty/error states.
-- Has inaccessible focus or contrast.
-- Uses inconsistent status colors.
-- Uses animations that delay work.
-- Copies another analytics product's identifiable visual treatment.
+- Maintain sharp corners and black/white palette
+- Reduce oversized headlines (9xl → 5xl on mobile)
+- Stack columns vertically
+- Borders become full-width horizontal rules
+- Generous vertical spacing maintained
 
-</design-system>
+**Key Principle**: The monochrome drama must survive on mobile. Don't default to generic mobile patterns.
+
+---
+
+## Accessibility
+
+**Contrast**: Pure black on white exceeds WCAG AAA requirements (21:1 ratio).
+
+**Focus States** (REQUIRED for all interactive elements):
+
+```
+Buttons & Primary Interactive Elements:
+- Outline: 3px solid #000000
+- Outline-offset: 3px
+- Use focus-visible to prevent mouse click outlines
+
+Text Inputs:
+- Border thickens from 2px to 4px on focus
+- Bottom border only
+- No outline (border change is sufficient)
+
+Links in Navigation:
+- Border appears/thickens on focus-visible
+- Consistent with hover state
+
+Secondary Interactive Elements (social icons, FAQ buttons):
+- Outline: 3px solid #000000
+- Outline-offset: 2px
+```
+
+**Implementation**:
+
+```tsx
+// Button focus
+focus-visible:outline focus-visible:outline-3 focus-visible:outline-[var(--foreground)] focus-visible:outline-offset-3
+
+// Input focus
+focus:border-b-[4px] focus:outline-none focus-visible:border-b-[4px]
+
+// Link focus
+focus-visible:border-[var(--foreground)] focus-visible:outline-none
+```
+
+**Skip Links**: Visible, black button at top of page.
+
+**Touch Targets**: Minimum 44px×44px for all interactive elements on mobile.
+
+---
+
+## Bold Choices (Non-Negotiable)
+
+1. **Oversized Hero Typography**: At least one word in 8xl or larger (9xl on desktop)
+2. **Hero Decorative Elements**: Thick rule with small bordered square for visual punctuation
+3. **Inverted Stats Section**: Black background, white text, with subtle vertical line texture
+4. **No Accent Colors**: Resist the temptation—black IS the accent
+5. **Heavy Horizontal Rules**: 4px black lines between ALL major sections
+6. **Editorial Pull Quotes**: Testimonials as large italic serif with oversized quotation marks
+7. **Sharp Everything**: Zero border-radius across all elements
+8. **Instant Interactions**: 100ms transitions maximum, mostly instant
+9. **Typography as Graphics**: Headlines that function as visual elements, not just text
+10. **Layered Textures**: Multiple subtle patterns for depth (NOT flat design)
+11. **Boxed Drop Cap**: First paragraph of Product Detail has bordered box drop cap
+12. **Elevated Pricing Tier**: Highlighted tier extends vertically on desktop
+13. **Hover Inversions**: Feature cards and pricing tiers invert on hover
+14. **Image Borders Thicken**: Blog images border weight increases on hover with scale effect
+
+---
+
+## What Success Looks Like
+
+A successfully implemented Minimalist Monochrome design should feel like:
+
+- Opening a high-end fashion magazine
+- Walking through a modern art gallery
+- Reading an award-winning architectural monograph
+- Browsing a luxury brand's website
+
+It should NOT feel like:
+
+- A generic website template
+- A tech startup landing page
+- Something that "needs a pop of color"
+- Minimalist Modern with the colors removed
+  </design-system>
