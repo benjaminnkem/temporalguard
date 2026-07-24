@@ -21,8 +21,43 @@ export const environmentSchema = z
     DB_USERNAME: z.string().min(1).default('postgres'),
     DB_PASSWORD: z.string().default('postgres'),
     DB_DATABASE: z.string().min(1).default('temporalguard'),
+    DB_SCHEMA: z
+      .string()
+      .regex(/^[a-z_][a-z0-9_]*$/)
+      .default('public'),
     REDIS_HOST: z.string().min(1).default('localhost'),
     REDIS_PORT: z.coerce.number().int().min(1).max(65_535).default(6379),
+    ENCRYPTION_KEY: z
+      .string()
+      .default('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=')
+      .refine((value) => {
+        try {
+          return Buffer.from(value, 'base64').length === 32;
+        } catch {
+          return false;
+        }
+      }, 'must be a base64-encoded 32-byte key'),
+    QUEUE_PREFIX: z.string().min(1).default('temporalguard'),
+    JOB_RETRY_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(5),
+    JOB_STALLED_INTERVAL_MS: z.coerce.number().int().min(1000).default(30_000),
+    INVESTIGATION_QUEUE_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(4),
+    INVESTIGATION_MAX_CONCURRENT_PER_COMPANY: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(20)
+      .default(3),
+    WORKER_HEALTH_PORT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(65_535)
+      .default(3002),
     FRONTEND_ORIGIN: z.url().default('http://localhost:3000'),
     JWT_ACCESS_SECRET: z.string().min(16).default('development-access-secret'),
     JWT_ACCESS_TTL: z.string().min(1).default('15m'),
@@ -85,6 +120,16 @@ export const environmentSchema = z
           code: 'custom',
           path: ['COOKIE_SECURE'],
           message: 'must be true in production',
+        });
+      }
+      if (
+        environment.ENCRYPTION_KEY ===
+        'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+      ) {
+        context.addIssue({
+          code: 'custom',
+          path: ['ENCRYPTION_KEY'],
+          message: 'must be replaced in production',
         });
       }
     }

@@ -11,6 +11,7 @@ export default new DataSource({
   username: process.env.DB_USERNAME ?? 'temporalguard',
   password: process.env.DB_PASSWORD ?? 'temporalguard',
   database: process.env.DB_DATABASE ?? 'temporalguard',
+  schema: process.env.DB_SCHEMA ?? 'public',
   entities: [`${__dirname}/../modules/**/*.entity{.ts,.js}`],
   migrations: [`${__dirname}/migrations/*{.ts,.js}`],
   synchronize: false,

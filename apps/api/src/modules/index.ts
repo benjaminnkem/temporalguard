@@ -5,6 +5,7 @@ export * from './rules';
 export * from './telemetry';
 export * from './violations';
 export * from './workflows';
+export * from './processing';
 export * from './businesses';
 export * from './auth';
 export * from './media';

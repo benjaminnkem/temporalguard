@@ -48,6 +48,9 @@ pnpm --filter api test -- --runInBand
 pnpm --filter api test:e2e -- --runInBand
 pnpm --filter api migration:run
 pnpm --filter api migration:revert
+pnpm --filter worker dev
+pnpm --filter worker build
+pnpm --filter worker check-types
 ```
 
 The current public API prefix is `/api`. The upgrade contract targets

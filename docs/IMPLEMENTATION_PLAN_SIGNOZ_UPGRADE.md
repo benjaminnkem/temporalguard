@@ -274,3 +274,41 @@ without explicit approval.
 4. Add shared contracts and the `/api/v1` compatibility strategy.
 5. Implement cursor pagination for events first, then rules, workflows, and
    violations, with frontend adapter support.
+
+## 10. Durable processing milestone — July 24, 2026
+
+Implemented additively:
+
+- Persistence for SigNoz connections, investigations, steps, evidence, agent
+  runs/tool calls, comparisons, simulations, deployment observations,
+  telemetry-quality snapshots, and append-only audit logs.
+- Company, status, trace, entity, and descending time/cursor indexes plus
+  range, score, counter, ordering, and uniqueness checks.
+- User, company, workflow, violation, rule, investigation, and agent-run
+  referential constraints.
+- AES-256-GCM connection-secret encryption with random nonces, authentication
+  tags, versioned ciphertext, typed key validation, and production rejection
+  of the development key.
+- Transactional record services that pair writes with audit entries and keep
+  investigation evidence counts consistent.
+- Stable SHA-256 BullMQ job IDs, retry/backoff, retained failures, a dedicated
+  dead-letter queue, cancellation state, progress events, and Redis-backed
+  per-company leases.
+- A separate `apps/worker` runtime with database/Redis readiness, liveness,
+  graceful shutdown, and a non-root Docker image.
+- Compose wiring for the independent worker while preserving the existing
+  workflow deadline processor.
+
+Validation:
+
+- API unit tests: 8 suites and 27 tests passed.
+- New API and worker lint passed.
+- API and worker builds/typechecks passed.
+- Full migration chain applied to a uniquely named clean PostgreSQL database.
+- The new migration reverted and reapplied successfully.
+- All 11 processing tables and 16 targeted processing indexes were present.
+- The audit mutation trigger rejected an update.
+- API e2e passed against the clean migrated database: 4 tests passed.
+- Compose configuration validated.
+- Docker image execution was not verified because the local Docker daemon was
+  stopped.

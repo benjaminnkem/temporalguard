@@ -19,6 +19,7 @@ import {
   UsersModule,
   ViolationsModule,
   WorkflowsModule,
+  ProcessingModule,
 } from './modules';
 
 @Module({
@@ -44,6 +45,7 @@ import {
           host: configService.get<string>('redis.host'),
           port: configService.get<number>('redis.port'),
         },
+        prefix: configService.get<string>('queue.prefix'),
       }),
     }),
     DatabaseModule,
@@ -58,6 +60,7 @@ import {
     WorkflowsModule,
     ViolationsModule,
     TelemetryModule,
+    ProcessingModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

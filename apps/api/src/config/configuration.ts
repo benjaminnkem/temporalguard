@@ -6,10 +6,26 @@ export default () => ({
     username: process.env.DB_USERNAME ?? 'postgres',
     password: process.env.DB_PASSWORD ?? 'postgres',
     database: process.env.DB_DATABASE ?? 'temporalguard',
+    schema: process.env.DB_SCHEMA ?? 'public',
   },
   redis: {
     host: process.env.REDIS_HOST ?? 'localhost',
     port: Number(process.env.REDIS_PORT ?? 6379),
+  },
+  encryptionKey: process.env.ENCRYPTION_KEY,
+  queue: {
+    prefix: process.env.QUEUE_PREFIX ?? 'temporalguard',
+    retryAttempts: Number(process.env.JOB_RETRY_ATTEMPTS ?? 5),
+    stalledIntervalMs: Number(process.env.JOB_STALLED_INTERVAL_MS ?? 30_000),
+    investigationConcurrency: Number(
+      process.env.INVESTIGATION_QUEUE_CONCURRENCY ?? 4,
+    ),
+    maxConcurrentPerCompany: Number(
+      process.env.INVESTIGATION_MAX_CONCURRENT_PER_COMPANY ?? 3,
+    ),
+  },
+  worker: {
+    healthPort: Number(process.env.WORKER_HEALTH_PORT ?? 3002),
   },
   nodeEnv: process.env.NODE_ENV ?? 'development',
   telemetry: {
