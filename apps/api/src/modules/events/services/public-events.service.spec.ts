@@ -52,20 +52,25 @@ describe('PublicEventsService', () => {
       accepted: true,
       duplicate: false,
     });
-    expect(eventLogsService.ingest).toHaveBeenCalledWith(
-      businessId,
-      expect.objectContaining({
-        eventName: 'document.uploaded',
-        externalWorkflowId: 'document.id:doc_1',
-        payload: expect.objectContaining({
-          _tg: expect.objectContaining({
-            apiEnvironment: 'live',
-            environment: 'production',
-          }),
-        }),
-      }),
-      expect.any(Object),
-    );
+    expect(eventLogsService.ingest).toHaveBeenCalledTimes(1);
+    const [calledBusinessId, calledDto, calledOptions] = eventLogsService.ingest
+      .mock.calls[0] as [
+      string,
+      {
+        eventName: string;
+        externalWorkflowId: string;
+        payload: { _tg: { apiEnvironment: string; environment: string } };
+      },
+      unknown,
+    ];
+    expect(calledBusinessId).toBe(businessId);
+    expect(calledDto.eventName).toBe('document.uploaded');
+    expect(calledDto.externalWorkflowId).toBe('document.id:doc_1');
+    expect(calledDto.payload._tg).toMatchObject({
+      apiEnvironment: 'live',
+      environment: 'production',
+    });
+    expect(calledOptions).toEqual(expect.any(Object));
     expect(idempotencyRepository.save).toHaveBeenCalled();
   });
 
