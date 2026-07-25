@@ -422,6 +422,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           queryClient.invalidateQueries({ queryKey: ["events"] }),
         ]);
       } catch {
+        // Ignore malformed SSE payloads from the live stream.
       }
     };
     return () => source.close();

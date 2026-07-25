@@ -121,7 +121,10 @@ export function WorkflowsView() {
     state: searchParams.get("state") === "error" ? "error" : tab,
   });
 
-  const items = query.data?.items ?? [];
+  const items = useMemo(
+    () => query.data?.items ?? [],
+    [query.data?.items],
+  );
 
   const counts = useMemo(() => {
     const byState = (state: WorkflowState) =>

@@ -381,7 +381,10 @@ export function ViolationsView() {
     state: searchParams.get("state") ?? undefined,
   });
 
-  const items = query.data?.items ?? [];
+  const items = useMemo(
+    () => query.data?.items ?? [],
+    [query.data?.items],
+  );
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {

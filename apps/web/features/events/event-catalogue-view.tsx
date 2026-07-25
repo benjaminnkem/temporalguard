@@ -116,7 +116,10 @@ export function EventCatalogueView() {
   const [selected, setSelected] = useState<EventDefinition | null>(null);
   const query = useEvents({ search });
 
-  const items = query.data?.items ?? [];
+  const items = useMemo(
+    () => query.data?.items ?? [],
+    [query.data?.items],
+  );
   const domains = useMemo(
     () =>
       [...new Set(items.map((event) => event.domain))].sort((left, right) =>
