@@ -23,12 +23,12 @@ export class EventLogsController {
     name: 'x-api-key',
     required: false,
     description:
-      'Workspace API key for machine-to-machine event ingestion. Use either this or a session bearer token.',
+      'Workspace API key for machine-to-machine event ingestion. Prefer public POST /api/v1/events for new integrations.',
   })
   @ApiOperation({
-    summary: 'Log a business event occurrence',
+    summary: 'Log a business event occurrence (legacy / internal)',
     description:
-      'Accepts either an authenticated user session or a workspace API key via the X-API-Key header.',
+      'Accepts a session JWT or workspace API key (X-API-Key or Authorization: Bearer tg_…). Public SDK contract is POST /api/v1/events.',
   })
   @ApiCreatedResponse({ description: 'Event occurrence logged and processed' })
   create(

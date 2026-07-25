@@ -2,6 +2,9 @@
 
 These contracts define the shape the frontend should target. Existing backend conventions take precedence for envelope naming and IDs, but the semantic fields should remain stable.
 
+**Scope:** control plane only (session auth, dashboard, rules, workflows UI, settings).  
+**Public data plane** (workspace API keys, `POST /api/v1/events`, Node SDK) is defined in [`docs/PUBLIC_API_AND_SDK.md`](./PUBLIC_API_AND_SDK.md). Do not document customer ingest contracts here.
+
 ## 1. Authentication Endpoints
 
 ### `POST /auth/register`

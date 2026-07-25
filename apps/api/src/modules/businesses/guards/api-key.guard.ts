@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { BusinessesService } from '../services/businesses.service';
+import { extractApiKeyFromRequest } from '../utils/extract-api-key';
 
 export type ApiKeyAuthenticatedRequest = Request & {
   businessId: string;
@@ -21,8 +22,7 @@ export class ApiKeyGuard implements CanActivate {
     const request = context
       .switchToHttp()
       .getRequest<ApiKeyAuthenticatedRequest>();
-    const header = request.headers['x-api-key'];
-    const rawKey = Array.isArray(header) ? header[0] : header;
+    const rawKey = extractApiKeyFromRequest(request);
     if (!rawKey) {
       throw new UnauthorizedException({
         code: 'AUTH_UNAUTHORIZED',
