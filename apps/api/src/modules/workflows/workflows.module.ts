@@ -12,6 +12,7 @@ import { WorkflowQueueProcessor } from './services/workflow-queue.processor';
 import { SigNozObservabilityService } from './services/signoz-observability.service';
 
 import { WORKFLOWS_QUEUE } from './constants/queue.constants';
+import { SigNozModule } from '../signoz';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { WORKFLOWS_QUEUE } from './constants/queue.constants';
     BullModule.registerQueue({
       name: WORKFLOWS_QUEUE,
     }),
+    SigNozModule,
   ],
   controllers: [WorkflowsController],
   providers: [

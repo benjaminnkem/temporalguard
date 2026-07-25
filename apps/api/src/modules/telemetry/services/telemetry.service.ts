@@ -19,6 +19,7 @@ import {
   SeverityNumber,
   type AnyValueMap,
 } from '@opentelemetry/api-logs';
+import { createHash } from 'node:crypto';
 import {
   SPAN_WORKFLOW_CREATED,
   SPAN_WORKFLOW_COMPLETED,
@@ -41,6 +42,7 @@ import {
   METRIC_ACTIVE_WORKFLOWS,
   METRIC_WORKFLOW_COMPLETION_DURATION,
   METRIC_RULE_MATCHES_TOTAL,
+  ATTR_COMPANY_ID_HASH,
 } from '../constants/telemetry.constants';
 
 @Injectable()
@@ -149,6 +151,7 @@ export class TelemetryService {
     ruleId: string,
     ruleName: string,
     status: string,
+    businessId?: string,
   ): void {
     const span = this.tracer.startSpan(SPAN_WORKFLOW_CREATED, {
       attributes: {
@@ -158,6 +161,7 @@ export class TelemetryService {
         [ATTR_RULE_NAME]: ruleName,
         [ATTR_SERVICE_NAME]: this.serviceName,
         [ATTR_ENVIRONMENT]: this.environment,
+        ...this.companyAttributes(businessId),
       },
     });
     const attrs = {
@@ -165,6 +169,7 @@ export class TelemetryService {
       [ATTR_RULE_ID]: ruleId,
       [ATTR_RULE_NAME]: ruleName,
       [ATTR_WORKFLOW_STATUS]: status,
+      ...this.companyAttributes(businessId),
     };
     this.workflowsStartedCounter.add(1, attrs);
     this.activeWorkflowsCounter.add(1, attrs);
@@ -182,6 +187,7 @@ export class TelemetryService {
     ruleName: string,
     status: string,
     durationMs: number,
+    businessId?: string,
   ): void {
     const span = this.tracer.startSpan(SPAN_WORKFLOW_COMPLETED, {
       attributes: {
@@ -191,6 +197,7 @@ export class TelemetryService {
         [ATTR_RULE_NAME]: ruleName,
         [ATTR_SERVICE_NAME]: this.serviceName,
         [ATTR_ENVIRONMENT]: this.environment,
+        ...this.companyAttributes(businessId),
       },
     });
     const attrs = {
@@ -198,6 +205,7 @@ export class TelemetryService {
       [ATTR_RULE_ID]: ruleId,
       [ATTR_RULE_NAME]: ruleName,
       [ATTR_WORKFLOW_STATUS]: status,
+      ...this.companyAttributes(businessId),
     };
     this.workflowsCompletedCounter.add(1, attrs);
     this.activeWorkflowsCounter.add(-1, attrs);
@@ -216,6 +224,7 @@ export class TelemetryService {
     ruleId: string,
     ruleName: string,
     status: string,
+    businessId?: string,
   ): void {
     const span = this.tracer.startSpan(SPAN_WORKFLOW_OVERDUE, {
       attributes: {
@@ -225,6 +234,7 @@ export class TelemetryService {
         [ATTR_RULE_NAME]: ruleName,
         [ATTR_SERVICE_NAME]: this.serviceName,
         [ATTR_ENVIRONMENT]: this.environment,
+        ...this.companyAttributes(businessId),
       },
     });
     const attrs = {
@@ -232,6 +242,7 @@ export class TelemetryService {
       [ATTR_RULE_ID]: ruleId,
       [ATTR_RULE_NAME]: ruleName,
       [ATTR_WORKFLOW_STATUS]: status,
+      ...this.companyAttributes(businessId),
     };
     this.workflowsOverdueCounter.add(1, attrs);
     this.activeWorkflowsCounter.add(-1, attrs);
@@ -249,6 +260,7 @@ export class TelemetryService {
     ruleId: string,
     ruleName: string,
     severity: string,
+    businessId?: string,
   ): void {
     const span = this.tracer.startSpan(SPAN_VIOLATION_CREATED, {
       attributes: {
@@ -259,6 +271,7 @@ export class TelemetryService {
         [ATTR_SEVERITY]: severity,
         [ATTR_SERVICE_NAME]: this.serviceName,
         [ATTR_ENVIRONMENT]: this.environment,
+        ...this.companyAttributes(businessId),
       },
     });
     this.violationsCounter.add(1, {
@@ -266,6 +279,7 @@ export class TelemetryService {
       [ATTR_RULE_ID]: ruleId,
       [ATTR_RULE_NAME]: ruleName,
       [ATTR_SEVERITY]: severity,
+      ...this.companyAttributes(businessId),
     });
     this.emitSpanInfo(span, 'Violation created', {
       'violation.id': violationId,
@@ -276,7 +290,12 @@ export class TelemetryService {
     });
   }
 
-  ruleMatched(ruleId: string, ruleName: string, eventName: string): void {
+  ruleMatched(
+    ruleId: string,
+    ruleName: string,
+    eventName: string,
+    businessId?: string,
+  ): void {
     const span = this.tracer.startSpan(SPAN_RULE_MATCHED, {
       attributes: {
         [ATTR_RULE_ID]: ruleId,
@@ -284,11 +303,13 @@ export class TelemetryService {
         [ATTR_EVENT_NAME]: eventName,
         [ATTR_SERVICE_NAME]: this.serviceName,
         [ATTR_ENVIRONMENT]: this.environment,
+        ...this.companyAttributes(businessId),
       },
     });
     this.ruleMatchesCounter.add(1, {
       [ATTR_RULE_NAME]: ruleName,
       [ATTR_EVENT_NAME]: eventName,
+      ...this.companyAttributes(businessId),
     });
     this.emitSpanInfo(span, 'Rule matched', {
       [ATTR_RULE_ID]: ruleId,
@@ -304,6 +325,7 @@ export class TelemetryService {
     eventLogId: string,
     traceId?: string | null,
     spanId?: string | null,
+    businessId?: string,
   ): void {
     const span = this.tracer.startSpan(SPAN_BUSINESS_EVENT_RECEIVED, {
       attributes: {
@@ -314,6 +336,7 @@ export class TelemetryService {
           : {}),
         [ATTR_SERVICE_NAME]: this.serviceName,
         [ATTR_ENVIRONMENT]: this.environment,
+        ...this.companyAttributes(businessId),
       },
     });
     this.emitSpanInfo(span, 'Business event received', {
@@ -325,6 +348,7 @@ export class TelemetryService {
         : {}),
       ...(traceId ? { trace_id: traceId } : {}),
       ...(spanId ? { span_id: spanId } : {}),
+      ...this.companyAttributes(businessId),
     });
   }
 
@@ -342,6 +366,16 @@ export class TelemetryService {
       });
     });
     span.end();
+  }
+
+  private companyAttributes(businessId?: string): Attributes {
+    return businessId
+      ? {
+          [ATTR_COMPANY_ID_HASH]: createHash('sha256')
+            .update(businessId)
+            .digest('hex'),
+        }
+      : {};
   }
 
   private emitInfo(body: string, attributes: AnyValueMap): void {

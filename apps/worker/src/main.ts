@@ -1,3 +1,4 @@
+import "../../api/src/instrumentation";
 import "reflect-metadata";
 import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";

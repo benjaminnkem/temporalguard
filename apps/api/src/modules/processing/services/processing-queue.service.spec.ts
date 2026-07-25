@@ -14,7 +14,7 @@ describe('ProcessingQueueService', () => {
     expect(first).not.toBe(stableJobId('comparison', 'violation:1:config'));
   });
 
-  it('does not add a duplicate job and still reconciles queued state', async () => {
+  it('reconciles an existing job after restart without adding a duplicate', async () => {
     const add = jest.fn();
     const markQueued = jest.fn().mockResolvedValue(undefined);
     const queue = {

@@ -1,26 +1,30 @@
-export const SPAN_BUSINESS_EVENT_INGESTION = 'Business Event Ingestion';
-export const SPAN_RULE_EVALUATION = 'Rule Evaluation';
-export const SPAN_WORKFLOW_CREATED = 'Workflow Created';
-export const SPAN_WORKFLOW_COMPLETED = 'Workflow Completed';
-export const SPAN_WORKFLOW_OVERDUE = 'Workflow Overdue';
-export const SPAN_VIOLATION_CREATED = 'Violation Created';
-export const SPAN_RULE_MATCHED = 'Rule Matched';
-export const SPAN_BUSINESS_EVENT_RECEIVED = 'Business Event Received';
+export const SPAN_BUSINESS_EVENT_INGESTION =
+  'temporalguard.business_event.ingest';
+export const SPAN_RULE_EVALUATION = 'temporalguard.rule.evaluate';
+export const SPAN_WORKFLOW_CREATED = 'temporalguard.workflow.create';
+export const SPAN_WORKFLOW_COMPLETED = 'temporalguard.workflow.complete';
+export const SPAN_WORKFLOW_OVERDUE = 'temporalguard.workflow.overdue';
+export const SPAN_VIOLATION_CREATED = 'temporalguard.violation.create';
+export const SPAN_RULE_MATCHED = 'temporalguard.rule.match';
+export const SPAN_BUSINESS_EVENT_RECEIVED =
+  'temporalguard.business_event.receive';
 
-export const ATTR_WORKFLOW_ID = 'workflow.id';
-export const ATTR_WORKFLOW_STATUS = 'workflow.status';
-export const ATTR_RULE_ID = 'rule.id';
-export const ATTR_RULE_NAME = 'rule.name';
-export const ATTR_EVENT_NAME = 'event.name';
-export const ATTR_SEVERITY = 'severity';
+export const ATTR_WORKFLOW_ID = 'temporalguard.workflow.id';
+export const ATTR_WORKFLOW_STATUS = 'temporalguard.workflow.status';
+export const ATTR_RULE_ID = 'temporalguard.rule.id';
+export const ATTR_RULE_NAME = 'temporalguard.rule.name';
+export const ATTR_EVENT_NAME = 'temporalguard.event.name';
+export const ATTR_SEVERITY = 'temporalguard.violation.severity';
+export const ATTR_COMPANY_ID_HASH = 'temporalguard.company.id_hash';
 export const ATTR_SERVICE_NAME = 'service.name';
-export const ATTR_ENVIRONMENT = 'environment';
+export const ATTR_ENVIRONMENT = 'deployment.environment.name';
 
-export const METRIC_WORKFLOWS_STARTED_TOTAL = 'workflows_started_total';
-export const METRIC_WORKFLOWS_COMPLETED_TOTAL = 'workflows_completed_total';
-export const METRIC_WORKFLOWS_OVERDUE_TOTAL = 'workflows_overdue_total';
-export const METRIC_VIOLATIONS_TOTAL = 'violations_total';
-export const METRIC_ACTIVE_WORKFLOWS = 'active_workflows';
+export const METRIC_WORKFLOWS_STARTED_TOTAL = 'temporalguard.workflows.started';
+export const METRIC_WORKFLOWS_COMPLETED_TOTAL =
+  'temporalguard.workflows.completed';
+export const METRIC_WORKFLOWS_OVERDUE_TOTAL = 'temporalguard.workflows.overdue';
+export const METRIC_VIOLATIONS_TOTAL = 'temporalguard.violations';
+export const METRIC_ACTIVE_WORKFLOWS = 'temporalguard.workflows.active';
 export const METRIC_WORKFLOW_COMPLETION_DURATION =
-  'workflow_completion_duration';
-export const METRIC_RULE_MATCHES_TOTAL = 'rule_matches_total';
+  'temporalguard.workflow.duration';
+export const METRIC_RULE_MATCHES_TOTAL = 'temporalguard.rule.matches';

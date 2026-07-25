@@ -86,6 +86,54 @@ export const environmentSchema = z
       .min(100)
       .max(120_000)
       .default(10_000),
+    SIGNOZ_QUERY_MAX_RANGE_HOURS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(24 * 31)
+      .default(24),
+    SIGNOZ_COMPARISON_MAX_RANGE_DAYS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(90)
+      .default(30),
+    SIGNOZ_QUERY_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
+    SIGNOZ_QUERY_CIRCUIT_BREAKER_THRESHOLD: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(20)
+      .default(5),
+    SIGNOZ_QUERY_CIRCUIT_BREAKER_RESET_MS: z.coerce
+      .number()
+      .int()
+      .min(1000)
+      .default(30_000),
+    SIGNOZ_QUERY_RATE_LIMIT_PER_MINUTE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(10_000)
+      .default(120),
+    INVESTIGATION_AGENT_ENABLED: booleanFromEnvironment,
+    AI_PROVIDER: z.enum(['disabled', 'openai_compatible']).default('disabled'),
+    AI_API_KEY: z.string().optional(),
+    AI_BASE_URL: z.url().default('https://api.openai.com/v1'),
+    AI_MODEL: z.string().min(1).default('gpt-5.6-terra'),
+    AI_MAX_STEPS: z.coerce.number().int().min(5).max(20).default(8),
+    AI_REQUEST_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1000)
+      .max(120_000)
+      .default(30_000),
+    AI_MAX_INPUT_CHARS: z.coerce
+      .number()
+      .int()
+      .min(1000)
+      .max(500_000)
+      .default(60_000),
     CLOUDINARY_CLOUD_NAME: z.string().optional(),
     CLOUDINARY_API_KEY: z.string().optional(),
     CLOUDINARY_API_SECRET: z.string().optional(),
@@ -143,6 +191,17 @@ export const environmentSchema = z
         path: ['SIGNOZ_MODE'],
         message:
           'cloud mode requires SIGNOZ_INGESTION_ENDPOINT and SIGNOZ_INGESTION_KEY',
+      });
+    }
+    if (
+      environment.INVESTIGATION_AGENT_ENABLED &&
+      environment.AI_PROVIDER === 'openai_compatible' &&
+      !environment.AI_API_KEY
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AI_API_KEY'],
+        message: 'is required when the investigation agent is enabled',
       });
     }
   });

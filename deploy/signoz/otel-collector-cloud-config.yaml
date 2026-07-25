@@ -10,7 +10,41 @@ processors:
   memory_limiter:
     check_interval: 1s
     limit_mib: 256
+    spike_limit_mib: 64
+  transform/redact:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - delete_key(attributes, "authorization")
+          - delete_key(attributes, "http.request.header.authorization")
+          - delete_key(attributes, "cookie")
+          - delete_key(attributes, "set-cookie")
+      - context: resource
+        statements:
+          - delete_key(attributes, "signoz-ingestion-key")
+    log_statements:
+      - context: log
+        statements:
+          - delete_key(attributes, "authorization")
+          - delete_key(attributes, "cookie")
+          - 'replace_pattern(body, "(?i)(bearer|token|password|secret|api[_-]?key)[=: ]+[^ ,;]+", "$$1=[REDACTED]")'
+    metric_statements:
+      - context: datapoint
+        statements:
+          - delete_key(attributes, "authorization")
+          - delete_key(attributes, "cookie")
+  filter/noise:
+    error_mode: ignore
+    traces:
+      span:
+        - 'IsMatch(name, "(?i).*health/(live|ready).*")'
+    logs:
+      log_record:
+        - 'IsMatch(body, "(?i).*health/(live|ready).*")'
   batch:
+    send_batch_size: 2048
+    send_batch_max_size: 4096
     timeout: 5s
 
 exporters:
@@ -18,6 +52,15 @@ exporters:
     endpoint: ${env:SIGNOZ_CLOUD_OTLP_ENDPOINT}
     headers:
       signoz-ingestion-key: ${env:SIGNOZ_INGESTION_KEY}
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 10000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+      max_elapsed_time: 5m
 
 extensions:
   health_check:
@@ -28,13 +71,13 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, transform/redact, filter/noise, batch]
       exporters: [otlphttp/signoz]
     metrics:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, transform/redact, batch]
       exporters: [otlphttp/signoz]
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, transform/redact, filter/noise, batch]
       exporters: [otlphttp/signoz]

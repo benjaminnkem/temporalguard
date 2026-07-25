@@ -145,6 +145,9 @@ export class Investigation extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   errorMessage: string | null;
 
+  @Column({ type: 'jsonb', nullable: true })
+  report: Record<string, unknown> | null;
+
   @OneToMany(() => InvestigationStep, (step) => step.investigation)
   steps: InvestigationStep[];
 
@@ -557,4 +560,84 @@ export class AuditLog extends BaseEntity {
 
   @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, unknown> | null;
+}
+
+@Entity('signoz_query_audits')
+@Index('IDX_signoz_query_audits_company_created', [
+  'businessId',
+  'createdAt',
+  'id',
+])
+@Index('IDX_signoz_query_audits_investigation', ['investigationId'])
+export class SigNozQueryAudit extends BaseEntity {
+  @Column({ type: 'uuid' })
+  businessId: string;
+
+  @ManyToOne(() => Business, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
+
+  @Column({ type: 'uuid', nullable: true })
+  investigationId: string | null;
+
+  @Column({ type: 'varchar', length: 16 })
+  signal: string;
+
+  @Column({ type: 'varchar', length: 64 })
+  queryHash: string;
+
+  @Column({ type: 'timestamptz' })
+  rangeStart: Date;
+
+  @Column({ type: 'timestamptz' })
+  rangeEnd: Date;
+
+  @Column({ type: 'int' })
+  requestedLimit: number;
+
+  @Column({ type: 'int', default: 0 })
+  returnedRows: number;
+
+  @Column({ type: 'int' })
+  durationMs: number;
+
+  @Column({ type: 'varchar', length: 24 })
+  outcome: string;
+
+  @Column({ type: 'int', nullable: true })
+  statusCode: number | null;
+
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  errorCode: string | null;
+}
+
+@Entity('investigation_stream_events')
+@Index('IDX_stream_events_company_created', ['businessId', 'createdAt'])
+@Unique('UQ_stream_events_investigation_sequence', [
+  'investigationId',
+  'sequence',
+])
+export class InvestigationStreamEvent extends BaseEntity {
+  @Column({ type: 'uuid' })
+  businessId: string;
+
+  @ManyToOne(() => Business, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'businessId' })
+  business: Business;
+
+  @Column({ type: 'uuid' })
+  investigationId: string;
+
+  @ManyToOne(() => Investigation, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'investigationId' })
+  investigation: Investigation;
+
+  @Column({ type: 'bigint' })
+  sequence: string;
+
+  @Column({ type: 'varchar', length: 120 })
+  type: string;
+
+  @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
+  data: Record<string, unknown>;
 }

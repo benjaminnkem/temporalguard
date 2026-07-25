@@ -68,8 +68,12 @@ if (otlpEndpoint) {
   const resource = defaultResource().merge(
     resourceFromAttributes({
       'service.name': serviceName,
+      'service.namespace': 'temporalguard',
       'service.version': '0.1.0',
-      'deployment.environment': environment,
+      'deployment.environment.name': environment,
+      'temporalguard.component': serviceName.endsWith('worker')
+        ? 'worker'
+        : 'api',
     }),
   );
   const loggerProvider = new LoggerProvider({

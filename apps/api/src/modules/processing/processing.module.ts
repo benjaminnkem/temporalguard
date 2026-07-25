@@ -13,8 +13,10 @@ import {
   Evidence,
   Investigation,
   InvestigationStep,
+  InvestigationStreamEvent,
   RuleSimulation,
   SigNozConnection,
+  SigNozQueryAudit,
   TelemetryQualitySnapshot,
   WorkflowComparison,
 } from './entities';
@@ -37,6 +39,8 @@ export const PROCESSING_ENTITIES = [
   DeploymentObservation,
   TelemetryQualitySnapshot,
   AuditLog,
+  SigNozQueryAudit,
+  InvestigationStreamEvent,
 ];
 
 @Module({

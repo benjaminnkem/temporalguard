@@ -31,6 +31,7 @@ export class WorkflowEngineService {
 
     for (const rule of triggerRules) {
       this.eventEmitter.emit(EVENT_RULE_MATCHED, {
+        businessId: log.businessId,
         ruleId: rule.id,
         ruleName: rule.name,
         eventName: log.event.name,

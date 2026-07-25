@@ -1,9 +1,11 @@
-import { ConfigService } from '@nestjs/config';
+import { ServiceUnavailableException } from '@nestjs/common';
 import type { Workflow } from '../entities';
 import { SigNozObservabilityService } from './signoz-observability.service';
 
 const workflow = {
   id: '8d6513a2-eaf8-47d1-9c33-8edaa96f7881',
+  businessId: '11111111-1111-4111-8111-111111111111',
+  status: 'waiting',
   createdAt: new Date('2026-07-24T14:30:00.000Z'),
   updatedAt: new Date('2026-07-24T14:35:00.000Z'),
   externalWorkflow: {
@@ -17,79 +19,58 @@ const workflow = {
 } as Workflow;
 
 describe('SigNozObservabilityService', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('returns a configuration state without calling SigNoz when query access is missing', async () => {
+  it('returns a configuration state when the server-side client is unavailable', async () => {
+    const client = {
+      queryTraces: jest
+        .fn()
+        .mockRejectedValue(new ServiceUnavailableException()),
+    };
     const service = new SigNozObservabilityService(
-      new ConfigService({
-        signoz: { uiUrl: 'https://example.signoz.cloud' },
-      }),
+      client as never,
+      {
+        build: jest.fn(() => 'https://example.signoz.cloud/traces-explorer'),
+      } as never,
     );
-    const fetchSpy = jest.spyOn(global, 'fetch');
 
     const result = await service.queryTraces(workflow);
 
     expect(result.configured).toBe(false);
     expect(result.items).toEqual([]);
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('queries and normalizes live trace rows using the service-account header', async () => {
-    const service = new SigNozObservabilityService(
-      new ConfigService({
-        signoz: {
-          apiUrl: 'https://example.signoz.cloud',
-          apiKey: 'test-service-account-key',
-          uiUrl: 'https://example.signoz.cloud',
-          queryTimeoutMs: 1000,
-        },
+  it('uses the safe company-scoped query client and normalizes its result', async () => {
+    const client = {
+      queryTraces: jest.fn().mockResolvedValue({
+        queryId: 'query-1',
+        signal: 'traces',
+        from: '2026-07-24T14:25:00.000Z',
+        to: '2026-07-24T14:40:00.000Z',
+        rows: [{ trace_id: '0123456789abcdef0123456789abcdef' }],
+        truncated: false,
       }),
-    );
-    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          data: {
-            result: [
-              {
-                queryName: 'workflow_traces',
-                rows: [
-                  {
-                    data: {
-                      trace_id: '0123456789abcdef0123456789abcdef',
-                      name: 'Workflow Created',
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } },
-      ),
+    };
+    const link = 'https://example.signoz.cloud/trace/trace-id';
+    const service = new SigNozObservabilityService(
+      client as never,
+      { build: jest.fn(() => link) } as never,
     );
 
     const result = await service.queryTraces(workflow);
 
     expect(result.configured).toBe(true);
-    expect(result.items).toEqual([
-      {
-        trace_id: '0123456789abcdef0123456789abcdef',
-        name: 'Workflow Created',
-      },
-    ]);
-    expect(result.explorerUrl).toBe(
-      'https://example.signoz.cloud/trace/0123456789abcdef0123456789abcdef',
-    );
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchSpy.mock.calls[0] ?? [];
-    expect(url).toBe('https://example.signoz.cloud/api/v5/query_range');
-    expect(new Headers(init?.headers).get('SIGNOZ-API-KEY')).toBe(
-      'test-service-account-key',
-    );
-    expect(typeof init?.body === 'string' ? init.body : '').toContain(
-      workflow.id,
+    expect(result.items).toHaveLength(1);
+    expect(result.explorerUrl).toBe(link);
+    expect(client.queryTraces).toHaveBeenCalledWith(
+      expect.objectContaining({
+        businessId: workflow.businessId,
+        filters: [
+          {
+            field: 'temporalguard.workflow.id',
+            operator: 'eq',
+            value: workflow.id,
+          },
+        ],
+      }),
     );
   });
 });

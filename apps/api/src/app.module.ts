@@ -20,6 +20,9 @@ import {
   ViolationsModule,
   WorkflowsModule,
   ProcessingModule,
+  SigNozModule,
+  InvestigationsModule,
+  InsightsModule,
 } from './modules';
 
 @Module({
@@ -61,6 +64,9 @@ import {
     ViolationsModule,
     TelemetryModule,
     ProcessingModule,
+    SigNozModule,
+    InvestigationsModule,
+    InsightsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

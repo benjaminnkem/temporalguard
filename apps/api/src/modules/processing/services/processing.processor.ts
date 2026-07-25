@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job, UnrecoverableError } from 'bullmq';
 import { DataSource, EntityManager } from 'typeorm';
+import { createHash } from 'node:crypto';
 import {
   PROCESSING_QUEUE,
   type ProcessingJobName,
@@ -16,6 +17,8 @@ import {
   WorkflowComparison,
 } from '../entities';
 import { AuditService } from './audit.service';
+import { InvestigationEngine } from '../../investigations/investigation-engine.service';
+import { TelemetryService } from '../../telemetry/services/telemetry.service';
 import { CompanyConcurrencyService } from './company-concurrency.service';
 import {
   type ProcessingJobData,
@@ -32,6 +35,8 @@ export class ProcessingProcessor extends WorkerHost {
     private readonly concurrency: CompanyConcurrencyService,
     private readonly queue: ProcessingQueueService,
     private readonly audit: AuditService,
+    private readonly investigationEngine: InvestigationEngine,
+    private readonly telemetry: TelemetryService,
     config: ConfigService,
   ) {
     super();
@@ -39,6 +44,21 @@ export class ProcessingProcessor extends WorkerHost {
   }
 
   async process(job: Job<ProcessingJobData>): Promise<void> {
+    return this.telemetry.trace(
+      'temporalguard.queue.process',
+      {
+        'messaging.system': 'bullmq',
+        'messaging.destination.name': PROCESSING_QUEUE,
+        'temporalguard.queue.job_name': job.name,
+        'temporalguard.company.id_hash': createHash('sha256')
+          .update(job.data.businessId)
+          .digest('hex'),
+      },
+      () => this.processJob(job),
+    );
+  }
+
+  private async processJob(job: Job<ProcessingJobData>): Promise<void> {
     const jobId = String(job.id);
     const acquired = await this.concurrency.acquire(job.data.businessId, jobId);
     if (!acquired) throw new Error('COMPANY_CONCURRENCY_LIMIT');
@@ -66,6 +86,31 @@ export class ProcessingProcessor extends WorkerHost {
 
       await job.updateProgress({ phase: 'processing', percent: 50 });
       await this.ensureNotCancelled(job.name as ProcessingJobName, job.data);
+      if (job.name === 'investigation') {
+        const controller = new AbortController();
+        const cancellationPoll = setInterval(() => {
+          void this.dataSource
+            .getRepository(Investigation)
+            .findOneBy({
+              id: job.data.entityId,
+              businessId: job.data.businessId,
+            })
+            .then((row) => {
+              if (row?.cancellationRequestedAt) controller.abort();
+            });
+        }, 500);
+        try {
+          await this.investigationEngine.execute(
+            job.data.businessId,
+            job.data.entityId,
+            controller.signal,
+          );
+        } finally {
+          clearInterval(cancellationPoll);
+        }
+        await job.updateProgress({ phase: 'completed', percent: 100 });
+        return;
+      }
 
       await this.dataSource.transaction(async (manager) => {
         await this.complete(manager, job.name as ProcessingJobName, job.data);

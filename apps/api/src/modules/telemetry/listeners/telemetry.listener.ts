@@ -16,6 +16,7 @@ export class TelemetryListener {
 
   @OnEvent(EVENT_WORKFLOW_CREATED)
   handleWorkflowCreated(payload: {
+    businessId: string;
     workflowId: string;
     ruleId: string;
     ruleName: string;
@@ -26,11 +27,13 @@ export class TelemetryListener {
       payload.ruleId,
       payload.ruleName,
       payload.status,
+      payload.businessId,
     );
   }
 
   @OnEvent(EVENT_WORKFLOW_COMPLETED)
   handleWorkflowCompleted(payload: {
+    businessId: string;
     workflowId: string;
     ruleId: string;
     ruleName: string;
@@ -43,11 +46,13 @@ export class TelemetryListener {
       payload.ruleName,
       payload.status,
       payload.durationMs,
+      payload.businessId,
     );
   }
 
   @OnEvent(EVENT_WORKFLOW_OVERDUE)
   handleWorkflowOverdue(payload: {
+    businessId: string;
     workflowId: string;
     ruleId: string;
     ruleName: string;
@@ -58,11 +63,13 @@ export class TelemetryListener {
       payload.ruleId,
       payload.ruleName,
       payload.status,
+      payload.businessId,
     );
   }
 
   @OnEvent(EVENT_VIOLATION_CREATED)
   handleViolationCreated(payload: {
+    businessId: string;
     violationId: string;
     workflowId: string;
     ruleId: string;
@@ -75,11 +82,13 @@ export class TelemetryListener {
       payload.ruleId,
       payload.ruleName,
       payload.severity,
+      payload.businessId,
     );
   }
 
   @OnEvent(EVENT_RULE_MATCHED)
   handleRuleMatched(payload: {
+    businessId: string;
     ruleId: string;
     ruleName: string;
     eventName: string;
@@ -88,11 +97,13 @@ export class TelemetryListener {
       payload.ruleId,
       payload.ruleName,
       payload.eventName,
+      payload.businessId,
     );
   }
 
   @OnEvent(EVENT_BUSINESS_EVENT_RECEIVED)
   handleBusinessEventReceived(payload: {
+    businessId: string;
     eventName: string;
     workflowId?: string;
     externalWorkflowId?: string;
@@ -107,6 +118,7 @@ export class TelemetryListener {
       payload.eventLogId,
       payload.traceId,
       payload.spanId,
+      payload.businessId,
     );
   }
 }

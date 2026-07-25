@@ -192,12 +192,29 @@ Exit: current product builds; existing response success shapes are unchanged.
 
 Exit: web uses v1 contracts; old producers have a tested migration path.
 
-### M2 — SigNoz query foundation
+### M2 — SigNoz query foundation (implemented)
 
 - Implement the typed Query Range client, safe templates, company filters,
   redaction, audit records, timeouts, retries, cancellation, and breaker.
 - Add encrypted SigNoz connection storage and validation.
 - Move workflow observability previews onto the shared adapter.
+
+The client, connection API, audit persistence, safe previews, deep links,
+collector hardening, conventions, verification script, and stub-server tests
+are now implemented.
+
+### M3 — Durable investigation agent (implemented foundation)
+
+- Start/read/list/cancel/rerun/export and durable SSE replay.
+- Worker-owned bounded tool execution and company-scoped SigNoz evidence.
+- Cohort comparison, telemetry completeness, deterministic ranking, strict
+  cited JSON, prompt-injection defense, and no-remediation policy.
+- Disabled deterministic provider plus opt-in OpenAI-compatible synthesis.
+
+Remaining product work is frontend investigation UI, Redis pub/sub latency
+optimization (database replay is authoritative today), and expanded live
+infrastructure/e2e fault-injection coverage.
+
 - Centralize semantic attributes and collector redaction/health.
 
 Exit: trace/log/metric queries are server-owned, bounded, tested, and auditable.

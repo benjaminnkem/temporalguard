@@ -42,6 +42,20 @@ export default () => ({
       process.env.SIGNOZ_UI_URL ?? process.env.NEXT_PUBLIC_SIGNOZ_UI_URL
     )?.replace(/\/+$/, ''),
     queryTimeoutMs: Number(process.env.SIGNOZ_QUERY_TIMEOUT_MS ?? 10_000),
+    queryMaxRangeHours: Number(process.env.SIGNOZ_QUERY_MAX_RANGE_HOURS ?? 24),
+    comparisonMaxRangeDays: Number(
+      process.env.SIGNOZ_COMPARISON_MAX_RANGE_DAYS ?? 30,
+    ),
+    queryMaxRetries: Number(process.env.SIGNOZ_QUERY_MAX_RETRIES ?? 2),
+    circuitBreakerThreshold: Number(
+      process.env.SIGNOZ_QUERY_CIRCUIT_BREAKER_THRESHOLD ?? 5,
+    ),
+    circuitBreakerResetMs: Number(
+      process.env.SIGNOZ_QUERY_CIRCUIT_BREAKER_RESET_MS ?? 30_000,
+    ),
+    rateLimitPerMinute: Number(
+      process.env.SIGNOZ_QUERY_RATE_LIMIT_PER_MINUTE ?? 120,
+    ),
   },
   auth: {
     accessSecret: process.env.JWT_ACCESS_SECRET ?? 'development-access-secret',
@@ -69,5 +83,15 @@ export default () => ({
     signozAssetProvisioning:
       process.env.FEATURE_SIGNOZ_ASSET_PROVISIONING === 'true',
     demoSystem: process.env.FEATURE_DEMO_SYSTEM === 'true',
+  },
+  agent: {
+    enabled: process.env.INVESTIGATION_AGENT_ENABLED === 'true',
+    provider: process.env.AI_PROVIDER ?? 'disabled',
+    apiKey: process.env.AI_API_KEY,
+    baseUrl: process.env.AI_BASE_URL ?? 'https://api.openai.com/v1',
+    model: process.env.AI_MODEL ?? 'gpt-5.6-terra',
+    maxSteps: Number(process.env.AI_MAX_STEPS ?? 8),
+    requestTimeoutMs: Number(process.env.AI_REQUEST_TIMEOUT_MS ?? 30_000),
+    maxInputChars: Number(process.env.AI_MAX_INPUT_CHARS ?? 60_000),
   },
 });
