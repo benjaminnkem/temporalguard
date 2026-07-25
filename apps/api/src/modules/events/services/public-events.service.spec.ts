@@ -1,3 +1,4 @@
+import { ApiKeyEnvironment } from '../../businesses/enums/api-key-environment.enum';
 import { PublicEventsService } from './public-events.service';
 import type { EventLogsService } from './event-logs.service';
 import type { EventIngestIdempotency } from '../entities/event-ingest-idempotency.entity';
@@ -5,6 +6,7 @@ import type { EventIngestIdempotency } from '../entities/event-ingest-idempotenc
 describe('PublicEventsService', () => {
   const businessId = 'biz_1';
   const timestamp = new Date().toISOString();
+  const env = ApiKeyEnvironment.LIVE;
 
   const eventLogsService = {
     ingest: jest.fn(),
@@ -34,12 +36,16 @@ describe('PublicEventsService', () => {
     });
     idempotencyRepository.save.mockResolvedValue({});
 
-    const result = await service.track(businessId, {
-      event: 'document.uploaded',
-      timestamp,
-      correlation: { key: 'document.id', value: 'doc_1' },
-      idempotencyKey: 'key-1',
-    });
+    const result = await service.track(
+      businessId,
+      {
+        event: 'document.uploaded',
+        timestamp,
+        correlation: { key: 'document.id', value: 'doc_1' },
+        idempotencyKey: 'key-1',
+      },
+      env,
+    );
 
     expect(result).toEqual({
       id: 'elog_1',
@@ -51,6 +57,12 @@ describe('PublicEventsService', () => {
       expect.objectContaining({
         eventName: 'document.uploaded',
         externalWorkflowId: 'document.id:doc_1',
+        payload: expect.objectContaining({
+          _tg: expect.objectContaining({
+            apiEnvironment: 'live',
+            environment: 'production',
+          }),
+        }),
       }),
       expect.any(Object),
     );
@@ -62,12 +74,16 @@ describe('PublicEventsService', () => {
       eventLogId: 'elog_existing',
     });
 
-    const result = await service.track(businessId, {
-      event: 'document.uploaded',
-      timestamp,
-      externalId: 'wf_1',
-      idempotencyKey: 'key-1',
-    });
+    const result = await service.track(
+      businessId,
+      {
+        event: 'document.uploaded',
+        timestamp,
+        externalId: 'wf_1',
+        idempotencyKey: 'key-1',
+      },
+      env,
+    );
 
     expect(result).toEqual({
       id: 'elog_existing',
@@ -83,20 +99,24 @@ describe('PublicEventsService', () => {
       .mockResolvedValueOnce({ eventLog: { id: 'a' }, workflows: [] })
       .mockResolvedValueOnce({ eventLog: { id: 'b' }, workflows: [] });
 
-    const result = await service.trackBatch(businessId, {
-      events: [
-        {
-          event: 'a.started',
-          timestamp,
-          externalId: 'wf_1',
-        },
-        {
-          event: 'a.finished',
-          timestamp,
-          externalId: 'wf_1',
-        },
-      ],
-    });
+    const result = await service.trackBatch(
+      businessId,
+      {
+        events: [
+          {
+            event: 'a.started',
+            timestamp,
+            externalId: 'wf_1',
+          },
+          {
+            event: 'a.finished',
+            timestamp,
+            externalId: 'wf_1',
+          },
+        ],
+      },
+      env,
+    );
 
     expect(result).toEqual({
       accepted: true,

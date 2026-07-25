@@ -14,6 +14,7 @@ import type {
   AuthenticatedRequest,
 } from '../../auth/interfaces/auth.interface';
 import { User } from '../../users/entities';
+import { ApiKeyEnvironment } from '../enums/api-key-environment.enum';
 import { BusinessesService } from '../services/businesses.service';
 import { extractApiKeyFromRequest } from '../utils/extract-api-key';
 
@@ -21,6 +22,7 @@ export type WorkspaceAuthRequest = Request & {
   user?: User;
   businessId: string;
   apiKeyId?: string;
+  apiKeyEnvironment?: ApiKeyEnvironment;
   authMethod: 'session' | 'api_key';
 };
 
@@ -42,6 +44,7 @@ export class WorkspaceAuthGuard implements CanActivate {
       const result = await this.businessesService.authenticateApiKey(rawKey);
       request.businessId = result.businessId;
       request.apiKeyId = result.apiKeyId;
+      request.apiKeyEnvironment = result.environment;
       request.authMethod = 'api_key';
       return true;
     }

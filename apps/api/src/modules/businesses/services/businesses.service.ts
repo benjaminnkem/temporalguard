@@ -9,6 +9,10 @@ import { createHash, randomBytes } from 'node:crypto';
 import { IsNull, Repository } from 'typeorm';
 import type { CreateApiKeyDto, UpdateBusinessDto } from '../dto';
 import { Business, BusinessApiKey } from '../entities';
+import {
+  ApiKeyEnvironment,
+  apiKeyPrefixForEnvironment,
+} from '../enums/api-key-environment.enum';
 
 @Injectable()
 export class BusinessesService {
@@ -62,10 +66,12 @@ export class BusinessesService {
     userId: string,
     input: CreateApiKeyDto,
   ) {
-    const rawKey = this.generateRawKey();
+    const environment = input.environment ?? ApiKeyEnvironment.LIVE;
+    const rawKey = this.generateRawKey(environment);
     const entity = this.apiKeys.create({
       businessId,
       name: input.name.trim(),
+      environment,
       keyPrefix: rawKey.slice(0, 12),
       keyHash: await hash(rawKey),
       createdByUserId: userId,
@@ -118,6 +124,7 @@ export class BusinessesService {
       return {
         businessId: candidate.businessId,
         apiKeyId: candidate.id,
+        environment: candidate.environment ?? ApiKeyEnvironment.LIVE,
         business: candidate.business,
       };
     }
@@ -127,9 +134,9 @@ export class BusinessesService {
     });
   }
 
-  private generateRawKey() {
+  private generateRawKey(environment: ApiKeyEnvironment) {
     const entropy = randomBytes(24).toString('base64url');
-    return `tg_live_${entropy}`;
+    return `${apiKeyPrefixForEnvironment(environment)}${entropy}`;
   }
 
   private toBusinessDto(business: Business) {
@@ -147,6 +154,7 @@ export class BusinessesService {
     return {
       id: key.id,
       name: key.name,
+      environment: key.environment ?? ApiKeyEnvironment.LIVE,
       keyPrefix: key.keyPrefix,
       lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
       revokedAt: key.revokedAt?.toISOString() ?? null,

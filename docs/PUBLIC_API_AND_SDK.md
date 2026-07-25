@@ -65,7 +65,7 @@ Every API key belongs to exactly one **business** (workspace). All ingested even
 - Events ingested with a key inherit that environment; clients **must not** send a conflicting environment field in v1.
 - Optional later: allow an event-level environment override only for keys marked multi-env (not in v1).
 
-**Current code gap (P2):** key minting always produces `tg_live_*` and the entity has no `environment` column yet. Public routes still treat every key as live until P2 ships env-aware keys. P1 may hard-code `live` for ingested events.
+**Product mapping:** API key `live` → product environment `production`; API key `test` → product environment `staging` (shell filters and rule `environments`).
 
 Rationale: simpler mental model, safer defaults, matches common observability practice (separate prod/dev tokens).
 
@@ -520,7 +520,7 @@ SDK does not read env automatically unless the consumer passes `process.env.*` �
 ```ts
 type TrackOptions = {
   timestamp?: Date | string; // default: now (UTC ISO)
-  correlation: { key: string; value: string };
+  correlation?: { key: string; value: string }; // required unless externalId
   properties?: Record<string, unknown>;
   context?: {
     service?: string;
@@ -685,7 +685,7 @@ No change required to those UX goals for the public API design. P2 may add envir
 | Public routes | None under `/v1` | `v1/events`, `v1/events/batch` |
 | Ingest body | `eventName`, `payload`, `externalWorkflowId` | Public adapter; keep internal DTO private |
 | Auth on ingest | Session or `X-API-Key` | Public: API key only; Bearer `tg_*` + `X-API-Key` |
-| Key prefixes | Always `tg_live_` | P2: live/test + environment column |
+| Key prefixes | `tg_live_` / `tg_test_` + `environment` column | Shipped (P2) |
 | Batch | No | Yes, max 100 |
 | Idempotency | No | Yes, optional key |
 | Correlation object | No | Yes, mapped to external workflow id |
@@ -914,18 +914,18 @@ Nest may generate an equivalent document from DTOs under a `public-v1` Swagger t
 
 ### P3 — `@temporalguard/node`
 
-- [ ] Scaffold `packages/node` with build + types.
-- [ ] Implement client: buffer, flush, trackAndFlush, shutdown, retries.
-- [ ] Map methods per §10.6; auth Bearer header.
-- [ ] Typed errors per §8 / §10.4.
-- [ ] Unit tests with mocked fetch.
-- [ ] README quickstart pointing at this doc.
+- [x] Scaffold `packages/node` with build + types.
+- [x] Implement client: buffer, flush, trackAndFlush, shutdown, retries.
+- [x] Map methods per §10.6; auth Bearer header.
+- [x] Typed errors per §8 / §10.4.
+- [x] Unit tests with mocked fetch.
+- [x] README quickstart pointing at this doc.
 
 ### P2 (can parallel after P1 start)
 
-- [ ] `environment` on API keys; mint `tg_test_` / `tg_live_`.
-- [ ] Settings UI environment on create.
-- [ ] Ingest inherits env from authenticated key.
+- [x] `environment` on API keys; mint `tg_test_` / `tg_live_`.
+- [x] Settings UI environment on create.
+- [x] Ingest inherits env from authenticated key (payload `_tg` + workflow metadata; rules filtered by product env).
 
 ---
 

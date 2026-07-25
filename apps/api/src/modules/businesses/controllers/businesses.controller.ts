@@ -38,7 +38,9 @@ export class BusinessesController {
   }
 
   @Patch()
-  @ApiOperation({ summary: 'Update the authenticated workspace business profile' })
+  @ApiOperation({
+    summary: 'Update the authenticated workspace business profile',
+  })
   updateBusiness(@CurrentUser() user: User, @Body() input: UpdateBusinessDto) {
     return this.businessesService.updateBusiness(user.businessId, input);
   }
@@ -57,11 +59,7 @@ export class BusinessesController {
     description: 'API key created. Secret is only returned once.',
   })
   createApiKey(@CurrentUser() user: User, @Body() input: CreateApiKeyDto) {
-    return this.businessesService.createApiKey(
-      user.businessId,
-      user.id,
-      input,
-    );
+    return this.businessesService.createApiKey(user.businessId, user.id, input);
   }
 
   @Post('api-keys/:id/revoke')

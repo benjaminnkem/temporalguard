@@ -1,4 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
+import {
+  ApiKeyEnvironment,
+  toProductEnvironment,
+} from '../../businesses/enums/api-key-environment.enum';
 import type { CreateEventLogDto } from '../dto/create-event-log.dto';
 import type { TrackEventDto } from '../dto/track-event.dto';
 
@@ -131,12 +135,17 @@ export function resolveExternalWorkflowId(input: TrackEventDto): string {
 
 export function mapPublicEventToIngest(
   input: TrackEventDto,
+  apiEnvironment: ApiKeyEnvironment = ApiKeyEnvironment.LIVE,
 ): MappedPublicEvent {
   assertTimestamp(input.timestamp);
   assertProperties(input.properties);
 
   const externalWorkflowId = resolveExternalWorkflowId(input);
-  const tgMeta: Record<string, unknown> = {};
+  const productEnvironment = toProductEnvironment(apiEnvironment);
+  const tgMeta: Record<string, unknown> = {
+    apiEnvironment,
+    environment: productEnvironment,
+  };
 
   if (input.correlation?.key && input.correlation?.value) {
     tgMeta.correlation = {
@@ -151,11 +160,8 @@ export function mapPublicEventToIngest(
 
   const payload: Record<string, unknown> = {
     ...(input.properties ?? {}),
+    _tg: tgMeta,
   };
-
-  if (Object.keys(tgMeta).length > 0) {
-    payload._tg = tgMeta;
-  }
 
   return {
     dto: {
@@ -168,4 +174,30 @@ export function mapPublicEventToIngest(
     spanId: input.context?.spanId,
     idempotencyKey: input.idempotencyKey,
   };
+}
+
+export function resolveProductEnvironmentFromPayload(
+  payload: Record<string, unknown> | null | undefined,
+): string {
+  const tg = payload?._tg;
+  if (tg && typeof tg === 'object' && !Array.isArray(tg)) {
+    const meta = tg as Record<string, unknown>;
+    if (meta.environment === 'production' || meta.environment === 'staging') {
+      return meta.environment;
+    }
+    if (meta.apiEnvironment === 'test' || meta.apiEnvironment === 'live') {
+      return toProductEnvironment(meta.apiEnvironment);
+    }
+  }
+  return 'production';
+}
+
+export function ruleMatchesEnvironment(
+  ruleEnvironments: string[] | null | undefined,
+  productEnvironment: string,
+): boolean {
+  if (!ruleEnvironments || ruleEnvironments.length === 0) {
+    return true;
+  }
+  return ruleEnvironments.includes(productEnvironment);
 }

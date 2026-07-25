@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Repository } from 'typeorm';
+import type { ApiKeyEnvironment } from '../../businesses/enums/api-key-environment.enum';
 import type {
   TrackEventDto,
   TrackEventsBatchDto,
@@ -34,8 +35,9 @@ export class PublicEventsService {
   async track(
     businessId: string,
     input: TrackEventDto,
+    apiEnvironment: ApiKeyEnvironment,
   ): Promise<TrackEventResult> {
-    const mapped = mapPublicEventToIngest(input);
+    const mapped = mapPublicEventToIngest(input, apiEnvironment);
 
     if (mapped.idempotencyKey) {
       const existing = await this.findActiveIdempotency(
@@ -85,11 +87,12 @@ export class PublicEventsService {
   async trackBatch(
     businessId: string,
     input: TrackEventsBatchDto,
+    apiEnvironment: ApiKeyEnvironment,
   ): Promise<TrackBatchResult> {
     const results: Array<{ id: string; duplicate: boolean }> = [];
 
     for (const event of input.events) {
-      const result = await this.track(businessId, event);
+      const result = await this.track(businessId, event, apiEnvironment);
       results.push({ id: result.id, duplicate: result.duplicate });
     }
 

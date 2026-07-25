@@ -15,11 +15,6 @@ import { BusinessesService } from './services/businesses.service';
   ],
   controllers: [BusinessesController],
   providers: [BusinessesService, ApiKeyGuard, WorkspaceAuthGuard],
-  exports: [
-    TypeOrmModule,
-    BusinessesService,
-    ApiKeyGuard,
-    WorkspaceAuthGuard,
-  ],
+  exports: [TypeOrmModule, BusinessesService, ApiKeyGuard, WorkspaceAuthGuard],
 })
 export class BusinessesModule {}

@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/entities';
 import { User } from '../../users/entities';
+import { ApiKeyEnvironment } from '../enums/api-key-environment.enum';
 import { Business } from './business.entity';
 
 @Entity('business_api_keys')
@@ -16,6 +17,13 @@ export class BusinessApiKey extends BaseEntity {
 
   @Column({ type: 'varchar', length: 120 })
   name: string;
+
+  @Column({
+    type: 'varchar',
+    length: 16,
+    default: ApiKeyEnvironment.LIVE,
+  })
+  environment: ApiKeyEnvironment;
 
   @Column({ type: 'varchar', length: 24 })
   keyPrefix: string;
