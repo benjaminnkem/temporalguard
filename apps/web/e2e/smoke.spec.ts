@@ -248,6 +248,49 @@ async function mockApi(page: import("@playwright/test").Page) {
       });
       return;
     }
+    if (path === "/investigations") {
+      await route.fulfill({
+        status: 200,
+        json: [
+          {
+            id: "00000000-0000-4000-8000-000000000050",
+            violationId: violationSummary.id,
+            workflowId: violationSummary.workflowId,
+            ruleId: violationSummary.ruleId,
+            status: "completed",
+            summary: "Decision worker latency increased.",
+            confidence: "high",
+            topContributor: "decision-worker",
+            dataGapCount: 0,
+            evidenceCount: 1,
+            report: null,
+            createdAt: "2026-07-24T07:00:00.000Z",
+            updatedAt: "2026-07-24T07:05:00.000Z",
+          },
+        ],
+      });
+      return;
+    }
+    if (path === "/comparisons") {
+      await route.fulfill({ status: 200, json: [] });
+      return;
+    }
+    if (path === "/platform-health") {
+      await route.fulfill({
+        status: 200,
+        json: {
+          status: "healthy",
+          generatedAt: "2026-07-24T08:00:00.000Z",
+          metrics: {
+            eventsIngested: 120,
+            queueBacklog: 0,
+            investigationFailures: 0,
+          },
+          connections: [],
+        },
+      });
+      return;
+    }
     await route.fulfill({ status: 404, json: { message: "Not mocked" } });
   });
 }
@@ -387,6 +430,28 @@ test("edit mode updates an existing rule instead of creating one", async ({
   });
   await expect(page.getByText("Rule updated.", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`rule=${ruleId}`));
+});
+
+test("investigations render persisted records without mock mode", async ({
+  page,
+}) => {
+  await page.goto("/investigations");
+  await expect(
+    page.getByRole("heading", { name: "Investigations" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Decision worker latency increased."),
+  ).toBeVisible();
+  await expect(page.getByText("completed", { exact: true })).toBeVisible();
+});
+
+test("platform health renders live API metrics", async ({ page }) => {
+  await page.goto("/observability?view=health");
+  await expect(
+    page.getByRole("heading", { name: "Observability" }),
+  ).toBeVisible();
+  await expect(page.getByText("healthy", { exact: true })).toBeVisible();
+  await expect(page.getByText("120", { exact: true })).toBeVisible();
 });
 
 const responsiveViewports = [

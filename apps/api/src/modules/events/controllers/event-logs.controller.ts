@@ -10,12 +10,16 @@ import { CurrentBusinessId } from '../../businesses/decorators/current-business-
 import { WorkspaceAuthGuard } from '../../businesses/guards/workspace-auth.guard';
 import { CreateEventLogDto } from '../dto';
 import { EventLogsService } from '../services/event-logs.service';
+import { TelemetryService } from '../../telemetry/services/telemetry.service';
 
 @ApiTags('event-logs')
 @Controller('event-logs')
 @UseGuards(WorkspaceAuthGuard)
 export class EventLogsController {
-  constructor(private readonly eventLogsService: EventLogsService) {}
+  constructor(
+    private readonly eventLogsService: EventLogsService,
+    private readonly telemetry: TelemetryService,
+  ) {}
 
   @Post()
   @ApiBearerAuth()
@@ -31,10 +35,23 @@ export class EventLogsController {
       'Accepts either an authenticated user session or a workspace API key via the X-API-Key header.',
   })
   @ApiCreatedResponse({ description: 'Event occurrence logged and processed' })
-  create(
+  async create(
     @CurrentBusinessId() businessId: string,
     @Body() dto: CreateEventLogDto,
   ) {
-    return this.eventLogsService.ingest(businessId, dto);
+    const startedAt = performance.now();
+    let succeeded = false;
+    try {
+      const result = await this.eventLogsService.ingest(businessId, dto);
+      succeeded = true;
+      return result;
+    } finally {
+      this.telemetry.eventIngestionFinished(
+        dto.eventName,
+        performance.now() - startedAt,
+        succeeded,
+        businessId,
+      );
+    }
   }
 }

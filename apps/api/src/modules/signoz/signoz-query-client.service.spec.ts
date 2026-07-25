@@ -87,6 +87,7 @@ describe('SigNozQueryClient', () => {
       save: jest.fn((value: unknown) => Promise.resolve(value)),
     };
     const telemetry = {
+      signozQueryFailed: jest.fn(),
       trace: jest.fn(
         async (
           _name: string,

@@ -4,6 +4,7 @@ import { AuthModule } from '../auth';
 import { BusinessesModule } from '../businesses';
 import { RulesModule } from '../rules/rules.module';
 import { WorkflowsModule } from '../workflows/workflows.module';
+import { TelemetryModule } from '../telemetry';
 import { EventsController } from './controllers/events.controller';
 import { EventLogsController } from './controllers/event-logs.controller';
 import { BusinessEvent, EventLog } from './entities';
@@ -18,6 +19,7 @@ import { WorkflowEngineService } from './services/workflow-engine.service';
     TypeOrmModule.forFeature([BusinessEvent, EventLog]),
     RulesModule,
     WorkflowsModule,
+    TelemetryModule,
   ],
   controllers: [EventsController, EventLogsController],
   providers: [EventsService, EventLogsService, WorkflowEngineService],

@@ -15,11 +15,19 @@ import { DataState } from "../../components/shared/data-state";
 import { Button } from "../../components/ui/button";
 import { Badge, Card } from "../../components/ui/surface";
 import { useViolation } from "../../lib/queries";
+import { observabilityDataSource } from "../../lib/observability-data-source";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { formatDate, formatDuration } from "../../lib/utils";
 
 export function ViolationDetailView({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const query = useViolation(id);
+  const router = useRouter();
+  const investigate = useMutation({
+    mutationFn: () => observabilityDataSource.startInvestigation(id),
+    onSuccess: (value) => router.push(`/investigations/${value.id}`),
+  });
   const violation = query.data;
   return (
     <DataState
@@ -59,8 +67,11 @@ export function ViolationDetailView({ id }: { id: string }) {
                   {violation.ruleName} · {formatDate(violation.occurredAt)}
                 </p>
               </div>
-              <Button disabled>
-                <ExternalLink className="size-4" /> Open correlated evidence
+              <Button
+                disabled={investigate.isPending}
+                onClick={() => investigate.mutate()}
+              >
+                <ExternalLink className="size-4" /> Investigate technical evidence
               </Button>
             </div>
           </div>

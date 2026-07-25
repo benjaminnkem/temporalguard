@@ -25,6 +25,18 @@ Updated: July 25, 2026
   configurations for self-hosted and cloud modes.
 - OTLP trace/log/metric verification script and SigNoz stub-server policy
   tests.
+- Real API-backed investigations, evidence graph, comparisons, historical
+  simulations, deployments, workflow explorer, platform health, connection,
+  telemetry quality, and observability-asset frontend surfaces.
+- TanStack Query caching/reconnect behavior, named SSE event reconciliation,
+  URL-backed filters, skeleton/empty/partial-failure/offline states, keyboard
+  evidence traversal, an equivalent evidence table, and persisted citations.
+- Comparison dimensions for success/violation, on-time/late, deployment
+  versions, and telemetry quality; deployment observations discovered from
+  evidence; event-ingestion and investigation operational instruments.
+- Official SigNoz Terraform provider module with seven dashboards and eight
+  initially disabled alerts. Apply requires a reviewed saved plan and an exact
+  interactive confirmation phrase.
 
 ## Verification log
 
@@ -40,6 +52,10 @@ Updated: July 25, 2026
 | Cloud collector native `validate`                | Passed with placeholder endpoint/key.                                                                                       |
 | Self-hosted collector startup parse              | Pipeline parsed and components built; standalone run then failed resolving the expected Compose-only `clickhouse` hostname. |
 | Clean database `pnpm --filter api migration:run` | Passed all 11 migrations, including durable processing and investigation runtime; disposable database was removed.          |
+| `pnpm signoz:fmt`                                | Passed using Terraform 1.14.3 in Docker.                                                                                    |
+| `pnpm signoz:validate`                           | Passed with official `SigNoz/signoz` provider v0.0.17 and no warnings.                                                      |
+| `pnpm --filter web test`                         | Passed after frontend observability work: 4 files, 15 tests.                                                                |
+| Targeted new Playwright tests                    | Passed on desktop and mobile: investigations list and platform-health API metrics (4 tests).                                |
 
 ## Recorded failures
 

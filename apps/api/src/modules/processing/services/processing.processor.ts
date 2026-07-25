@@ -248,6 +248,9 @@ export class ProcessingProcessor extends WorkerHost {
           completedAt: new Date(),
         },
       );
+      if (error.message !== 'JOB_CANCELLED') {
+        this.telemetry.investigationFailed(job.data.businessId);
+      }
     }
     this.logger.error(`Job ${String(job.id)} moved to dead letter`);
   }

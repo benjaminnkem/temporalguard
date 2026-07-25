@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 
 export enum ComparisonKind {
@@ -29,7 +30,10 @@ export class CreateComparisonDto {
   @IsDateString()
   to?: string;
 
-  @IsOptional()
+  @ValidateIf(
+    (value: CreateComparisonDto) =>
+      value.kind === ComparisonKind.BEFORE_VS_AFTER_DEPLOYMENT,
+  )
   @IsString()
   @MaxLength(255)
   deploymentVersion?: string;

@@ -286,6 +286,20 @@ export class InvestigationEngine {
                     redactedSnapshot: row,
                     confidence: 0.8,
                   });
+                  if (evidence.serviceName && evidence.serviceVersion) {
+                    await this.records.observeDeployment({
+                      businessId,
+                      serviceName: evidence.serviceName,
+                      environment:
+                        this.stringValue(
+                          row['deployment.environment.name'] ??
+                            row['deployment.environment'],
+                        ) ?? 'unknown',
+                      version: evidence.serviceVersion,
+                      observedAt: to,
+                      source: 'signoz',
+                    });
+                  }
                   output.push(evidence);
                 }
                 return output;
@@ -386,6 +400,14 @@ export class InvestigationEngine {
               : ProcessingStatus.COMPLETED,
           report,
         });
+        this.telemetry.investigationFinished(
+          report.telemetryCompleteness.gaps.length > 0
+            ? ProcessingStatus.COMPLETED_WITH_GAPS
+            : ProcessingStatus.COMPLETED,
+          report.telemetryCompleteness.score,
+          report.telemetryCompleteness.gaps.length,
+          businessId,
+        );
         return report;
       },
     );
@@ -416,6 +438,11 @@ export class InvestigationEngine {
         status: ProcessingStatus.COMPLETED,
         durationMs: Date.now() - started,
       });
+      this.telemetry.investigationToolCall(
+        name,
+        ProcessingStatus.COMPLETED,
+        businessId,
+      );
       await this.stream.append(
         businessId,
         run.investigationId,
@@ -434,6 +461,11 @@ export class InvestigationEngine {
         errorCode:
           error instanceof Error ? error.message.slice(0, 120) : 'UNKNOWN',
       });
+      this.telemetry.investigationToolCall(
+        name,
+        ProcessingStatus.FAILED,
+        businessId,
+      );
       await this.stream.append(businessId, run.investigationId, 'tool_failed', {
         tool: name,
       });

@@ -219,6 +219,7 @@ export class SigNozQueryClient implements OnModuleDestroy {
       errorCode =
         error instanceof Error ? error.message.slice(0, 120) : 'UNKNOWN';
       this.recordFailure(connection.id);
+      this.telemetry.signozQueryFailed(input.signal, input.businessId);
       throw error;
     } finally {
       await this.audits.save(

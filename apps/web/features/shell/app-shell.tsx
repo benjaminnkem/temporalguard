@@ -5,11 +5,14 @@ import {
   AlertTriangle,
   Database,
   FlaskConical,
+  GitCompareArrows,
   LayoutDashboard,
   LogOut,
   Pause,
   Play,
   Search,
+  Telescope,
+  Boxes,
   Settings,
   ShieldCheck,
   Workflow,
@@ -73,11 +76,16 @@ const navigation = [
   { href: "/workflows", label: "Workflows", icon: Workflow },
   { href: "/events", label: "Events", icon: Database },
   { href: "/violations", label: "Violations", icon: AlertTriangle },
-  { href: "/explore", label: "Explore", icon: FlaskConical },
+  { href: "/investigations", label: "Investigations", icon: Search },
+  { href: "/comparisons", label: "Comparisons", icon: GitCompareArrows },
+  { href: "/simulations", label: "Simulations", icon: FlaskConical },
+  { href: "/explorer", label: "Explorer", icon: Telescope },
+  { href: "/deployments", label: "Deployments", icon: Boxes },
   { href: "/rules", label: "Rules", icon: ShieldCheck },
 ] as const;
 
 const utilityNavigation = [
+  { href: "/observability", label: "Observability", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 

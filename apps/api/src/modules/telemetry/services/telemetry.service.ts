@@ -43,6 +43,15 @@ import {
   METRIC_WORKFLOW_COMPLETION_DURATION,
   METRIC_RULE_MATCHES_TOTAL,
   ATTR_COMPANY_ID_HASH,
+  METRIC_EVENTS_INGESTED_TOTAL,
+  METRIC_EVENT_INGESTION_ERRORS_TOTAL,
+  METRIC_EVENT_PROCESSING_DURATION,
+  METRIC_INVESTIGATIONS_TOTAL,
+  METRIC_INVESTIGATION_FAILURES_TOTAL,
+  METRIC_INVESTIGATION_TOOL_CALLS_TOTAL,
+  METRIC_SIGNOZ_QUERY_FAILURES_TOTAL,
+  METRIC_TELEMETRY_QUALITY,
+  METRIC_TELEMETRY_MISSING_SIGNALS,
 } from '../constants/telemetry.constants';
 
 @Injectable()
@@ -60,6 +69,15 @@ export class TelemetryService {
   private readonly activeWorkflowsCounter: UpDownCounter;
   private readonly workflowDurationHistogram: Histogram;
   private readonly ruleMatchesCounter: Counter;
+  private readonly eventsIngestedCounter: Counter;
+  private readonly eventIngestionErrorsCounter: Counter;
+  private readonly eventProcessingDuration: Histogram;
+  private readonly investigationsCounter: Counter;
+  private readonly investigationFailuresCounter: Counter;
+  private readonly investigationToolCallsCounter: Counter;
+  private readonly signozQueryFailuresCounter: Counter;
+  private readonly telemetryQualityHistogram: Histogram;
+  private readonly telemetryMissingSignalsCounter: Counter;
 
   constructor(private readonly configService: ConfigService) {
     this.serviceName =
@@ -111,6 +129,40 @@ export class TelemetryService {
       {
         description: 'Total number of rule matches',
       },
+    );
+    this.eventsIngestedCounter = this.meter.createCounter(
+      METRIC_EVENTS_INGESTED_TOTAL,
+      { description: 'Total number of accepted business events' },
+    );
+    this.eventIngestionErrorsCounter = this.meter.createCounter(
+      METRIC_EVENT_INGESTION_ERRORS_TOTAL,
+      { description: 'Total number of failed business-event ingestion calls' },
+    );
+    this.eventProcessingDuration = this.meter.createHistogram(
+      METRIC_EVENT_PROCESSING_DURATION,
+      {
+        description: 'End-to-end business-event processing duration',
+        unit: 's',
+      },
+    );
+    this.investigationsCounter = this.meter.createCounter(
+      METRIC_INVESTIGATIONS_TOTAL,
+    );
+    this.investigationFailuresCounter = this.meter.createCounter(
+      METRIC_INVESTIGATION_FAILURES_TOTAL,
+    );
+    this.investigationToolCallsCounter = this.meter.createCounter(
+      METRIC_INVESTIGATION_TOOL_CALLS_TOTAL,
+    );
+    this.signozQueryFailuresCounter = this.meter.createCounter(
+      METRIC_SIGNOZ_QUERY_FAILURES_TOTAL,
+    );
+    this.telemetryQualityHistogram = this.meter.createHistogram(
+      METRIC_TELEMETRY_QUALITY,
+      { unit: '1' },
+    );
+    this.telemetryMissingSignalsCounter = this.meter.createCounter(
+      METRIC_TELEMETRY_MISSING_SIGNALS,
     );
   }
 
@@ -339,6 +391,10 @@ export class TelemetryService {
         ...this.companyAttributes(businessId),
       },
     });
+    this.eventsIngestedCounter.add(1, {
+      [ATTR_EVENT_NAME]: eventName,
+      ...this.companyAttributes(businessId),
+    });
     this.emitSpanInfo(span, 'Business event received', {
       'event_log.id': eventLogId,
       [ATTR_EVENT_NAME]: eventName,
@@ -348,6 +404,63 @@ export class TelemetryService {
         : {}),
       ...(traceId ? { trace_id: traceId } : {}),
       ...(spanId ? { span_id: spanId } : {}),
+      ...this.companyAttributes(businessId),
+    });
+  }
+
+  eventIngestionFinished(
+    eventName: string,
+    durationMs: number,
+    succeeded: boolean,
+    businessId?: string,
+  ): void {
+    const attributes = {
+      [ATTR_EVENT_NAME]: eventName,
+      ...this.companyAttributes(businessId),
+    };
+    this.eventProcessingDuration.record(durationMs / 1000, attributes);
+    if (!succeeded) this.eventIngestionErrorsCounter.add(1, attributes);
+  }
+
+  investigationFinished(
+    status: string,
+    qualityScore: number,
+    missingSignals: number,
+    businessId?: string,
+  ): void {
+    const attributes = {
+      'temporalguard.investigation.status': status,
+      ...this.companyAttributes(businessId),
+    };
+    this.investigationsCounter.add(1, attributes);
+    this.telemetryQualityHistogram.record(qualityScore, attributes);
+    if (missingSignals > 0) {
+      this.telemetryMissingSignalsCounter.add(missingSignals, attributes);
+    }
+  }
+
+  investigationToolCall(
+    toolName: string,
+    status: string,
+    businessId?: string,
+  ): void {
+    this.investigationToolCallsCounter.add(1, {
+      'temporalguard.tool.name': toolName,
+      'temporalguard.tool.status': status,
+      ...this.companyAttributes(businessId),
+    });
+  }
+
+  investigationFailed(businessId?: string): void {
+    this.investigationFailuresCounter.add(
+      1,
+      this.companyAttributes(businessId),
+    );
+  }
+
+  signozQueryFailed(signal: string, businessId?: string): void {
+    this.signozQueryFailuresCounter.add(1, {
+      'temporalguard.signoz.signal': signal,
       ...this.companyAttributes(businessId),
     });
   }

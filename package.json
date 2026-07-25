@@ -2,6 +2,10 @@
   "name": "temporalguard",
   "private": true,
   "scripts": {
+    "signoz:fmt": "bash scripts/signoz-terraform.sh fmt",
+    "signoz:validate": "bash scripts/signoz-terraform.sh validate",
+    "signoz:plan": "bash scripts/signoz-terraform.sh plan",
+    "signoz:apply": "bash scripts/signoz-terraform.sh apply",
     "verify:signoz": "node scripts/verify-signoz-otel.mjs",
     "build": "turbo run build",
     "dev": "turbo run dev",

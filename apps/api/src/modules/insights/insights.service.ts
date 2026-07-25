@@ -311,19 +311,22 @@ export class InsightsService {
       const versions = Object.fromEntries(
         [
           ...new Set(
-            items.map((workflow) =>
-              String(workflow.metadata?.deploymentVersion ?? 'unknown'),
-            ),
+            items.map((workflow) => {
+              const version = workflow.metadata?.deploymentVersion;
+              return typeof version === 'string' ? version : 'unknown';
+            }),
           ),
         ]
           .sort()
           .map((version) => [
             version,
-            items.filter(
-              (workflow) =>
-                String(workflow.metadata?.deploymentVersion ?? 'unknown') ===
-                version,
-            ).length,
+            items.filter((workflow) => {
+              const candidate = workflow.metadata?.deploymentVersion;
+              return (
+                (typeof candidate === 'string' ? candidate : 'unknown') ===
+                version
+              );
+            }).length,
           ]),
       );
       return {

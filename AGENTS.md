@@ -9,6 +9,15 @@
 - Shared packages: `packages/ui`, `packages/eslint-config`, and
   `packages/typescript-config`.
 - Local observability: `docker-compose.yml` plus `deploy/signoz`.
+- Durable processing: `apps/api/src/modules/processing` with the separate
+  `apps/worker` runtime.
+- SigNoz and investigations: API modules under `apps/api/src/modules/signoz`,
+  `apps/api/src/modules/investigations`, and `apps/api/src/modules/insights`.
+- Observability product UI: `apps/web/features/observability` and the
+  `/investigations`, `/comparisons`, `/simulations`, `/deployments`,
+  `/explorer`, and `/observability` routes.
+- SigNoz dashboards and alert rules: `infra/signoz`; provisioning is wrapped by
+  `scripts/signoz-terraform.sh`.
 - Product and engineering requirements: `docs/PRD.md`,
   `docs/SYSTEM_ARCHITECTURE.md`, `docs/API_AND_DATA_CONTRACTS.md`,
   `docs/ENVIRONMENT_OPERATIONS_AND_TESTING.md`,
@@ -32,6 +41,8 @@ pnpm build
 pnpm check-types
 pnpm lint
 pnpm format
+pnpm signoz:fmt
+pnpm signoz:validate
 ```
 
 Targeted commands:
@@ -77,6 +88,20 @@ docker compose down
 
 Do not run `docker compose down -v` unless the user explicitly requests a full
 local data reset.
+
+SigNoz Terraform:
+
+```sh
+export SIGNOZ_ENDPOINT=https://your-signoz.example
+export SIGNOZ_ACCESS_TOKEN=...
+pnpm signoz:plan
+pnpm signoz:apply
+```
+
+Never write SigNoz credentials to Terraform files, variable files, plans,
+browser configuration, logs, or version control. `signoz:apply` requires a
+reviewed saved plan and an exact interactive confirmation. Do not run it
+without explicit user approval.
 
 ## Non-negotiable boundaries
 
