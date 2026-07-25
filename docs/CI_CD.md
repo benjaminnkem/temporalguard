@@ -45,7 +45,7 @@ Never commit the token. Never put it in the workflow YAML.
 
 ## 2. Continuous integration (every PR / main)
 
-On each push or pull request to `main`, CI runs:
+On each push or pull request to `main`, CI runs on **Node 22** with pnpm from root `packageManager` (`pnpm@9.0.0`):
 
 ```text
 pnpm install --frozen-lockfile
