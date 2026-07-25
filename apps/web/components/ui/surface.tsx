@@ -40,10 +40,7 @@ export function Badge({
   className?: string;
 }) {
   return (
-    <UiBadge
-      variant={variant ?? statusVariant(tone)}
-      className={cn(className)}
-    >
+    <UiBadge variant={variant ?? statusVariant(tone)} className={cn(className)}>
       {children}
     </UiBadge>
   );

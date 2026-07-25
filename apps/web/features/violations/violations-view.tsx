@@ -13,13 +13,7 @@ import {
   ShieldAlert,
   TrendingUp,
 } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { DataState } from "@/components/shared/data-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -147,8 +141,7 @@ function AlternativeViolationView({
     const count = items.filter((item) => {
       const timestamp = new Date(item.occurredAt).getTime();
       return (
-        timestamp >= bucketStart &&
-        timestamp < bucketStart + 2 * 60 * 60 * 1000
+        timestamp >= bucketStart && timestamp < bucketStart + 2 * 60 * 60 * 1000
       );
     }).length;
     return {
@@ -335,9 +328,8 @@ function AlternativeViolationView({
     },
     {
       label: "Affected services",
-      value: new Set(
-        items.map((item) => item.serviceName).filter(Boolean),
-      ).size,
+      value: new Set(items.map((item) => item.serviceName).filter(Boolean))
+        .size,
     },
     {
       label: "Critical rules",
@@ -381,7 +373,7 @@ export function ViolationsView() {
     state: searchParams.get("state") ?? undefined,
   });
 
-  const items = query.data?.items ?? [];
+  const items = useMemo(() => query.data?.items ?? [], [query.data]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -509,7 +501,8 @@ export function ViolationsView() {
             <div>
               <CardTitle className="text-base">Investigation board</CardTitle>
               <CardDescription>
-                Switch between table and analytical views without losing filters.
+                Switch between table and analytical views without losing
+                filters.
               </CardDescription>
             </div>
             <Tabs
@@ -569,7 +562,9 @@ export function ViolationsView() {
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
               >
-                <NativeSelectOption value="all">All statuses</NativeSelectOption>
+                <NativeSelectOption value="all">
+                  All statuses
+                </NativeSelectOption>
                 <NativeSelectOption value="open">Open</NativeSelectOption>
                 <NativeSelectOption value="acknowledged">
                   Acknowledged
@@ -615,10 +610,7 @@ export function ViolationsView() {
                 }
               />
             ) : (
-              <AlternativeViolationView
-                view={view}
-                items={filteredItems}
-              />
+              <AlternativeViolationView view={view} items={filteredItems} />
             )}
           </DataState>
         </CardContent>

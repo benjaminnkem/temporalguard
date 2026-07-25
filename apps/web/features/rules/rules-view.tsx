@@ -24,7 +24,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -186,7 +185,9 @@ function RuleCard({
               </Badge>
               <ArrowRight className="size-3.5 text-muted-foreground" />
               <Badge
-                variant={rule.operator === "forbid" ? "destructive" : "secondary"}
+                variant={
+                  rule.operator === "forbid" ? "destructive" : "secondary"
+                }
                 className="uppercase"
               >
                 {rule.operator}
@@ -238,6 +239,7 @@ function RuleCard({
 
           <div className="flex items-center gap-1">
             <Button
+              nativeButton={false}
               size="sm"
               variant="outline"
               render={<Link href={`/explore?rule=${rule.id}`} />}
@@ -349,7 +351,7 @@ export function RulesView() {
         title="Rules"
         description="Time-bound expectations that turn event streams into explainable workflow health."
         actions={
-          <Button render={<Link href="/explore" />}>
+          <Button nativeButton={false} render={<Link href="/explore" />}>
             <Plus /> New rule
           </Button>
         }

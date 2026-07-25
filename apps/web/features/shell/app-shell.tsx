@@ -65,6 +65,7 @@ import {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui-store";
@@ -110,6 +111,10 @@ const compareOptions = [
 function AppSidebar({ session }: { session?: AuthSession | null }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const closeMobileSidebar = () => {
+    if (isMobile) setOpenMobile(false);
+  };
   const logout = useMutation({
     mutationFn: () => authClient.logout(),
     onSettled: () => router.replace("/login"),
@@ -130,6 +135,7 @@ function AppSidebar({ session }: { session?: AuthSession | null }) {
               size="lg"
               className="data-active:bg-transparent"
               render={<Link href="/overview" />}
+              onClick={closeMobileSidebar}
             >
               <span className="grid size-8 place-items-center rounded-xl bg-primary text-sm font-bold text-primary-foreground">
                 T
@@ -162,6 +168,7 @@ function AppSidebar({ session }: { session?: AuthSession | null }) {
                       isActive={active}
                       tooltip={label}
                       render={<Link href={href} />}
+                      onClick={closeMobileSidebar}
                     >
                       <Icon />
                       <span>{label}</span>
@@ -177,14 +184,14 @@ function AppSidebar({ session }: { session?: AuthSession | null }) {
       <SidebarFooter className="p-3">
         <SidebarMenu>
           {utilityNavigation.map(({ href, label, icon: Icon }) => {
-            const active =
-              pathname === href || pathname.startsWith(`${href}/`);
+            const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
               <SidebarMenuItem key={href}>
                 <SidebarMenuButton
                   isActive={active}
                   tooltip={label}
                   render={<Link href={href} />}
+                  onClick={closeMobileSidebar}
                 >
                   <Icon />
                   <span>{label}</span>
@@ -349,6 +356,7 @@ function CommandPalette({
           ) : (
             filtered.map(({ href, label, icon: Icon }) => (
               <Button
+                nativeButton={false}
                 key={href}
                 variant="ghost"
                 className="h-10 w-full justify-start gap-3 rounded-xl px-3"
@@ -430,6 +438,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           queryClient.invalidateQueries({ queryKey: ["events"] }),
         ]);
       } catch {
+        // Ignore malformed or partial SSE frames; reconciliation refetches state.
       }
     };
     return () => source.close();
@@ -441,7 +450,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <SidebarInset className="max-h-svh overflow-hidden">
         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/95 px-3 backdrop-blur supports-backdrop-filter:bg-background/80 sm:px-4">
           <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-1 hidden h-4 sm:block" />
+          <Separator
+            orientation="vertical"
+            className="mr-1 hidden h-4 sm:block"
+          />
 
           <DropdownMenu>
             <DropdownMenuTrigger

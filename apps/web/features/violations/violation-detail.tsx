@@ -39,6 +39,7 @@ export function ViolationDetailView({ id }: { id: string }) {
         <div className="grid gap-5">
           <div>
             <Button
+              nativeButton={false}
               variant="ghost"
               className="-ml-2 mb-3"
               render={<Link href={`/violations?${searchParams.toString()}`} />}
@@ -71,7 +72,8 @@ export function ViolationDetailView({ id }: { id: string }) {
                 disabled={investigate.isPending}
                 onClick={() => investigate.mutate()}
               >
-                <ExternalLink className="size-4" /> Investigate technical evidence
+                <ExternalLink className="size-4" /> Investigate technical
+                evidence
               </Button>
             </div>
           </div>
@@ -210,6 +212,7 @@ export function ViolationDetailView({ id }: { id: string }) {
               </p>
             </div>
             <Button
+              nativeButton={false}
               render={
                 <Link
                   href={`/violations?rule=${violation.ruleId}&deployment=${encodeURIComponent(

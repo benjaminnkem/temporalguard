@@ -53,6 +53,7 @@ export function WorkflowDetailView({ id }: { id: string }) {
         <div className="grid gap-5">
           <div>
             <Button
+              nativeButton={false}
               variant="ghost"
               className="-ml-2 mb-3"
               render={<Link href={`/workflows?${searchParams.toString()}`} />}
@@ -372,9 +373,7 @@ function ObservabilityPanel({
         {explorerUrl ? (
           <Button
             variant="ghost"
-            render={
-              <a href={explorerUrl} target="_blank" rel="noreferrer" />
-            }
+            render={<a href={explorerUrl} target="_blank" rel="noreferrer" />}
           >
             <ExternalLink className="size-4" /> Open {label} in SigNoz
           </Button>

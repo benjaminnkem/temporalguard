@@ -34,13 +34,19 @@ Monorepo powered by [Turborepo](https://turborepo.dev/) + [pnpm](https://pnpm.io
 temporalguard/
 ├── apps/
 │   ├── api/                 # NestJS REST API and authentication
+│   ├── gateway/             # Public reverse proxy and route boundary
+│   ├── worker/              # BullMQ durable processing worker
 │   └── web/                 # Next.js product application
 ├── packages/
 │   ├── eslint-config/
 │   └── typescript-config/
-├── deploy/
-│   └── signoz/              # Self-hosted SigNoz configs (official Docker layout)
-├── docker-compose.yml       # Full local stack
+├── infra/
+│   ├── foundry/             # SigNoz Foundry inputs and generated artifacts
+│   ├── docker/              # Application Compose source
+│   ├── render/              # Application Blueprint source
+│   └── signoz/              # Terraform dashboards and alerts
+├── compose.yaml             # Generated full local stack
+├── render.yaml              # Generated full Render Blueprint
 └── turbo.json
 ```
 
@@ -60,7 +66,7 @@ temporalguard/
 ## Prerequisites
 
 - **Docker** Engine 20.10+ and **Docker Compose** v2
-- At least **4 GB** RAM allocated to Docker (SigNoz + ClickHouse)
+- At least **6 GB** RAM allocated to Docker (SigNoz + ClickHouse)
 - **Node.js ≥ 20** and **pnpm 9** (for host development)
 
 No SigNoz credentials are required for the default app-only mode. Cloudinary
@@ -68,38 +74,40 @@ is required only when real HTTP signup uploads a logo.
 
 ## Quick start (full stack)
 
-Start the web, API, PostgreSQL, and Redis:
+Start the gateway, web, API, worker, PostgreSQL, Redis, Collector, and SigNoz:
 
 ```sh
-docker compose up -d --build
+cp .env.example .env
+pnpm local:up
 ```
 
 This starts:
 
-| Service    | Role                              |
-| ---------- | --------------------------------- |
-| `web`      | TemporalGuard Next.js application |
-| `api`      | TemporalGuard NestJS API          |
-| `postgres` | Application database              |
-| `redis`    | Cache / BullMQ                    |
+| Service    | Role                               |
+| ---------- | ---------------------------------- |
+| `gateway`  | Public route boundary              |
+| `web`      | Private Next.js application        |
+| `api`      | Private NestJS API                 |
+| `worker`   | Durable BullMQ processing          |
+| `postgres` | Authoritative application database |
+| `redis`    | Queue, cache, locks, and progress  |
+| `ingester` | OTLP Collector                     |
+| SigNoz     | UI, metastore, ClickHouse, Keeper  |
 
-Add `--profile observability-local` for the bundled SigNoz stack, or
-`--profile observability-cloud` for the cloud collector. Exact commands are in
-[`docs/IMPLEMENTATION_REPORT.md`](docs/IMPLEMENTATION_REPORT.md).
+Exact lifecycle, Render, backup, sizing, and verification procedures are in
+[`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md).
 
 ### Service URLs
 
-| Service         | URL                              |
-| --------------- | -------------------------------- |
-| **Web**         | http://localhost:3000            |
-| **API**         | http://localhost:4000            |
-| **API Swagger** | http://localhost:4000/docs       |
-| **API health**  | http://localhost:4000/api/health |
-| **SigNoz**      | http://localhost:3301            |
-| **PostgreSQL**  | localhost:5432                   |
-| **Redis**       | localhost:6379                   |
-| **OTLP gRPC**   | localhost:4317                   |
-| **OTLP HTTP**   | localhost:4318                   |
+| Service           | URL                                    |
+| ----------------- | -------------------------------------- |
+| **Web / gateway** | http://localhost:8088                  |
+| **API health**    | http://localhost:8088/api/health/ready |
+| **Explorer**      | http://localhost:8088/explorer         |
+| **SigNoz route**  | http://localhost:8088/signoz           |
+| **SigNoz**        | http://localhost:3301                  |
+| **OTLP gRPC**     | localhost:4317                         |
+| **OTLP HTTP**     | localhost:4318                         |
 
 When running the local profile, complete the local admin signup on the first
 visit to SigNoz. Cloud mode uses the configured SigNoz Cloud workspace.
@@ -109,30 +117,24 @@ Once the API receives traffic, the **temporalguard-api** service appears under S
 ## Docker commands
 
 ```sh
-# Start app services (detached)
-docker compose up -d --build
-
-# Start app plus local SigNoz
-OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 \
-  docker compose --profile observability-local up -d --build
+# Generate, validate, build, migrate, and wait for health
+pnpm local:up
 
 # Follow logs
-docker compose logs -f
+docker compose -f compose.yaml logs -f
 
-# Follow web + API
-docker compose logs -f web api
+# Run successful, failed, investigation, and isolation demo
+pnpm demo
 
 # Status / health
-docker compose ps
+docker compose -f compose.yaml ps --all
+pnpm verify:local
 
-# Rebuild API image after code changes
-docker compose up -d --build api
+# Stop containers, retaining volumes
+pnpm local:down
 
-# Stop containers (keep volumes)
-docker compose down
-
-# Stop and remove named volumes (full reset)
-docker compose down -v
+# Explicit destructive reset
+pnpm local:reset -- --confirm
 ```
 
 ## Environment
@@ -152,10 +154,10 @@ OTEL_SERVICE_NAME=temporalguard-api
 OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
 OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 
-# SigNoz images (pinned)
-SIGNOZ_VERSION=v0.128.0
-OTELCOL_TAG=v0.144.5
+# Foundry generation and public ports
+FOUNDRY_VERSION=0.2.16
 SIGNOZ_UI_PORT=3301
+GATEWAY_PORT=8088
 ```
 
 Inside Docker, the API talks to other services by **service name**:

@@ -240,9 +240,7 @@ export function getWorkflowColumns({
             </span>
             {workflow.deadlineAt || workflow.completedAt ? (
               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {formatDate(
-                  workflow.completedAt ?? workflow.deadlineAt ?? "",
-                )}
+                {formatDate(workflow.completedAt ?? workflow.deadlineAt ?? "")}
               </p>
             ) : null}
           </div>

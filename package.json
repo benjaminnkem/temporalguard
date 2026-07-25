@@ -6,6 +6,15 @@
     "signoz:validate": "bash scripts/signoz-terraform.sh validate",
     "signoz:plan": "bash scripts/signoz-terraform.sh plan",
     "signoz:apply": "bash scripts/signoz-terraform.sh apply",
+    "foundry:gauge": "bash scripts/foundry.sh gauge",
+    "foundry:forge": "bash scripts/foundry.sh forge",
+    "render:validate": "node scripts/validate-render.mjs",
+    "local:up": "bash scripts/local-up.sh",
+    "local:down": "bash scripts/local-down.sh",
+    "local:reset": "bash scripts/local-reset.sh",
+    "local:urls": "bash scripts/print-urls.sh",
+    "verify:local": "node scripts/verify-local.mjs",
+    "demo": "node scripts/demo.mjs all",
     "verify:signoz": "node scripts/verify-signoz-otel.mjs",
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -15,9 +24,11 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "ajv": "^8.20.0",
     "prettier": "^3.7.4",
     "turbo": "^2.10.5",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "yaml": "^2.9.0"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {

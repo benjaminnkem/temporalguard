@@ -2,12 +2,7 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import { formatDistanceToNow, isValid, parseISO } from "date-fns";
-import {
-  Database,
-  EyeIcon,
-  MoreVerticalIcon,
-  PencilIcon,
-} from "lucide-react";
+import { Database, EyeIcon, MoreVerticalIcon, PencilIcon } from "lucide-react";
 import type { EventDefinition } from "@/lib/contracts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

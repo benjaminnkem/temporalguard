@@ -201,8 +201,7 @@ export function OverviewDashboard() {
       : "ready";
 
   const composition = useMemo(
-    () =>
-      query.data ? violationComposition(query.data.recentViolations) : [],
+    () => (query.data ? violationComposition(query.data.recentViolations) : []),
     [query.data],
   );
   const heatmap = useMemo(
@@ -231,7 +230,11 @@ export function OverviewDashboard() {
                 Refreshing
               </span>
             ) : null}
-            <Button size="sm" render={<Link href="/explore" />}>
+            <Button
+              nativeButton={false}
+              size="sm"
+              render={<Link href="/explore" />}
+            >
               Build analysis
             </Button>
           </>
@@ -395,9 +398,7 @@ export function OverviewDashboard() {
                         {query.data.deadlineBuckets.map((bucket, index) => (
                           <Cell
                             key={bucket.bucket}
-                            fill={
-                              deadlineFills[index] ?? "var(--color-count)"
-                            }
+                            fill={deadlineFills[index] ?? "var(--color-count)"}
                           />
                         ))}
                       </Bar>
@@ -522,6 +523,7 @@ export function OverviewDashboard() {
                 </div>
                 <CardAction>
                   <Button
+                    nativeButton={false}
                     variant="ghost"
                     size="sm"
                     render={<Link href="/violations" />}
@@ -538,10 +540,7 @@ export function OverviewDashboard() {
               ) : null}
               {query.data.recentViolations.length === 0 ? (
                 <CardContent className="py-6">
-                  <DataState
-                    state="empty"
-                    title="No violations in this period"
-                  >
+                  <DataState state="empty" title="No violations in this period">
                     <span />
                   </DataState>
                 </CardContent>

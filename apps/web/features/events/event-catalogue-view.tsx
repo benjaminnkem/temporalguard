@@ -2,13 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Database,
-  KeyRound,
-  Layers3,
-  RefreshCw,
-  Search,
-} from "lucide-react";
+import { Database, KeyRound, Layers3, RefreshCw, Search } from "lucide-react";
 import { formatDistanceToNow, isValid, parseISO } from "date-fns";
 import { DataState } from "@/components/shared/data-state";
 import { PageHeader } from "@/components/shared/page-header";
@@ -116,7 +110,7 @@ export function EventCatalogueView() {
   const [selected, setSelected] = useState<EventDefinition | null>(null);
   const query = useEvents({ search });
 
-  const items = query.data?.items ?? [];
+  const items = useMemo(() => query.data?.items ?? [], [query.data]);
   const domains = useMemo(
     () =>
       [...new Set(items.map((event) => event.domain))].sort((left, right) =>
@@ -181,9 +175,7 @@ export function EventCatalogueView() {
               onClick={() => void query.refetch()}
               disabled={query.isFetching}
             >
-              <RefreshCw
-                className={cn(query.isFetching && "animate-spin")}
-              />
+              <RefreshCw className={cn(query.isFetching && "animate-spin")} />
               Refresh
             </Button>
             <div className="w-56">

@@ -16,7 +16,9 @@ export class UpdateBusinessDto {
   name: string;
 
   @ApiPropertyOptional({ example: 'https://northstar.example' })
-  @ValidateIf((_, value) => value !== null && value !== undefined && value !== '')
+  @ValidateIf(
+    (_, value) => value !== null && value !== undefined && value !== '',
+  )
   @IsUrl({ require_protocol: true })
   @MaxLength(2048)
   website?: string | null;

@@ -57,6 +57,9 @@ export class SigNozQueryClient implements OnModuleDestroy {
     this.redis = new Redis({
       host: config.get<string>('redis.host'),
       port: config.get<number>('redis.port'),
+      username: config.get<string>('redis.username'),
+      password: config.get<string>('redis.password'),
+      tls: config.get<boolean>('redis.tls') ? {} : undefined,
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
     });

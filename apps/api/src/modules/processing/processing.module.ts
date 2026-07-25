@@ -60,6 +60,7 @@ export const PROCESSING_ENTITIES = [
     ProcessingRecordsService,
   ],
   exports: [
+    BullModule,
     TypeOrmModule,
     EncryptionService,
     AuditService,

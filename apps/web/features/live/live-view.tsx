@@ -106,7 +106,8 @@ function sortByUrgency(items: WorkflowSummary[]) {
     const stateDiff =
       (statePriority[left.state] ?? 99) - (statePriority[right.state] ?? 99);
     if (stateDiff !== 0) return stateDiff;
-    const leftDeadline = parseDate(left.deadlineAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    const leftDeadline =
+      parseDate(left.deadlineAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
     const rightDeadline =
       parseDate(right.deadlineAt)?.getTime() ?? Number.MAX_SAFE_INTEGER;
     return leftDeadline - rightDeadline;
@@ -219,8 +220,7 @@ export function LiveView() {
     () =>
       sortByUrgency(
         (query.data?.items ?? []).filter(
-          (item) =>
-            item.state === "near_deadline" || item.state === "violated",
+          (item) => item.state === "near_deadline" || item.state === "violated",
         ),
       ).slice(0, 4),
     [query.data?.items],
@@ -277,9 +277,7 @@ export function LiveView() {
               onClick={() => void query.refetch()}
               disabled={query.isFetching}
             >
-              <RefreshCw
-                className={cn(query.isFetching && "animate-spin")}
-              />
+              <RefreshCw className={cn(query.isFetching && "animate-spin")} />
               Refresh
             </Button>
           </div>
@@ -297,9 +295,7 @@ export function LiveView() {
                   : "bg-success-subtle text-success",
               )}
             >
-              <Radio
-                className={cn("size-4", !livePaused && "live-dot")}
-              />
+              <Radio className={cn("size-4", !livePaused && "live-dot")} />
             </span>
             <div>
               <p className="text-sm font-medium">
@@ -376,8 +372,7 @@ export function LiveView() {
               size="sm"
               className={cn(
                 "gap-3 py-4",
-                workflow.state === "violated" &&
-                  "ring-1 ring-destructive/25",
+                workflow.state === "violated" && "ring-1 ring-destructive/25",
                 workflow.state === "near_deadline" && "ring-1 ring-warning/25",
               )}
             >

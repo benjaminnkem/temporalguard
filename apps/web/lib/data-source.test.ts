@@ -72,9 +72,9 @@ describe("mock event catalogue", () => {
       name: "Updated payment completion",
     });
     const afterUpdate = await source.listRules();
-    expect(
-      afterUpdate.items.find((rule) => rule.id === created.id)?.name,
-    ).toBe("Updated payment completion");
+    expect(afterUpdate.items.find((rule) => rule.id === created.id)?.name).toBe(
+      "Updated payment completion",
+    );
 
     expect((await source.setRuleEnabled(created.id, false)).status).toBe(
       "paused",
@@ -89,4 +89,3 @@ describe("mock event catalogue", () => {
     ).toBeUndefined();
   });
 });
-

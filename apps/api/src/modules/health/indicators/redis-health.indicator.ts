@@ -20,6 +20,9 @@ export class RedisHealthIndicator extends HealthIndicator {
     const client = new Redis({
       host,
       port,
+      username: this.configService.get<string>('redis.username'),
+      password: this.configService.get<string>('redis.password'),
+      tls: this.configService.get<boolean>('redis.tls') ? {} : undefined,
       lazyConnect: true,
       maxRetriesPerRequest: 1,
       connectTimeout: 2000,

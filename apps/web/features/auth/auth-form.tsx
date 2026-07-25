@@ -156,12 +156,20 @@ export function LoginForm() {
             checked={remember}
             onCheckedChange={(checked) => setRemember(checked === true)}
           />
-          <Label htmlFor="remember-me" className="font-normal text-muted-foreground">
+          <Label
+            htmlFor="remember-me"
+            className="font-normal text-muted-foreground"
+          >
             Keep me signed in
           </Label>
         </Field>
       </FieldGroup>
-      <Button type="submit" size="lg" className="w-full" disabled={mutation.isPending}>
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full"
+        disabled={mutation.isPending}
+      >
         {mutation.isPending ? <Spinner /> : null}
         {mutation.isPending ? "Signing in…" : "Sign in"}
       </Button>
@@ -337,7 +345,9 @@ export function SignupForm() {
           <FieldError>{passwordError}</FieldError>
         </Field>
         <Field data-invalid={businessError ? true : undefined}>
-          <FieldLabel htmlFor="signup-business">Business / workspace name</FieldLabel>
+          <FieldLabel htmlFor="signup-business">
+            Business / workspace name
+          </FieldLabel>
           <Input
             id="signup-business"
             autoComplete="organization"
@@ -349,7 +359,9 @@ export function SignupForm() {
         </Field>
         <Field data-invalid={fileError ? true : undefined}>
           <FieldLabel>Business logo</FieldLabel>
-          <FieldDescription>Optional. PNG, JPEG, or WebP up to 5 MB.</FieldDescription>
+          <FieldDescription>
+            Optional. PNG, JPEG, or WebP up to 5 MB.
+          </FieldDescription>
           <input
             ref={inputRef}
             type="file"
@@ -466,9 +478,21 @@ export function SignupForm() {
 
 export function AuthVisual() {
   const steps = [
-    { label: "Document uploaded", state: "Completed", tone: "success" as const },
-    { label: "Virus scan completed", state: "Completed", tone: "success" as const },
-    { label: "Verification completed", state: "Waiting", tone: "warning" as const },
+    {
+      label: "Document uploaded",
+      state: "Completed",
+      tone: "success" as const,
+    },
+    {
+      label: "Virus scan completed",
+      state: "Completed",
+      tone: "success" as const,
+    },
+    {
+      label: "Verification completed",
+      state: "Waiting",
+      tone: "warning" as const,
+    },
   ];
 
   return (
@@ -518,7 +542,9 @@ export function AuthVisual() {
                   }`}
                 />
                 <span className="text-sm font-medium">{step.label}</span>
-                <Badge variant={step.tone === "success" ? "success" : "warning"}>
+                <Badge
+                  variant={step.tone === "success" ? "success" : "warning"}
+                >
                   {step.state}
                 </Badge>
               </div>

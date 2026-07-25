@@ -18,7 +18,7 @@ interface DataTableViewOptionsProps<TData> {
   table: Table<TData>;
 }
 
-function getColumnLabel<TData>(column: {
+function getColumnLabel(column: {
   id: string;
   columnDef: { meta?: unknown; header?: unknown };
 }) {

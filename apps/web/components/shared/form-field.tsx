@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  Field,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 
 /** Simple labeled form field matching the previous Field API. */
@@ -22,10 +18,7 @@ export function FormField({
   htmlFor?: string;
 }) {
   return (
-    <Field
-      data-invalid={error ? true : undefined}
-      className={cn(className)}
-    >
+    <Field data-invalid={error ? true : undefined} className={cn(className)}>
       <FieldLabel htmlFor={htmlFor}>{label}</FieldLabel>
       {children}
       {error ? <FieldError>{error}</FieldError> : null}

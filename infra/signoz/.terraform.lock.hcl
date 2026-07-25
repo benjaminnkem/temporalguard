@@ -6,6 +6,7 @@ provider "registry.terraform.io/signoz/signoz" {
   constraints = "~> 0.0.17"
   hashes = [
     "h1:/LXhFCAGcG9laG+wAefNTo4YvXEO9foqB1umyd+i4LE=",
+    "h1:MtF99oClp2kT04rHS7S0+Vxui/EJ1xTXYP+4VIKPIp8=",
     "zh:14d0a0ddd7d3417a9220f98452ff8d5f1a2e0f5d46a67fa93dcb90588b8db3e5",
     "zh:245e6955d0089c4afaf1a4d75e1494105673765139346dea8ab4441a551e8e43",
     "zh:5164b0f1b865ad4f62806901f92c3e97dc0624bdeed95a6b2202ea8e75b84cbf",

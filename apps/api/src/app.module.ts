@@ -47,6 +47,9 @@ import {
         connection: {
           host: configService.get<string>('redis.host'),
           port: configService.get<number>('redis.port'),
+          username: configService.get<string>('redis.username'),
+          password: configService.get<string>('redis.password'),
+          tls: configService.get<boolean>('redis.tls') ? {} : undefined,
         },
         prefix: configService.get<string>('queue.prefix'),
       }),

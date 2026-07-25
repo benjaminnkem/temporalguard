@@ -410,7 +410,7 @@ export function RuleBuilder() {
             </span>
             {ruleId ? (
               <Button
-                type="button"
+                nativeButton={false}
                 variant="outline"
                 size="sm"
                 render={<Link href="/rules" />}
@@ -444,11 +444,7 @@ export function RuleBuilder() {
               disabled={savePending}
             >
               {savePending ? <Spinner /> : <Save />}
-              {savePending
-                ? "Saving…"
-                : ruleId
-                  ? "Update rule"
-                  : "Save rule"}
+              {savePending ? "Saving…" : ruleId ? "Update rule" : "Save rule"}
             </Button>
           </div>
         }
@@ -675,24 +671,29 @@ export function RuleBuilder() {
           <CardContent className="grid gap-4 py-4">
             <FormField
               label="Rule name"
+              htmlFor="rule-name"
               error={form.formState.errors.name?.message}
             >
               <Input
+                id="rule-name"
                 placeholder="Documents verified within 10m"
                 {...form.register("name")}
               />
             </FormField>
-            <FormField label="Description">
+            <FormField label="Description" htmlFor="rule-description">
               <Textarea
+                id="rule-description"
                 placeholder="Describe the business promise this rule enforces."
                 {...form.register("description")}
               />
             </FormField>
             <FormField
               label="Correlation key"
+              htmlFor="rule-correlation-key"
               error={form.formState.errors.correlationKey?.message}
             >
               <Input
+                id="rule-correlation-key"
                 className="font-mono"
                 placeholder="document.id"
                 {...form.register("correlationKey")}
@@ -701,16 +702,19 @@ export function RuleBuilder() {
             <div className="grid grid-cols-[1fr_1.25fr] gap-2">
               <FormField
                 label="Window"
+                htmlFor="rule-window"
                 error={form.formState.errors.window?.value?.message}
               >
                 <Input
+                  id="rule-window"
                   type="number"
                   min={1}
                   {...form.register("window.value", { valueAsNumber: true })}
                 />
               </FormField>
-              <FormField label="Unit">
+              <FormField label="Unit" htmlFor="rule-window-unit">
                 <NativeSelect
+                  id="rule-window-unit"
                   className="w-full"
                   {...form.register("window.unit")}
                 >
@@ -723,8 +727,9 @@ export function RuleBuilder() {
               </FormField>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <FormField label="Severity">
+              <FormField label="Severity" htmlFor="rule-severity">
                 <NativeSelect
+                  id="rule-severity"
                   className="w-full"
                   {...form.register("severity")}
                 >
@@ -737,8 +742,9 @@ export function RuleBuilder() {
                   </NativeSelectOption>
                 </NativeSelect>
               </FormField>
-              <FormField label="Environment">
+              <FormField label="Environment" htmlFor="rule-environment">
                 <NativeSelect
+                  id="rule-environment"
                   className="w-full"
                   value={draft.environments[0] ?? "production"}
                   onChange={(event) =>
@@ -815,10 +821,7 @@ export function RuleBuilder() {
                     ["Would violate", testMutation.data.violatedCount],
                     ["Would remain open", testMutation.data.openCount],
                   ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="rounded-xl bg-muted/40 p-2.5"
-                    >
+                    <div key={label} className="rounded-xl bg-muted/40 p-2.5">
                       <dt className="text-muted-foreground">{label}</dt>
                       <dd className="mt-1 text-lg font-semibold tabular-nums">
                         {value}

@@ -1,8 +1,6 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddBusinessSettingsAndApiKeys1722500000000
-  implements MigrationInterface
-{
+export class AddBusinessSettingsAndApiKeys1722500000000 implements MigrationInterface {
   name = 'AddBusinessSettingsAndApiKeys1722500000000';
 
   async up(queryRunner: QueryRunner): Promise<void> {

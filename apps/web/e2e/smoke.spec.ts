@@ -327,11 +327,24 @@ test("login validation and API success", async ({ page }) => {
 
 test("navigate analytics and inspect a violation", async ({ page }) => {
   await page.goto("/overview");
-  const navigationButton = page.getByRole("button", {
-    name: "Open navigation",
-  });
-  if (await navigationButton.isVisible()) await navigationButton.click();
-  await page.getByRole("link", { name: "Violations" }).first().click();
+  let violationsLink = page.getByRole("link", { name: "Violations" }).first();
+  if ((page.viewportSize()?.width ?? 1280) < 768) {
+    // Wait for the responsive sidebar hook to replace the desktop DOM before
+    // clicking; otherwise a fast test can toggle the desktop state instead.
+    await expect(page.locator('[data-slot="sidebar-container"]')).toHaveCount(
+      0,
+    );
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "Toggle Sidebar" })
+      .click();
+    const sidebar = page.getByRole("dialog", { name: "Sidebar" });
+    await expect(sidebar).toBeVisible();
+    violationsLink = page
+      .getByRole("dialog", { name: "Sidebar" })
+      .getByRole("link", { name: "Violations" });
+  }
+  await violationsLink.click();
   await expect(page.getByRole("heading", { name: "Violations" })).toBeVisible();
   await page.getByText("Decision issued was not observed").first().click();
   await expect(page.getByText("Supporting technical evidence")).toBeVisible();
@@ -341,14 +354,14 @@ test("create an inline event without losing the rule draft", async ({
   page,
 }) => {
   await page.goto("/explore");
-  const propertiesPane = page.getByRole("button", { name: "properties" });
+  const propertiesPane = page.getByRole("tab", { name: "Properties" });
   if (await propertiesPane.isVisible()) await propertiesPane.click();
   await page.getByLabel("Rule name").fill("Invoice reconciliation policy");
-  const cataloguePane = page.getByRole("button", { name: "catalogue" });
+  const cataloguePane = page.getByRole("tab", { name: "Blocks" });
   if (await cataloguePane.isVisible()) await cataloguePane.click();
   await page.getByRole("button", { name: "Trigger" }).click();
   const search = page.getByPlaceholder(
-    "Search canonical name, domain, service, attribute…",
+    "Search canonical name, domain, service…",
   );
   await search.fill("invoice.created");
   await page.getByRole("button", { name: /Create invoice.created/ }).click();
@@ -378,14 +391,14 @@ test("disable, enable, and soft delete a rule", async ({ page }) => {
   ).toBeVisible();
 
   await page
-    .getByRole("button", {
+    .getByRole("switch", {
       name: "Disable Payment completion within 15m",
     })
     .click();
   await expect(page.getByText("paused", { exact: true })).toBeVisible();
 
   await page
-    .getByRole("button", {
+    .getByRole("switch", {
       name: "Enable Payment completion within 15m",
     })
     .click();
@@ -393,9 +406,10 @@ test("disable, enable, and soft delete a rule", async ({ page }) => {
 
   await page
     .getByRole("button", {
-      name: "Delete Payment completion within 15m",
+      name: "Open actions for Payment completion within 15m",
     })
     .click();
+  await page.getByRole("menuitem", { name: "Delete rule" }).click();
   const deleteDialog = page.getByRole("dialog", { name: "Delete rule?" });
   await expect(deleteDialog).toBeVisible();
   await deleteDialog.getByRole("button", { name: "Delete rule" }).click();
@@ -411,7 +425,7 @@ test("edit mode updates an existing rule instead of creating one", async ({
   await page.goto(`/explore?rule=${ruleId}`);
 
   await expect(page.getByRole("heading", { name: "Edit rule" })).toBeVisible();
-  const propertiesPane = page.getByRole("button", { name: "properties" });
+  const propertiesPane = page.getByRole("tab", { name: "Properties" });
   if (await propertiesPane.isVisible()) await propertiesPane.click();
   await expect(page.getByLabel("Rule name")).toHaveValue(
     "Payment completion within 15m",
@@ -452,6 +466,40 @@ test("platform health renders live API metrics", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("healthy", { exact: true })).toBeVisible();
   await expect(page.getByText("120", { exact: true })).toBeVisible();
+});
+
+test("reduced motion suppresses long-running interface animation", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/overview");
+  await expect(
+    page.getByRole("heading", { name: "Workflow health" }),
+  ).toBeVisible();
+  const liveIndicator = page.locator(".live-dot").first();
+  expect(
+    await liveIndicator.evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element).animationDuration),
+    ),
+  ).toBeLessThanOrEqual(0.001);
+});
+
+test("workflow stream reconnects after a completed connection", async ({
+  page,
+}) => {
+  let streamRequests = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/workflows/stream") {
+      streamRequests += 1;
+    }
+  });
+  await page.goto("/overview");
+  await expect
+    .poll(() => streamRequests, { timeout: 10_000 })
+    .toBeGreaterThanOrEqual(2);
+  await expect(
+    page.getByRole("heading", { name: "Workflow health" }),
+  ).toBeVisible();
 });
 
 const responsiveViewports = [

@@ -56,7 +56,7 @@ pnpm --filter web check-types
 pnpm --filter api start:dev
 pnpm --filter api build
 pnpm --filter api test -- --runInBand
-pnpm --filter api test:e2e -- --runInBand
+pnpm --filter api test:e2e --runInBand
 pnpm --filter api migration:run
 pnpm --filter api migration:revert
 pnpm --filter worker dev
@@ -79,15 +79,20 @@ Local infrastructure:
 
 ```sh
 cp .env.example .env
-docker compose config --quiet
-docker compose up -d
-docker compose ps
-docker compose logs -f api otel-collector
-docker compose down
+pnpm foundry:gauge
+pnpm foundry:forge
+docker compose -f compose.yaml config --quiet
+pnpm local:up
+pnpm verify:local
+pnpm demo
+pnpm local:down
 ```
 
-Do not run `docker compose down -v` unless the user explicitly requests a full
-local data reset.
+`compose.yaml` and `render.yaml` are deterministic generated artifacts. Edit
+the sources under `infra/foundry`, `infra/docker`, and `infra/render`, then run
+`pnpm foundry:forge`. Validate the final Render Blueprint with
+`pnpm render:validate`. Do not deploy Render, apply Terraform, or run
+`pnpm local:reset -- --confirm` without explicit approval.
 
 SigNoz Terraform:
 
@@ -179,7 +184,7 @@ pnpm format
 pnpm lint
 pnpm check-types
 pnpm --filter api test -- --runInBand
-pnpm --filter api test:e2e -- --runInBand
+pnpm --filter api test:e2e --runInBand
 pnpm --filter web test
 pnpm --filter web test:e2e
 pnpm build

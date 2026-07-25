@@ -74,7 +74,7 @@ let mockApiKeys: ApiKeySummary[] = [
   },
 ];
 
-class MockSettingsClient implements SettingsClient {
+export class MockSettingsClient implements SettingsClient {
   async getBusiness() {
     await delay(200);
     return { ...mockBusiness };
@@ -189,10 +189,4 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const useMock =
-  process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true" ||
-  process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true";
-
-export const settingsClient: SettingsClient = useMock
-  ? new MockSettingsClient()
-  : new HttpSettingsClient();
+export const settingsClient: SettingsClient = new HttpSettingsClient();

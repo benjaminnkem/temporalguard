@@ -28,7 +28,5 @@ export function AuthCardBody({ children }: { children: React.ReactNode }) {
 }
 
 export function AuthCard({ children }: { children: React.ReactNode }) {
-  return (
-    <Card className="w-full max-w-md shadow-sm">{children}</Card>
-  );
+  return <Card className="w-full max-w-md shadow-sm">{children}</Card>;
 }

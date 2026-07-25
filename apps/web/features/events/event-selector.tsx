@@ -33,10 +33,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  type CreateEventInput,
-  type EventDefinition,
-} from "@/lib/contracts";
+import { type CreateEventInput, type EventDefinition } from "@/lib/contracts";
 import { useCreateEvent, useEvents } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { findEventDuplicates } from "@/lib/rules";
@@ -154,16 +151,22 @@ function EventCreator({
       ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField
+          htmlFor="event-canonical-name"
           label="Canonical name"
           error={form.formState.errors.canonicalName?.message}
         >
-          <Input className="font-mono" {...form.register("canonicalName")} />
+          <Input
+            id="event-canonical-name"
+            className="font-mono"
+            {...form.register("canonicalName")}
+          />
         </FormField>
         <FormField
+          htmlFor="event-display-name"
           label="Display name"
           error={form.formState.errors.displayName?.message}
         >
-          <Input {...form.register("displayName")} />
+          <Input id="event-display-name" {...form.register("displayName")} />
         </FormField>
       </div>
       {duplicates.near.length > 0 ? (
@@ -179,37 +182,54 @@ function EventCreator({
         </div>
       ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Domain" error={form.formState.errors.domain?.message}>
-          <Input {...form.register("domain")} />
+        <FormField
+          htmlFor="event-domain"
+          label="Domain"
+          error={form.formState.errors.domain?.message}
+        >
+          <Input id="event-domain" {...form.register("domain")} />
         </FormField>
         <FormField
+          htmlFor="event-source-service"
           label="Source service"
           error={form.formState.errors.sourceService?.message}
         >
           <Input
+            id="event-source-service"
             placeholder="documents-api"
             {...form.register("sourceService")}
           />
         </FormField>
       </div>
       <FormField
+        htmlFor="event-description"
         label="Description"
         error={form.formState.errors.description?.message}
       >
         <Textarea
+          id="event-description"
           placeholder="Describe the business fact represented by this event."
           {...form.register("description")}
         />
       </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField
+          htmlFor="event-correlation-key"
           label="Suggested correlation key"
           error={form.formState.errors.correlationKey?.message}
         >
-          <Input className="font-mono" {...form.register("correlationKey")} />
-        </FormField>
-        <FormField label="First attribute (optional)">
           <Input
+            id="event-correlation-key"
+            className="font-mono"
+            {...form.register("correlationKey")}
+          />
+        </FormField>
+        <FormField
+          htmlFor="event-first-attribute"
+          label="First attribute (optional)"
+        >
+          <Input
+            id="event-first-attribute"
             className="font-mono"
             placeholder="document.type"
             {...form.register("attributeKey")}

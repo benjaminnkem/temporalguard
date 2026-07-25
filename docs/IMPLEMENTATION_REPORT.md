@@ -2,75 +2,102 @@
 
 Updated: July 25, 2026
 
-## Implemented in this upgrade
+## Delivered
 
-- Durable processing schema, explicit migrations, encrypted SigNoz connection
-  secrets, audit tables, stable BullMQ IDs, retries, dead-lettering,
-  cancellation, progress, company concurrency, worker health, and shutdown.
-- Typed SigNoz v5 Query Range client for traces, logs, and metrics with
-  service-account authentication, cloud/self-hosted configuration, company
-  filters, allowlists, range/row bounds, redaction, query audit, timeout,
-  retry, cancellation, rate limiting, and circuit breaking.
-- Server-only connection management/validation and safe deep links. The web
-  receives no SigNoz service-account or ingestion credential.
-- Durable investigation start/read/list/cancel/rerun/export and SSE event
-  replay using `Last-Event-ID`.
-- Worker investigation execution with workflow context, bounded tools,
-  SigNoz evidence, evidence persistence, cohort comparison, completeness
-  scoring, deterministic contributor ranking, tool-call audit, strict final
-  JSON, evidence-citation enforcement, prompt-injection neutralization, and an
-  explicit no-remediation contract.
-- Disabled deterministic provider mode and opt-in OpenAI-compatible synthesis.
-- API/worker/investigation/SigNoz tracing conventions and hardened collector
-  configurations for self-hosted and cloud modes.
-- OTLP trace/log/metric verification script and SigNoz stub-server policy
-  tests.
-- Real API-backed investigations, evidence graph, comparisons, historical
-  simulations, deployments, workflow explorer, platform health, connection,
-  telemetry quality, and observability-asset frontend surfaces.
-- TanStack Query caching/reconnect behavior, named SSE event reconciliation,
-  URL-backed filters, skeleton/empty/partial-failure/offline states, keyboard
-  evidence traversal, an equivalent evidence table, and persisted citations.
-- Comparison dimensions for success/violation, on-time/late, deployment
-  versions, and telemetry quality; deployment observations discovered from
-  evidence; event-ingestion and investigation operational instruments.
-- Official SigNoz Terraform provider module with seven dashboards and eight
-  initially disabled alerts. Apply requires a reviewed saved plan and an exact
-  interactive confirmation phrase.
+This upgrade now includes the audited foundation, durable investigation
+processing, the typed SigNoz Query Range integration, the investigation agent,
+the real API-backed frontend surfaces, Terraform observability assets, and the
+local/Render operating model.
 
-## Verification log
+The operations milestone added:
 
-| Command                                          | Result                                                                                                                      |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm --filter api build`                        | Passed after SigNoz and investigation integration.                                                                          |
-| `pnpm --filter worker build`                     | Passed after worker runtime dependency alignment.                                                                           |
-| `pnpm check-types`                               | Passed for API, web, worker, and shared packages.                                                                           |
-| `pnpm --filter api test -- --runInBand`          | Passed: 10 suites, 34 tests.                                                                                                |
-| `pnpm --filter web test`                         | Passed: 3 files, 14 tests.                                                                                                  |
-| `pnpm build`                                     | Passed for API, worker, and production web build.                                                                           |
-| `docker compose config --quiet`                  | Passed for base, `observability-local`, and `observability-cloud`.                                                          |
-| Cloud collector native `validate`                | Passed with placeholder endpoint/key.                                                                                       |
-| Self-hosted collector startup parse              | Pipeline parsed and components built; standalone run then failed resolving the expected Compose-only `clickhouse` hostname. |
-| Clean database `pnpm --filter api migration:run` | Passed all 11 migrations, including durable processing and investigation runtime; disposable database was removed.          |
-| `pnpm signoz:fmt`                                | Passed using Terraform 1.14.3 in Docker.                                                                                    |
-| `pnpm signoz:validate`                           | Passed with official `SigNoz/signoz` provider v0.0.17 and no warnings.                                                      |
-| `pnpm --filter web test`                         | Passed after frontend observability work: 4 files, 15 tests.                                                                |
-| Targeted new Playwright tests                    | Passed on desktop and mobile: investigations list and platform-health API metrics (4 tests).                                |
+- Foundry castings and committed generated artifacts for local Compose and
+  Render.
+- A deterministic merger that combines the application and Foundry outputs,
+  rejects duplicate service/database names, and normalizes paths and
+  dependencies.
+- Gateway routing for `/`, `/api`, `/explorer`, `/signoz`, and `/healthz`.
+- Local gateway, web, API, worker, migration, PostgreSQL, Redis, Collector,
+  ClickHouse, Keeper, SigNoz, and SigNoz metadata services.
+- A public Render gateway, private web/API services, a worker, managed
+  PostgreSQL/Key Value, and the Foundry SigNoz services with their generated
+  disks and dependencies preserved.
+- One-command local up/down/reset, URL output, health verification, and
+  successful/failed/cross-company investigation demos.
+- Database/Redis URL support, Redis TLS/auth support, API dependency health,
+  container-safe migration execution, and complete worker runtime packaging.
+- Environment examples, operations/backup/resource runbooks, and a validated
+  final Render Blueprint.
 
-## Recorded failures
+No Render deployment, Terraform apply, or destructive local reset was
+performed.
 
-- Non-mutating API lint reports six pre-existing Prettier errors in business
-  settings/API-key files and migration `1722500000000`. All files added or
-  changed for this implementation pass lint.
-- Web lint still fails because its existing `--max-warnings 0` policy sees 13
-  pre-existing warnings.
-- API e2e boots successfully after the new module wiring fix; 2 of 4 tests fail
-  because the developer database has not run migration `1722500000000`
-  (`businesses.website` is missing). The clean-database run proves the full
-  migration chain succeeds.
-- Web Playwright remains at 19 passed and 7 failed: the existing rule-builder
-  controls are not found in desktop/mobile cases and mobile violation
-  navigation times out.
-- Live trace/log/metric export verification requires reachable SigNoz
-  credentials and is provided as `pnpm verify:signoz`; it was not run against a
-  user deployment.
+## Final verification
+
+| Command or check                         | Result                                                                                                                                                                                                                                                            |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format`                            | Passed.                                                                                                                                                                                                                                                           |
+| `pnpm lint`                              | Passed with zero warnings across API, web, worker, and shared packages.                                                                                                                                                                                           |
+| `pnpm check-types`                       | Passed, including the newly wired API typecheck.                                                                                                                                                                                                                  |
+| `pnpm --filter api test -- --runInBand`  | Passed: 10 suites, 34 tests.                                                                                                                                                                                                                                      |
+| `pnpm --filter api test:e2e --runInBand` | Passed: 1 suite, 4 tests.                                                                                                                                                                                                                                         |
+| `pnpm --filter web test`                 | Passed: 4 files, 15 tests.                                                                                                                                                                                                                                        |
+| `pnpm --filter web test:e2e`             | Passed: 34 desktop/mobile Playwright cases.                                                                                                                                                                                                                       |
+| `pnpm build`                             | Passed for API, worker, web, and shared packages.                                                                                                                                                                                                                 |
+| Clean PostgreSQL migration               | Passed all 11 migrations in the fresh Compose database.                                                                                                                                                                                                           |
+| Existing developer database migration    | Passed the 3 outstanding additive migrations without deleting data.                                                                                                                                                                                               |
+| `docker compose config --quiet`          | Passed against generated `compose.yaml`.                                                                                                                                                                                                                          |
+| Collector startup dry run                | Parsed the generated config, connected to the local telemetry store, reached `ready`, then shut down cleanly on SIGINT.                                                                                                                                           |
+| `pnpm foundry:gauge`                     | Passed with pinned, checksum-verified Foundry v0.2.16.                                                                                                                                                                                                            |
+| `pnpm foundry:forge`                     | Passed for local and Render castings; deterministic merge completed.                                                                                                                                                                                              |
+| `pnpm render:validate`                   | Passed official Render JSON Schema and repository invariants: 10 services, 2 databases.                                                                                                                                                                           |
+| `pnpm signoz:fmt`                        | Passed.                                                                                                                                                                                                                                                           |
+| `pnpm signoz:validate`                   | Passed using the official SigNoz provider v0.0.17.                                                                                                                                                                                                                |
+| `pnpm verify:local`                      | Passed gateway/API/SigNoz health plus OTLP trace, log, and metric ingestion.                                                                                                                                                                                      |
+| `pnpm demo`                              | Passed successful workflow, failed workflow/violation, completed-with-gaps investigation, evidence persistence, and cross-company 404 isolation.                                                                                                                  |
+| Responsive/theme QA                      | Passed 390×844, 768×1024, 1440×900, and 1920×1080 in light and dark themes.                                                                                                                                                                                       |
+| Accessibility/reconnect QA               | Passed keyboard evidence-graph component coverage, equivalent table, form label associations, mobile navigation, reduced motion, and SSE reconnect/reconciliation.                                                                                                |
+| Production-path marker scan              | No TODO, FIXME, “not implemented”, fake delay, or hard-coded dashboard dataset remains. “Mock” classes remain only as explicitly imported test/development adapters; production singletons select HTTP clients. Placeholder hits are form placeholder attributes. |
+
+The exact lifecycle and validation commands are in
+`docs/OPERATIONS_RUNBOOK.md`.
+
+## Failures found and corrected during final QA
+
+- The migration container referenced a root TypeORM CLI that does not exist in
+  the production image. It now uses the API package CLI.
+- The worker image omitted API-owned processing dependencies even though the
+  worker compiles those modules. Its runtime package set is now complete.
+- `InsightsService` could not inject its queue because `ProcessingModule` did
+  not export the Bull module. The queue module is now exported.
+- Local health checks used `localhost`, which resolved to IPv6 in a container
+  listening on IPv4. Health probes now use explicit loopback addresses.
+- Foundry v0.2.16 generated incorrect OpAMP destinations and a dynamic no-op
+  collector pipeline. The deterministic merge patches the endpoints and runs
+  the generated ingester pipeline directly so OTLP is available at startup.
+- The developer database was three migrations behind. The additive migrations
+  were run successfully; the clean database also proved the complete chain.
+- Existing Playwright selectors described older controls and exposed missing
+  label associations plus a responsive sidebar hydration race. The controls,
+  accessible labels, mobile close behavior, and tests are now aligned.
+- Base UI link-as-button warnings were removed with correct non-native button
+  semantics.
+
+## Limitations and intentionally unverified actions
+
+- The official `render blueprints validate` workspace check was not available
+  because the local Render CLI has no authenticated/default workspace.
+  `pnpm render:validate` still validates the complete document against
+  Render's official Blueprint schema and local cross-reference invariants.
+- End-to-end SigNoz Query Range verification needs an operator-created SigNoz
+  service-account key. No browser credential or guessed bootstrap credential
+  was introduced. OTLP traces, logs, and metrics were verified through the
+  Collector; Query Range behavior is covered by stub-server tests.
+- Render was not deployed and Terraform was not planned against a live
+  workspace or applied, as both require explicit operator approval and live
+  credentials.
+- Foundry currently emits upstream `latest` image tags. Before a production
+  release, pin the generated SigNoz image digests through the release process.
+- Foundry's generated Collector config logs an optional unset
+  `LOW_CARDINAL_EXCEPTION_GROUPING` warning. It does not prevent readiness or
+  ingestion.

@@ -86,7 +86,9 @@ function BusinessProfileCard() {
     mutationFn: (input: BusinessProfileInput) =>
       settingsClient.updateBusiness(input),
     onSuccess: async (business) => {
-      await queryClient.invalidateQueries({ queryKey: ["settings", "business"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["settings", "business"],
+      });
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       toast.success("Business profile updated.");
       form.reset({
@@ -147,10 +149,7 @@ function BusinessProfileCard() {
             label="Business name"
             error={form.formState.errors.name?.message}
           >
-            <Input
-              placeholder="Northstar Labs"
-              {...form.register("name")}
-            />
+            <Input placeholder="Northstar Labs" {...form.register("name")} />
           </FormField>
           <FormField
             label="Website"
@@ -204,9 +203,12 @@ function ApiKeysCard() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (input: CreateApiKeyInput) => settingsClient.createApiKey(input),
+    mutationFn: (input: CreateApiKeyInput) =>
+      settingsClient.createApiKey(input),
     onSuccess: async (key) => {
-      await queryClient.invalidateQueries({ queryKey: ["settings", "api-keys"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["settings", "api-keys"],
+      });
       setCreatedKey(key);
       setShowSecret(true);
       createForm.reset({ name: "" });
@@ -219,7 +221,9 @@ function ApiKeysCard() {
   const revokeMutation = useMutation({
     mutationFn: (id: string) => settingsClient.revokeApiKey(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["settings", "api-keys"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["settings", "api-keys"],
+      });
       setRevokeTarget(null);
       toast.success("API key revoked.");
     },
@@ -358,7 +362,7 @@ function ApiKeysCard() {
           </CardHeader>
           <CardContent className="pb-5">
             <pre className="overflow-x-auto rounded-xl bg-muted/50 p-4 font-mono text-xs leading-relaxed">
-{`curl -X POST "$API_BASE/event-logs" \\
+              {`curl -X POST "$API_BASE/event-logs" \\
   -H "content-type: application/json" \\
   -H "x-api-key: tg_live_••••••••" \\
   -d '{
@@ -427,7 +431,9 @@ function ApiKeysCard() {
           {createdKey ? (
             <div className="grid gap-3">
               <div className="rounded-xl border border-border bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">{createdKey.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {createdKey.name}
+                </p>
                 <div className="mt-2 flex items-center gap-2">
                   <code
                     className={cn(

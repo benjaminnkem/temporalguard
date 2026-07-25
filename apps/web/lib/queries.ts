@@ -107,8 +107,7 @@ export const useWorkflows = (
     queryKey: queryKeys.workflows(query),
     queryFn: () => dataSource.listWorkflows(query),
     refetchInterval:
-      options?.refetchInterval ??
-      (query.state === "paused" ? false : 12_000),
+      options?.refetchInterval ?? (query.state === "paused" ? false : 12_000),
   });
 
 export const useWorkflow = (id: string) =>

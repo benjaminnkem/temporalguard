@@ -1,0 +1,253 @@
+services:
+  - name: temporalguard-gateway
+    type: web
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./apps/gateway/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: WEB_ORIGIN
+        fromService:
+          name: temporalguard-web
+          type: pserv
+          property: hostport
+      - key: API_ORIGIN
+        fromService:
+          name: temporalguard-api
+          type: pserv
+          property: hostport
+      - key: SIGNOZ_PUBLIC_URL
+        sync: false
+  - name: temporalguard-web
+    type: pserv
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    dockerCommand: node apps/web/server.js
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: /api
+  - name: temporalguard-api
+    type: pserv
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health/ready
+    preDeployCommand: node node_modules/typeorm/cli.js -d
+      dist/database/data-source.js migration:run
+    maxShutdownDelaySeconds: 60
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: temporalguard-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: temporalguard-redis
+          type: keyvalue
+          property: connectionString
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: lax
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        fromService:
+          name: temporalguard-signoz-ingester-0
+          type: pserv
+          property: hostport
+      - key: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+      - key: SIGNOZ_MODE
+        value: self_hosted
+      - key: SIGNOZ_API_URL
+        fromService:
+          name: temporalguard-signoz-signoz-0
+          type: web
+          property: hostport
+      - key: SIGNOZ_UI_URL
+        sync: false
+      - key: FEATURE_INVESTIGATIONS
+        value: "true"
+      - key: FEATURE_COMPARISONS
+        value: "true"
+      - key: FEATURE_RULE_SIMULATION
+        value: "true"
+      - key: FEATURE_DEPLOYMENT_ANALYSIS
+        value: "true"
+      - key: FEATURE_TELEMETRY_QUALITY
+        value: "true"
+  - name: temporalguard-worker
+    type: worker
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./apps/worker/Dockerfile
+    dockerContext: .
+    maxShutdownDelaySeconds: 120
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: temporalguard-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: temporalguard-redis
+          type: keyvalue
+          property: connectionString
+      - key: ENCRYPTION_KEY
+        fromService:
+          name: temporalguard-api
+          type: pserv
+          envVarKey: ENCRYPTION_KEY
+      - key: JWT_ACCESS_SECRET
+        fromService:
+          name: temporalguard-api
+          type: pserv
+          envVarKey: JWT_ACCESS_SECRET
+      - key: JWT_REFRESH_SECRET
+        fromService:
+          name: temporalguard-api
+          type: pserv
+          envVarKey: JWT_REFRESH_SECRET
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        fromService:
+          name: temporalguard-signoz-ingester-0
+          type: pserv
+          property: hostport
+      - key: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+      - key: WORKER_HEALTH_PORT
+        value: "3002"
+  - name: temporalguard-redis
+    type: keyvalue
+    plan: starter
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
+  - disk:
+      mountPath: /var/lib/clickhouse-keeper
+      name: temporalguard-signoz-telemetrykeeper-clickhousekeeper-0-data
+      sizeGB: 5
+    dockerContext: ./infra/foundry/generated/render/deployment/configs/telemetrykeeper
+    dockerfilePath: ./infra/foundry/generated/render/deployment/configs/telemetrykeeper/Dockerfile
+    name: temporalguard-signoz-telemetrykeeper-clickhousekeeper-0
+    plan: standard
+    runtime: docker
+    type: pserv
+  - disk:
+      mountPath: /var/lib/clickhouse
+      name: temporalguard-signoz-telemetrystore-clickhouse-0-0-data
+      sizeGB: 20
+    dockerContext: ./infra/foundry/generated/render/deployment/configs/telemetrystore
+    dockerfilePath: ./infra/foundry/generated/render/deployment/configs/telemetrystore/Dockerfile
+    envVars:
+      - key: CLICKHOUSE_SKIP_USER_SETUP
+        value: "1"
+      - key: CLICKHOUSE_CONFIG
+        value: /etc/clickhouse-server/config.yaml
+      - fromService:
+          name: temporalguard-signoz-telemetrykeeper-clickhousekeeper-0
+          property: host
+          type: pserv
+        key: DEPENDENCY_LINK_0
+    name: temporalguard-signoz-telemetrystore-clickhouse-0-0
+    plan: standard
+    runtime: docker
+    type: pserv
+  - dockerContext: ./infra/foundry/generated/render/deployment/configs/ingester
+    dockerfilePath: ./infra/foundry/generated/render/deployment/configs/ingester/Dockerfile
+    envVars:
+      - key: SIGNOZ_OTEL_COLLECTOR_TIMEOUT
+        value: 10m
+      - fromService:
+          name: temporalguard-signoz-telemetrystore-clickhouse-0-0
+          property: host
+          type: pserv
+        key: DEPENDENCY_LINK_0
+    name: temporalguard-signoz-ingester-0
+    plan: standard
+    runtime: docker
+    type: pserv
+  - envVars:
+      - key: SIGNOZ_SQLSTORE_PROVIDER
+        value: postgres
+      - key: SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN
+        value: tcp://temporalguard-signoz-telemetrystore-clickhouse-0-0:9000
+      - key: SIGNOZ_TELEMETRYSTORE_PROVIDER
+        value: clickhouse
+      - fromDatabase:
+          name: temporalguard-signoz-metastore-postgres
+          property: connectionString
+        key: SIGNOZ_SQLSTORE_POSTGRES_DSN
+      - fromService:
+          name: temporalguard-signoz-telemetrystore-clickhouse-0-0
+          property: host
+          type: pserv
+        key: DEPENDENCY_LINK_0
+      - key: SIGNOZ_TOKENIZER_JWT_SECRET
+        sync: false
+    healthCheckPath: /api/v1/health
+    image:
+      url: signoz/signoz:latest
+    name: temporalguard-signoz-signoz-0
+    plan: standard
+    runtime: image
+    type: web
+  - dockerCommand: >
+      /bin/sh -c /signoz-otel-collector migrate bootstrap
+      --clickhouse-dsn=$CLICKHOUSE_DSN
+        && /signoz-otel-collector migrate sync up --clickhouse-dsn=$CLICKHOUSE_DSN
+        && /signoz-otel-collector migrate async up --clickhouse-dsn=$CLICKHOUSE_DSN
+    envVars:
+      - key: CLICKHOUSE_DSN
+        value: tcp://temporalguard-signoz-telemetrystore-clickhouse-0-0:9000
+      - key: SIGNOZ_OTEL_COLLECTOR_TIMEOUT
+        value: 10m
+      - fromService:
+          name: temporalguard-signoz-telemetrystore-clickhouse-0-0
+          property: host
+          type: pserv
+        key: DEPENDENCY_LINK_0
+    image:
+      url: signoz/signoz-otel-collector:latest
+    name: temporalguard-signoz-schema-migrator
+    plan: standard
+    preDeployCommand: /signoz-otel-collector migrate ready
+      --clickhouse-dsn=${CLICKHOUSE_DSN} --timeout 60s
+    runtime: image
+    type: worker
+databases:
+  - name: temporalguard-postgres
+    databaseName: temporalguard
+    user: temporalguard
+    plan: basic-1gb
+    postgresMajorVersion: "16"
+    ipAllowList: []
+  - databaseName: signoz
+    ipAllowList: []
+    name: temporalguard-signoz-metastore-postgres
+    plan: free
+    postgresMajorVersion: "16"
+    user: signoz

@@ -5,10 +5,13 @@ const booleanFromEnvironment = z
   .default('false')
   .transform((value) => value === 'true');
 
-const optionalUrl = z.preprocess(
-  (value) => (value === '' ? undefined : value),
-  z.url().optional(),
-);
+const optionalUrl = z.preprocess((value) => {
+  if (value === '') return undefined;
+  if (typeof value === 'string' && !/^https?:\/\//.test(value)) {
+    return `http://${value}`;
+  }
+  return value;
+}, z.url().optional());
 
 export const environmentSchema = z
   .object({
@@ -21,12 +24,14 @@ export const environmentSchema = z
     DB_USERNAME: z.string().min(1).default('postgres'),
     DB_PASSWORD: z.string().default('postgres'),
     DB_DATABASE: z.string().min(1).default('temporalguard'),
+    DATABASE_URL: z.url().optional(),
     DB_SCHEMA: z
       .string()
       .regex(/^[a-z_][a-z0-9_]*$/)
       .default('public'),
     REDIS_HOST: z.string().min(1).default('localhost'),
     REDIS_PORT: z.coerce.number().int().min(1).max(65_535).default(6379),
+    REDIS_URL: z.url().optional(),
     ENCRYPTION_KEY: z
       .string()
       .default('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=')

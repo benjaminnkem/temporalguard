@@ -19,6 +19,9 @@ import { ProcessingWorkerModule } from "../../api/src/modules/processing";
         connection: {
           host: config.get<string>("redis.host"),
           port: config.get<number>("redis.port"),
+          username: config.get<string>("redis.username"),
+          password: config.get<string>("redis.password"),
+          tls: config.get<boolean>("redis.tls") ? {} : undefined,
         },
         prefix: config.get<string>("queue.prefix"),
       }),
