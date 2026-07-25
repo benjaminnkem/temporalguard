@@ -37,12 +37,28 @@ temporalguard/
 │   └── web/                 # Next.js product application
 ├── packages/
 │   ├── eslint-config/
-│   └── typescript-config/
+│   ├── typescript-config/
+│   └── node/                # temporalguard-node SDK (npm)
+├── .github/workflows/       # CI + npm publish
 ├── deploy/
 │   └── signoz/              # Self-hosted SigNoz configs (official Docker layout)
 ├── docker-compose.yml       # Full local stack
 └── turbo.json
 ```
+
+## CI/CD
+
+GitHub Actions run on every PR and push to `main` (typecheck, lint, unit tests, build).
+
+Publishing the Node SDK:
+
+```bash
+# after bumping packages/node/package.json version and merging to main
+git tag temporalguard-node-v0.1.1
+git push origin temporalguard-node-v0.1.1
+```
+
+Requires repo secret `NPM_TOKEN`. Full guide: [`docs/CI_CD.md`](./docs/CI_CD.md).
 
 ## Tech Stack
 

@@ -187,7 +187,7 @@ POST /api/v1/events
 POST /api/v1/events/batch
 ```
 
-Legacy `/api/event-logs` remains for internal/backward use and maps to the same engine. It is **not** documented as the SDK contract and must not be called by `@temporalguard/node`.
+Legacy `/api/event-logs` remains for internal/backward use and maps to the same engine. It is **not** documented as the SDK contract and must not be called by `temporalguard-node`.
 
 ---
 
@@ -444,8 +444,8 @@ TemporalGuard does **not** guarantee global ordering across services. Rule evalu
 
 | Item | Value |
 | --- | --- |
-| Package name | `@temporalguard/node` |
-| Monorepo path | `packages/node` (or `packages/sdk-node`) |
+| Package name | `temporalguard-node` (npm) |
+| Monorepo path | `packages/node` |
 | Runtime | Node 18+ |
 | Module | ESM + CJS dual publish preferred; ESM-first acceptable for v0 |
 | Types | bundled `.d.ts` |
@@ -457,7 +457,7 @@ Browser package deferred (`@temporalguard/browser` later with different threat m
 
 ```text
 packages/node/
-  package.json          # name: @temporalguard/node
+  package.json          # name: temporalguard-node
   tsconfig.json
   src/
     index.ts            # public exports
@@ -576,7 +576,7 @@ class TemporalGuardError extends Error {
 ### 10.7 Example (illustrative)
 
 ```ts
-import { TemporalGuard } from "@temporalguard/node";
+import { TemporalGuard } from "temporalguard-node";
 
 const tg = new TemporalGuard({
   apiKey: process.env.TEMPORALGUARD_API_KEY!,
@@ -633,7 +633,7 @@ No change required to those UX goals for the public API design. P2 may add envir
 | **P0** | This document frozen | Stakeholders agree HTTP + SDK surface |
 | **P1** | Nest `POST /api/v1/events` + `/batch`; API-key-only guard with Bearer/`X-API-Key`; map to ingest engine; public error envelope; idempotency table; OpenAPI tag `public-v1` | curl appendix works against local API |
 | **P2** | Settings API keys: `tg_live_` / `tg_test_`, `environment` column, last-used already exists | UI + mint path match §5 |
-| **P3** | `@temporalguard/node` in `packages/node` (track, batch flush, retries, shutdown) | unit tests green; example against P1 |
+| **P3** | `temporalguard-node` in `packages/node` (track, batch flush, retries, shutdown) | unit tests green; example against P1 |
 | **P4** | Public docs / package README quickstart (curl + Node) | copy-paste path for integrators |
 | **P5** | Optional: auto-discover polish; metrics per key; more languages | as needed |
 
@@ -672,7 +672,7 @@ No change required to those UX goals for the public API design. P2 may add envir
 | 2 | 202 vs 200 | **202 only** on public track |
 | 3 | Idempotency backend | **Postgres** unique table, 24h TTL job optional |
 | 4 | `externalId` alone | **Allowed**; becomes `externalWorkflowId` |
-| 5 | npm scope | Publish as `@temporalguard/node`; private monorepo package until registry exists |
+| 5 | npm package | Publish as unscoped `temporalguard-node` |
 | 6 | Response id format | Raw UUID ok in v1; prefix optional later (additive) |
 | 7 | Async evaluation | P1 may still process sync inside request (current engine); status remains 202; move to queue later without contract change |
 
@@ -912,7 +912,7 @@ Nest may generate an equivalent document from DTOs under a `public-v1` Swagger t
 - [x] OpenAPI tag `public-v1` + api-key security schemes.
 - [ ] Manual verify with Appendix A curl (local smoke after `pnpm --filter api start:dev`).
 
-### P3 — `@temporalguard/node`
+### P3 — `temporalguard-node`
 
 - [x] Scaffold `packages/node` with build + types.
 - [x] Implement client: buffer, flush, trackAndFlush, shutdown, retries.
@@ -934,7 +934,7 @@ Nest may generate an equivalent document from DTOs under a `public-v1` Swagger t
 **P0 is complete.** Proceed to:
 
 1. **P1** — Nest public routes matching §7–§9.  
-2. **P3** — Scaffold `@temporalguard/node` only after (or tightly after) P1 endpoints exist and curl succeeds.  
+2. **P3** — Scaffold `temporalguard-node` only after (or tightly after) P1 endpoints exist and curl succeeds.  
 3. **P2** can land in parallel for key environments.
 
 No customer-facing SDK release until P1 HTTP behavior matches this document.

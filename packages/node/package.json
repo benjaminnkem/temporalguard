@@ -1,8 +1,8 @@
 {
-  "name": "@temporalguard/node",
+  "name": "temporalguard-node",
   "version": "0.1.0",
   "description": "Official Node.js SDK for the TemporalGuard public events API",
-  "private": true,
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=18"
@@ -19,11 +19,32 @@
     "dist",
     "README.md"
   ],
+  "keywords": [
+    "temporalguard",
+    "events",
+    "observability",
+    "sdk",
+    "ingest"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nkembenjamin/temporalguard.git",
+    "directory": "packages/node"
+  },
+  "bugs": {
+    "url": "https://github.com/nkembenjamin/temporalguard/issues"
+  },
+  "homepage": "https://www.npmjs.com/package/temporalguard-node",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "check-types": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test src/**/*.test.ts",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build && npm test"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",

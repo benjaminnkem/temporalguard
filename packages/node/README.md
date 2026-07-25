@@ -1,21 +1,13 @@
-# `@temporalguard/node`
+# temporalguard-node
 
 Official Node.js SDK for TemporalGuard’s **public data plane** (`POST /api/v1/events`).
 
-Contract: [`docs/PUBLIC_API_AND_SDK.md`](../../docs/PUBLIC_API_AND_SDK.md).
-
 ## Install
 
-From this monorepo (workspace):
-
-```ts
-import { TemporalGuard } from "@temporalguard/node";
-```
-
-When published to npm:
-
 ```bash
-npm install @temporalguard/node
+npm install temporalguard-node
+# or
+pnpm add temporalguard-node
 ```
 
 Requires **Node 18+** (native `fetch`).
@@ -23,15 +15,17 @@ Requires **Node 18+** (native `fetch`).
 ## Quickstart
 
 1. Create a workspace API key in TemporalGuard (**Settings → API keys**).
+   - **Live** keys mint as `tg_live_…` (production).
+   - **Test** keys mint as `tg_test_…` (staging).
 2. Instrument your service:
 
 ```ts
-import { TemporalGuard } from "@temporalguard/node";
+import { TemporalGuard } from "temporalguard-node";
 
 const tg = new TemporalGuard({
   apiKey: process.env.TEMPORALGUARD_API_KEY!,
-  // Local API (Nest global prefix is /api):
-  baseUrl: process.env.TEMPORALGUARD_BASE_URL ?? "http://localhost:3000/api/v1",
+  // Point at your TemporalGuard API (include /api/v1)
+  baseUrl: process.env.TEMPORALGUARD_BASE_URL ?? "http://localhost:4000/api/v1",
   defaultContext: { service: "documents-api" },
 });
 
@@ -61,7 +55,7 @@ Auth header: `Authorization: Bearer <apiKey>`.
 ```ts
 type TemporalGuardOptions = {
   apiKey: string;
-  baseUrl?: string; // default production API + /api/v1
+  baseUrl?: string; // default: https://api.temporalguard.com/api/v1
   flushIntervalMs?: number; // default 2000
   flushAt?: number; // default 20
   timeoutMs?: number; // default 10000
@@ -69,6 +63,8 @@ type TemporalGuardOptions = {
   defaultContext?: { service?: string; deployment?: string };
 };
 ```
+
+Until a public production host is live, always set `baseUrl` to your API origin + `/api/v1`.
 
 ### Track options
 
@@ -88,7 +84,7 @@ await tg.track("order.paid", {
 Failed API calls throw `TemporalGuardError`:
 
 ```ts
-import { TemporalGuard, TemporalGuardError } from "@temporalguard/node";
+import { TemporalGuard, TemporalGuardError } from "temporalguard-node";
 
 try {
   await tg.trackAndFlush("document.uploaded", {
@@ -104,7 +100,7 @@ try {
 ## Curl equivalent
 
 ```bash
-curl -sS -X POST "http://localhost:3000/api/v1/events" \
+curl -sS -X POST "http://localhost:4000/api/v1/events" \
   -H "content-type: application/json" \
   -H "authorization: Bearer $TG_API_KEY" \
   -d '{
@@ -114,10 +110,10 @@ curl -sS -X POST "http://localhost:3000/api/v1/events" \
   }'
 ```
 
-## Development
+## Development (monorepo)
 
 ```bash
-pnpm --filter @temporalguard/node test
-pnpm --filter @temporalguard/node build
-pnpm --filter @temporalguard/node check-types
+pnpm --filter temporalguard-node test
+pnpm --filter temporalguard-node build
+pnpm --filter temporalguard-node check-types
 ```
