@@ -230,6 +230,7 @@ export class TelemetryService {
       [ATTR_RULE_ID]: ruleId,
       [ATTR_RULE_NAME]: ruleName,
       [ATTR_WORKFLOW_STATUS]: status,
+      ...this.companyAttributes(businessId),
     });
   }
 
@@ -268,6 +269,7 @@ export class TelemetryService {
       [ATTR_RULE_NAME]: ruleName,
       [ATTR_WORKFLOW_STATUS]: status,
       'workflow.duration_ms': durationMs,
+      ...this.companyAttributes(businessId),
     });
   }
 
@@ -303,6 +305,7 @@ export class TelemetryService {
       [ATTR_RULE_ID]: ruleId,
       [ATTR_RULE_NAME]: ruleName,
       [ATTR_WORKFLOW_STATUS]: status,
+      ...this.companyAttributes(businessId),
     });
   }
 
@@ -339,6 +342,7 @@ export class TelemetryService {
       [ATTR_RULE_ID]: ruleId,
       [ATTR_RULE_NAME]: ruleName,
       [ATTR_SEVERITY]: severity,
+      ...this.companyAttributes(businessId),
     });
   }
 
@@ -367,6 +371,7 @@ export class TelemetryService {
       [ATTR_RULE_ID]: ruleId,
       [ATTR_RULE_NAME]: ruleName,
       [ATTR_EVENT_NAME]: eventName,
+      ...this.companyAttributes(businessId),
     });
   }
 
