@@ -9,7 +9,6 @@ services:
     autoDeployTrigger: checksPass
     domains:
       - temporalguard.oluwadunsin.dev
-    maxShutdownDelaySeconds: 60
     envVars:
       - key: NODE_ENV
         value: production
