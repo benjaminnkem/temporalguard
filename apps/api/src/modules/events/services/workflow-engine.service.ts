@@ -9,6 +9,8 @@ import { Workflow } from '../../workflows/entities';
 import { WorkflowStatus } from '../../workflows/enums/workflow-status.enum';
 import { WorkflowsService } from '../../workflows/services/workflows.service';
 import { EventLog } from '../entities';
+import { ViolationsService } from '../../violations/services/violations.service';
+import { ViolationSeverity } from '../../violations/enums/violation-severity.enum';
 
 @Injectable()
 export class WorkflowEngineService {
@@ -17,6 +19,7 @@ export class WorkflowEngineService {
   constructor(
     private readonly rulesService: RulesService,
     private readonly workflowsService: WorkflowsService,
+    private readonly violationsService: ViolationsService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -80,12 +83,17 @@ export class WorkflowEngineService {
       );
       received.add(log.event.name);
       const receivedEvents = [...received];
+      const forbiddenObserved =
+        workflow.rule.operator === RuleOperator.FORBID &&
+        expectedNames.some((name) => received.has(name));
       const completed =
-        workflow.rule.operator === RuleOperator.ANY
+        !forbiddenObserved &&
+        (workflow.rule.operator === RuleOperator.ANY
           ? receivedEvents.some((name) => expectedNames.includes(name))
-          : expectedNames.every((name) => received.has(name));
+          : workflow.rule.operator !== RuleOperator.FORBID &&
+            expectedNames.every((name) => received.has(name)));
 
-      const saved = await this.workflowsService.saveState(
+      let saved = await this.workflowsService.saveState(
         workflow,
         {
           ...state,
@@ -95,6 +103,27 @@ export class WorkflowEngineService {
         },
         completed,
       );
+
+      if (forbiddenObserved) {
+        saved = await this.workflowsService.updateStatus(
+          workflow.businessId,
+          workflow.id,
+          WorkflowStatus.OVERDUE,
+        );
+        await this.violationsService.create({
+          businessId: workflow.businessId,
+          workflowId: workflow.id,
+          ruleId: workflow.rule.id,
+          severity: workflow.rule.severity as unknown as ViolationSeverity,
+          reason: `Forbidden event observed during the rule window: ${log.event.name}`,
+          occurredAt: new Date(),
+          details: {
+            type: 'forbidden_event_observed',
+            eventName: log.event.name,
+            eventLogId: log.id,
+          },
+        });
+      }
       affected.set(saved.id, saved);
     }
 
@@ -105,8 +134,15 @@ export class WorkflowEngineService {
     rule: Rule,
     log: EventLog,
   ): Promise<Workflow> {
+    // Live enforcement starts when TemporalGuard receives the trigger. Using
+    // the producer timestamp here made delayed or replayed events create a
+    // deadline in the past and immediately enqueue an overdue transition.
+    // The producer timestamp remains persisted as the event occurrence time
+    // and is available for evidence and historical simulation.
+    const receivedAt =
+      log.createdAt instanceof Date ? log.createdAt : new Date();
     const deadline = this.calculateDeadline(
-      log.timestamp,
+      receivedAt,
       rule.timeoutValue,
       rule.timeoutUnit,
     );
@@ -126,6 +162,8 @@ export class WorkflowEngineService {
           (event) => event.name,
         ),
         operator: rule.operator,
+        triggerOccurredAt: log.timestamp.toISOString(),
+        triggerReceivedAt: receivedAt.toISOString(),
       },
     });
   }

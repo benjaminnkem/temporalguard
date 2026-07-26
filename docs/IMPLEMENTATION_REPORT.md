@@ -1,6 +1,6 @@
 # Implementation Verification Report
 
-Updated: July 25, 2026
+Updated: July 26, 2026
 
 ## Delivered
 
@@ -39,7 +39,7 @@ performed.
 | `pnpm format`                            | Passed.                                                                                                                                                                                                                                                           |
 | `pnpm lint`                              | Passed with zero warnings across API, web, worker, and shared packages.                                                                                                                                                                                           |
 | `pnpm check-types`                       | Passed, including the newly wired API typecheck.                                                                                                                                                                                                                  |
-| `pnpm --filter api test -- --runInBand`  | Passed: 10 suites, 34 tests.                                                                                                                                                                                                                                      |
+| `pnpm --filter api test -- --runInBand`  | Passed: 10 suites, 35 tests.                                                                                                                                                                                                                                      |
 | `pnpm --filter api test:e2e --runInBand` | Passed: 1 suite, 4 tests.                                                                                                                                                                                                                                         |
 | `pnpm --filter web test`                 | Passed: 4 files, 15 tests.                                                                                                                                                                                                                                        |
 | `pnpm --filter web test:e2e`             | Passed: 34 desktop/mobile Playwright cases.                                                                                                                                                                                                                       |
@@ -82,6 +82,11 @@ The exact lifecycle and validation commands are in
   accessible labels, mobile close behavior, and tests are now aligned.
 - Base UI link-as-button warnings were removed with correct non-native button
   semantics.
+- Delayed trigger events used their old producer timestamp as the live timer
+  origin, so their deadline could predate workflow creation and BullMQ would
+  immediately mark them overdue. Live timers now start at persisted receipt
+  time while preserving occurrence and receipt timestamps in workflow state.
+  The full demo includes this regression case.
 
 ## Limitations and intentionally unverified actions
 

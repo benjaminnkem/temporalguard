@@ -150,6 +150,6 @@ resource "signoz_dashboard" "temporalguard" {
   title            = each.value.title
   uploaded_grafana = false
   variables        = jsonencode({})
-  version          = "v4"
+  version          = "v5"
   widgets          = jsonencode(local.dashboard_widgets[each.key])
 }

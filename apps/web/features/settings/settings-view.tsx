@@ -362,16 +362,16 @@ function ApiKeysCard() {
           </CardHeader>
           <CardContent className="pb-5">
             <pre className="overflow-x-auto rounded-xl bg-muted/50 p-4 font-mono text-xs leading-relaxed">
-              {`curl -X POST "$API_BASE/event-logs" \\
+              {`NOW="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+curl -X POST "$API_BASE/event-logs" \\
   -H "content-type: application/json" \\
   -H "x-api-key: tg_live_••••••••" \\
-  -d '{
+  -d "{
     "eventName": "document.uploaded",
-    "occurredAt": "2026-07-24T12:00:00.000Z",
-    "correlationKey": "document.id",
-    "correlationValue": "doc_123",
-    "attributes": { "region": "eu-west-1" }
-  }'`}
+    "externalWorkflowId": "doc_123",
+    "timestamp": "$NOW",
+    "payload": { "region": "eu-west-1" }
+  }"`}
             </pre>
           </CardContent>
         </Card>

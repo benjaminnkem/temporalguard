@@ -81,7 +81,6 @@ const navigation = [
   { href: "/comparisons", label: "Comparisons", icon: GitCompareArrows },
   { href: "/simulations", label: "Simulations", icon: FlaskConical },
   { href: "/explorer", label: "Explorer", icon: Telescope },
-  { href: "/deployments", label: "Deployments", icon: Boxes },
   { href: "/rules", label: "Rules", icon: ShieldCheck },
 ] as const;
 

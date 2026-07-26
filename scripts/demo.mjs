@@ -86,13 +86,17 @@ async function ensureRule() {
   });
 }
 
-async function ingest(eventName, externalWorkflowId) {
+async function ingest(
+  eventName,
+  externalWorkflowId,
+  timestamp = new Date().toISOString(),
+) {
   return request("/event-logs", {
     method: "POST",
     body: JSON.stringify({
       eventName,
       externalWorkflowId,
-      timestamp: new Date().toISOString(),
+      timestamp,
       payload: {
         environment: "demo",
         "service.name": "demo-checkout",
@@ -100,6 +104,41 @@ async function ingest(eventName, externalWorkflowId) {
       },
     }),
   });
+}
+
+async function staleTriggerDemo() {
+  const externalWorkflowId = `stale-${Date.now()}`;
+  const occurredAt = new Date(Date.now() - 24 * 60 * 60 * 1_000).toISOString();
+  const result = await ingest(
+    "demo.payment.started",
+    externalWorkflowId,
+    occurredAt,
+  );
+  const workflow = result.workflows?.[0];
+  if (!workflow) throw new Error("Stale trigger did not create a workflow");
+  if (
+    workflow.status !== "waiting" ||
+    new Date(workflow.deadline).getTime() <=
+      new Date(workflow.createdAt).getTime()
+  ) {
+    throw new Error(
+      `Stale trigger created an invalid live deadline: ${JSON.stringify({
+        status: workflow.status,
+        createdAt: workflow.createdAt,
+        deadline: workflow.deadline,
+      })}`,
+    );
+  }
+  await ingest("demo.payment.completed", externalWorkflowId);
+  const completed = await request(`/workflows/${workflow.id}`);
+  if (completed.status !== "completed") {
+    throw new Error(
+      `Stale trigger workflow did not complete: ${completed.status}`,
+    );
+  }
+  console.log(
+    `Stale trigger preserved occurrence time and completed live workflow: ${workflow.id}`,
+  );
 }
 
 async function successfulDemo() {
@@ -174,8 +213,12 @@ await ensureEvent("demo.payment.started");
 await ensureEvent("demo.payment.completed");
 await ensureRule();
 if (mode === "success") await successfulDemo();
+else if (mode === "stale") await staleTriggerDemo();
 else {
-  if (mode === "all") await successfulDemo();
+  if (mode === "all") {
+    await staleTriggerDemo();
+    await successfulDemo();
+  }
   const violation = await failedDemo();
   if (mode === "failed") process.exit(0);
   await investigate(violation);

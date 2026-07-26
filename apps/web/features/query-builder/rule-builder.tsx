@@ -335,7 +335,7 @@ export function RuleBuilder() {
           toast.success("Rule updated.");
         } else {
           toast.success("Rule saved and activated.");
-          router.replace(`/explore?rule=${encodeURIComponent(savedRule.id)}`);
+          router.replace(`/rules`);
         }
       },
       onError: (error: Error) => {

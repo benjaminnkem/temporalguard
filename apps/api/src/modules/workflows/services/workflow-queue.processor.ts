@@ -7,6 +7,7 @@ import { ViolationsService } from '../../violations/services/violations.service'
 import { ViolationSeverity } from '../../violations/enums/violation-severity.enum';
 
 import { WORKFLOWS_QUEUE } from '../constants/queue.constants';
+import { RuleOperator } from '../../rules/enums/rule-operator.enum';
 
 @Processor(WORKFLOWS_QUEUE)
 @Injectable()
@@ -32,6 +33,18 @@ export class WorkflowQueueProcessor extends WorkerHost {
       );
 
       if (workflow.status === WorkflowStatus.WAITING) {
+        if (workflow.rule.operator === RuleOperator.FORBID) {
+          await this.workflowsService.updateStatus(
+            businessId,
+            workflowId,
+            WorkflowStatus.COMPLETED,
+          );
+          this.logger.log(
+            `Forbidden-event observation window completed for workflow ${workflowId}`,
+          );
+          return;
+        }
+
         await this.workflowsService.updateStatus(
           businessId,
           workflowId,

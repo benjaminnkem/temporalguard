@@ -8,6 +8,7 @@ import { WorkflowStatus } from '../../workflows/enums/workflow-status.enum';
 import { WorkflowsService } from '../../workflows/services/workflows.service';
 import { BusinessEvent, EventLog } from '../entities';
 import { WorkflowEngineService } from './workflow-engine.service';
+import { ViolationsService } from '../../violations/services/violations.service';
 
 describe('WorkflowEngineService', () => {
   const authorized = { id: 'event-trigger', name: 'payment.authorized' };
@@ -31,8 +32,10 @@ describe('WorkflowEngineService', () => {
       | 'findWaitingByExternalWorkflowAndRules'
       | 'createFromRule'
       | 'saveState'
+      | 'updateStatus'
     >
   >;
+  let violationsService: jest.Mocked<Pick<ViolationsService, 'create'>>;
   let service: WorkflowEngineService;
 
   const makeRule = (operator: RuleOperator): Rule =>
@@ -50,6 +53,7 @@ describe('WorkflowEngineService', () => {
       eventId: event.id,
       event,
       timestamp: new Date('2026-07-24T10:00:00.000Z'),
+      createdAt: new Date('2026-07-26T10:00:00.000Z'),
       externalWorkflowRecordId: externalWorkflow.id,
       externalWorkflow,
     }) as EventLog;
@@ -79,10 +83,15 @@ describe('WorkflowEngineService', () => {
       findWaitingByExternalWorkflowAndRules: jest.fn(),
       createFromRule: jest.fn(),
       saveState: jest.fn(),
+      updateStatus: jest.fn(),
+    };
+    violationsService = {
+      create: jest.fn(),
     };
     service = new WorkflowEngineService(
       rulesService as unknown as RulesService,
       workflowsService as unknown as WorkflowsService,
+      violationsService as unknown as ViolationsService,
       { emit: jest.fn() } as unknown as EventEmitter2,
     );
   });
@@ -112,6 +121,33 @@ describe('WorkflowEngineService', () => {
       workflow,
     ]);
     expect(workflowsService.createFromRule).not.toHaveBeenCalled();
+  });
+
+  it('starts the live deadline at receipt time for a delayed trigger event', async () => {
+    const rule = makeRule(RuleOperator.ALL);
+    rulesService.findEnabledByTriggerEvent.mockResolvedValue([rule]);
+    rulesService.findEnabledExpectingEvent.mockResolvedValue([]);
+    workflowsService.findWaitingForRuleAndExternalWorkflow.mockResolvedValue(
+      null,
+    );
+    workflowsService.findWaitingByExternalWorkflowAndRules.mockResolvedValue(
+      [],
+    );
+    workflowsService.createFromRule.mockImplementation((input) =>
+      Promise.resolve({ id: 'workflow-new', ...input } as Workflow),
+    );
+
+    await service.processEvent(makeLog(authorized));
+
+    expect(workflowsService.createFromRule).toHaveBeenCalledTimes(1);
+    const createdInput = workflowsService.createFromRule.mock.calls[0]?.[0];
+    expect(createdInput?.deadline).toEqual(
+      new Date('2026-07-26T10:15:00.000Z'),
+    );
+    expect(createdInput?.currentState).toMatchObject({
+      triggerOccurredAt: '2026-07-24T10:00:00.000Z',
+      triggerReceivedAt: '2026-07-26T10:00:00.000Z',
+    });
   });
 
   it('completes an ANY workflow after one expected event', async () => {
@@ -162,6 +198,52 @@ describe('WorkflowEngineService', () => {
         receivedEvents: ['payment.captured', 'payment.reversed'],
       }),
       true,
+    );
+  });
+
+  it('violates a FORBID workflow when a forbidden event is observed', async () => {
+    const rule = makeRule(RuleOperator.FORBID);
+    rule.severity = 'high' as Rule['severity'];
+    const workflow = makeWorkflow(rule);
+    const violated = {
+      ...workflow,
+      status: WorkflowStatus.OVERDUE,
+    } as Workflow;
+    rulesService.findEnabledByTriggerEvent.mockResolvedValue([]);
+    rulesService.findEnabledExpectingEvent.mockResolvedValue([rule]);
+    workflowsService.findWaitingByExternalWorkflowAndRules.mockResolvedValue([
+      workflow,
+    ]);
+    workflowsService.saveState.mockResolvedValue(workflow);
+    workflowsService.updateStatus.mockResolvedValue(violated);
+    violationsService.create.mockResolvedValue({ id: 'violation-1' } as never);
+
+    await service.processEvent(makeLog(captured));
+
+    expect(workflowsService.saveState).toHaveBeenCalledWith(
+      workflow,
+      expect.objectContaining({
+        receivedEvents: ['payment.captured'],
+      }),
+      false,
+    );
+    expect(workflowsService.updateStatus).toHaveBeenCalledWith(
+      workflow.businessId,
+      workflow.id,
+      WorkflowStatus.OVERDUE,
+    );
+    expect(violationsService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowId: workflow.id,
+        ruleId: rule.id,
+        reason:
+          'Forbidden event observed during the rule window: payment.captured',
+        details: {
+          type: 'forbidden_event_observed',
+          eventName: 'payment.captured',
+          eventLogId: undefined,
+        },
+      }),
     );
   });
 });

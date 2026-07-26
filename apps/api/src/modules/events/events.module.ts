@@ -11,6 +11,7 @@ import { BusinessEvent, EventLog } from './entities';
 import { EventLogsService } from './services/event-logs.service';
 import { EventsService } from './services/events.service';
 import { WorkflowEngineService } from './services/workflow-engine.service';
+import { ViolationsModule } from '../violations/violations.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { WorkflowEngineService } from './services/workflow-engine.service';
     TypeOrmModule.forFeature([BusinessEvent, EventLog]),
     RulesModule,
     WorkflowsModule,
+    ViolationsModule,
     TelemetryModule,
   ],
   controllers: [EventsController, EventLogsController],
