@@ -29,4 +29,16 @@ describe('environment validation', () => {
       }),
     ).toThrow(/SIGNOZ_INGESTION_ENDPOINT/);
   });
+
+  it('requires cloud query settings when telemetry features are enabled', () => {
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'test',
+        SIGNOZ_MODE: 'cloud',
+        SIGNOZ_INGESTION_ENDPOINT: 'https://ingest.us.signoz.cloud:443',
+        SIGNOZ_INGESTION_KEY: 'ingestion-key',
+        FEATURE_INVESTIGATIONS: 'true',
+      }),
+    ).toThrow(/SIGNOZ_API_URL.*SIGNOZ_API_KEY/);
+  });
 });

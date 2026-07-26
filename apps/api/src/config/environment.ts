@@ -200,6 +200,22 @@ export const environmentSchema = z
       });
     }
     if (
+      environment.SIGNOZ_MODE === 'cloud' &&
+      (environment.FEATURE_INVESTIGATIONS ||
+        environment.FEATURE_COMPARISONS ||
+        environment.FEATURE_RULE_SIMULATION ||
+        environment.FEATURE_DEPLOYMENT_ANALYSIS ||
+        environment.FEATURE_TELEMETRY_QUALITY) &&
+      (!environment.SIGNOZ_API_URL || !environment.SIGNOZ_API_KEY)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['SIGNOZ_API_URL'],
+        message:
+          'cloud telemetry features require SIGNOZ_API_URL and SIGNOZ_API_KEY',
+      });
+    }
+    if (
       environment.INVESTIGATION_AGENT_ENABLED &&
       environment.AI_PROVIDER === 'openai_compatible' &&
       !environment.AI_API_KEY

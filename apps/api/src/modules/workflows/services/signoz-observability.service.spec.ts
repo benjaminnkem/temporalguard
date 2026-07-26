@@ -21,9 +21,12 @@ const workflow = {
 describe('SigNozObservabilityService', () => {
   it('returns a configuration state when the server-side client is unavailable', async () => {
     const client = {
-      queryTraces: jest
-        .fn()
-        .mockRejectedValue(new ServiceUnavailableException()),
+      queryTraces: jest.fn().mockRejectedValue(
+        new ServiceUnavailableException({
+          code: 'SIGNOZ_NOT_CONFIGURED',
+          message: 'SigNoz connection is not configured',
+        }),
+      ),
     };
     const service = new SigNozObservabilityService(
       client as never,
@@ -35,7 +38,29 @@ describe('SigNozObservabilityService', () => {
     const result = await service.queryTraces(workflow);
 
     expect(result.configured).toBe(false);
+    expect(result.errorCode).toBe('SIGNOZ_NOT_CONFIGURED');
+    expect(result.message).toBe('SigNoz query access is not configured.');
     expect(result.items).toEqual([]);
+  });
+
+  it('distinguishes an open circuit from missing configuration', async () => {
+    const client = {
+      queryTraces: jest.fn().mockRejectedValue(
+        new ServiceUnavailableException({
+          code: 'SIGNOZ_CIRCUIT_OPEN',
+          message: 'SigNoz circuit breaker is open',
+        }),
+      ),
+    };
+    const service = new SigNozObservabilityService(
+      client as never,
+      { build: jest.fn(() => undefined) } as never,
+    );
+
+    const result = await service.queryTraces(workflow);
+
+    expect(result.configured).toBe(true);
+    expect(result.errorCode).toBe('SIGNOZ_CIRCUIT_OPEN');
   });
 
   it('uses the safe company-scoped query client and normalizes its result', async () => {

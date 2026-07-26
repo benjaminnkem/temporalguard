@@ -17,6 +17,7 @@ export type SigNozPreview = {
   end: string;
   explorerUrl?: string;
   items: QueryRecord[];
+  errorCode?: string;
   message?: string;
 };
 
@@ -91,14 +92,30 @@ export class SigNozObservabilityService {
       };
     } catch (error: unknown) {
       if (!(error instanceof ServiceUnavailableException)) throw error;
+      const response = error.getResponse();
+      const errorCode =
+        typeof response === 'object' &&
+        response !== null &&
+        'code' in response &&
+        typeof response.code === 'string'
+          ? response.code
+          : 'SIGNOZ_UNAVAILABLE';
+      const notConfigured = errorCode === 'SIGNOZ_NOT_CONFIGURED';
       return {
-        configured: false,
+        configured: !notConfigured,
         signal,
         start: from.toISOString(),
         end: to.toISOString(),
         explorerUrl: this.links.build({ signal, from, to }),
         items: [],
-        message: 'SigNoz is not configured or temporarily unavailable.',
+        errorCode,
+        message: notConfigured
+          ? 'SigNoz query access is not configured.'
+          : errorCode === 'SIGNOZ_CIRCUIT_OPEN'
+            ? 'SigNoz query access is temporarily paused after repeated failures. Try again shortly.'
+            : errorCode === 'REDIS_UNAVAILABLE'
+              ? 'The telemetry query rate limiter is temporarily unavailable.'
+              : 'SigNoz is temporarily unavailable.',
       };
     }
   }
