@@ -20,6 +20,7 @@ import {
   ViolationsModule,
   WorkflowsModule,
   ProcessingModule,
+  ProcessingWorkerModule,
   SigNozModule,
   InvestigationsModule,
   InsightsModule,
@@ -67,6 +68,9 @@ import {
     ViolationsModule,
     TelemetryModule,
     ProcessingModule,
+    ...(process.env.RUN_PROCESSING_WORKER_IN_API === 'true'
+      ? [ProcessingWorkerModule]
+      : []),
     SigNozModule,
     InvestigationsModule,
     InsightsModule,

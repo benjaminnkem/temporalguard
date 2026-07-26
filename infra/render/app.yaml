@@ -1,45 +1,123 @@
 services:
-  - name: temporalguard-gateway
+  - name: temporalguard
     type: web
     runtime: docker
-    plan: starter
-    dockerfilePath: ./apps/gateway/Dockerfile
+    plan: free
+    dockerfilePath: ./apps/gateway/Dockerfile.demo
     dockerContext: .
     healthCheckPath: /healthz
     autoDeployTrigger: checksPass
     domains:
       - temporalguard.oluwadunsin.dev
-    envVars:
-      - key: PORT
-        value: "8080"
-      - key: WEB_ORIGIN
-        fromService:
-          name: temporalguard-web
-          type: pserv
-          property: hostport
-      - key: API_ORIGIN
-        fromService:
-          name: temporalguard-api
-          type: pserv
-          property: hostport
-      - key: SIGNOZ_PUBLIC_URL
-        sync: false
-
-  - name: temporalguard-web
-    type: pserv
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./apps/web/Dockerfile
-    dockerContext: .
-    dockerCommand: node apps/web/server.js
-    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 60
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "3000"
-      - key: HOSTNAME
-        value: 0.0.0.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: temporalguard-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: temporalguard-redis
+          type: keyvalue
+          property: connectionString
+      - key: DB_SCHEMA
+        value: public
+      - key: QUEUE_PREFIX
+        value: temporalguard
+      - key: JOB_RETRY_ATTEMPTS
+        value: "5"
+      - key: JOB_STALLED_INTERVAL_MS
+        value: "30000"
+      - key: INVESTIGATION_QUEUE_CONCURRENCY
+        value: "1"
+      - key: INVESTIGATION_MAX_CONCURRENT_PER_COMPANY
+        value: "1"
+      - key: RUN_PROCESSING_WORKER_IN_API
+        value: "true"
+      - key: FRONTEND_ORIGIN
+        value: https://temporalguard.oluwadunsin.dev
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL
+        value: 30d
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: lax
+      - key: COOKIE_DOMAIN
+        value: ""
+      - key: CLOUDINARY_FOLDER
+        value: temporalguard/workspaces
+      - key: OTEL_SERVICE_NAME
+        value: temporalguard-demo
+      - key: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+      - key: OTEL_EXPORTER_OTLP_COMPRESSION
+        value: gzip
+      - key: OTEL_LOGS_EXPORTER
+        value: otlp
+      - key: SIGNOZ_MODE
+        value: cloud
+      - key: SIGNOZ_INGESTION_ENDPOINT
+        sync: false
+      - key: SIGNOZ_INGESTION_KEY
+        sync: false
+      - key: SIGNOZ_API_URL
+        sync: false
+      - key: SIGNOZ_UI_URL
+        sync: false
+      - key: SIGNOZ_API_KEY
+        sync: false
+      - key: SIGNOZ_QUERY_TIMEOUT_MS
+        value: "10000"
+      - key: SIGNOZ_QUERY_MAX_RANGE_HOURS
+        value: "24"
+      - key: SIGNOZ_COMPARISON_MAX_RANGE_DAYS
+        value: "30"
+      - key: SIGNOZ_QUERY_MAX_RETRIES
+        value: "2"
+      - key: SIGNOZ_QUERY_CIRCUIT_BREAKER_THRESHOLD
+        value: "5"
+      - key: SIGNOZ_QUERY_CIRCUIT_BREAKER_RESET_MS
+        value: "30000"
+      - key: SIGNOZ_QUERY_RATE_LIMIT_PER_MINUTE
+        value: "30"
+      - key: INVESTIGATION_AGENT_ENABLED
+        value: "false"
+      - key: AI_PROVIDER
+        value: disabled
+      - key: AI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: AI_MODEL
+        value: gpt-5.6-terra
+      - key: AI_MAX_STEPS
+        value: "8"
+      - key: AI_REQUEST_TIMEOUT_MS
+        value: "30000"
+      - key: AI_MAX_INPUT_CHARS
+        value: "60000"
+      - key: FEATURE_INVESTIGATIONS
+        value: "true"
+      - key: FEATURE_COMPARISONS
+        value: "true"
+      - key: FEATURE_RULE_SIMULATION
+        value: "true"
+      - key: FEATURE_DEPLOYMENT_ANALYSIS
+        value: "true"
+      - key: FEATURE_TELEMETRY_QUALITY
+        value: "true"
+      - key: FEATURE_SIGNOZ_ASSET_PROVISIONING
+        value: "false"
+      - key: FEATURE_DEMO_SYSTEM
+        value: "false"
       - key: NEXT_PUBLIC_APP_NAME
         value: TemporalGuard
       - key: NEXT_PUBLIC_API_BASE_URL
@@ -53,305 +131,18 @@ services:
       - key: NEXT_PUBLIC_DEFAULT_ENVIRONMENT
         value: production
       - key: NEXT_PUBLIC_SIGNOZ_MODE
-        value: self_hosted
-
-  - name: temporalguard-api
-    type: pserv
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./apps/api/Dockerfile
-    dockerContext: .
-    preDeployCommand: node node_modules/typeorm/cli.js -d dist/database/data-source.js migration:run
-    maxShutdownDelaySeconds: 60
-    autoDeployTrigger: checksPass
-    envVars: &application-env
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: "3000"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: temporalguard-postgres
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: temporalguard-redis
-          type: keyvalue
-          property: connectionString
-      - key: DB_SCHEMA
-        value: public
-      - key: QUEUE_PREFIX
-        value: temporalguard
-      - key: JOB_RETRY_ATTEMPTS
-        value: "5"
-      - key: JOB_STALLED_INTERVAL_MS
-        value: "30000"
-      - key: INVESTIGATION_QUEUE_CONCURRENCY
-        value: "4"
-      - key: INVESTIGATION_MAX_CONCURRENT_PER_COMPANY
-        value: "3"
-      - key: FRONTEND_ORIGIN
-        value: https://temporalguard.oluwadunsin.dev
-      - key: JWT_ACCESS_SECRET
-        generateValue: true
-      - key: JWT_REFRESH_SECRET
-        generateValue: true
-      - key: JWT_ACCESS_TTL
-        value: 15m
-      - key: JWT_REFRESH_TTL
-        value: 30d
-      - key: ENCRYPTION_KEY
-        generateValue: true
-      - key: COOKIE_SECURE
-        value: "true"
-      - key: COOKIE_SAME_SITE
-        value: lax
-      - key: COOKIE_DOMAIN
-        value: ""
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-      - key: CLOUDINARY_API_KEY
-        sync: false
-      - key: CLOUDINARY_API_SECRET
-        sync: false
-      - key: CLOUDINARY_FOLDER
-        value: temporalguard/workspaces
-      - key: OTEL_SERVICE_NAME
-        value: temporalguard-api
-      - key: OTEL_EXPORTER_OTLP_ENDPOINT
-        fromService:
-          name: temporalguard-signoz-ingester-0
-          type: pserv
-          property: hostport
-      - key: OTEL_EXPORTER_OTLP_PROTOCOL
-        value: http/protobuf
-      - key: OTEL_EXPORTER_OTLP_COMPRESSION
-        value: gzip
-      - key: OTEL_LOGS_EXPORTER
-        value: otlp
-      - key: SIGNOZ_MODE
-        value: self_hosted
-      - key: SIGNOZ_API_URL
-        fromService:
-          name: temporalguard-signoz-signoz-0
-          type: web
-          property: hostport
-      - key: SIGNOZ_UI_URL
-        sync: false
-      - key: SIGNOZ_API_KEY
-        sync: false
-      - key: SIGNOZ_QUERY_TIMEOUT_MS
-        value: "10000"
-      - key: SIGNOZ_QUERY_MAX_RANGE_HOURS
-        value: "24"
-      - key: SIGNOZ_COMPARISON_MAX_RANGE_DAYS
-        value: "30"
-      - key: SIGNOZ_QUERY_MAX_RETRIES
-        value: "2"
-      - key: SIGNOZ_QUERY_CIRCUIT_BREAKER_THRESHOLD
-        value: "5"
-      - key: SIGNOZ_QUERY_CIRCUIT_BREAKER_RESET_MS
-        value: "30000"
-      - key: SIGNOZ_QUERY_RATE_LIMIT_PER_MINUTE
-        value: "120"
-      - key: INVESTIGATION_AGENT_ENABLED
-        value: "false"
-      - key: AI_PROVIDER
-        value: disabled
-      - key: AI_API_KEY
-        sync: false
-      - key: AI_BASE_URL
-        value: https://api.openai.com/v1
-      - key: AI_MODEL
-        value: gpt-5.6-terra
-      - key: AI_MAX_STEPS
-        value: "8"
-      - key: AI_REQUEST_TIMEOUT_MS
-        value: "30000"
-      - key: AI_MAX_INPUT_CHARS
-        value: "60000"
-      - key: FEATURE_INVESTIGATIONS
-        value: "true"
-      - key: FEATURE_COMPARISONS
-        value: "true"
-      - key: FEATURE_RULE_SIMULATION
-        value: "true"
-      - key: FEATURE_DEPLOYMENT_ANALYSIS
-        value: "true"
-      - key: FEATURE_TELEMETRY_QUALITY
-        value: "true"
-      - key: FEATURE_SIGNOZ_ASSET_PROVISIONING
-        value: "false"
-      - key: FEATURE_DEMO_SYSTEM
-        value: "false"
-
-  - name: temporalguard-worker
-    type: worker
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./apps/worker/Dockerfile
-    dockerContext: .
-    maxShutdownDelaySeconds: 120
-    autoDeployTrigger: checksPass
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: temporalguard-postgres
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: temporalguard-redis
-          type: keyvalue
-          property: connectionString
-      - key: DB_SCHEMA
-        value: public
-      - key: QUEUE_PREFIX
-        value: temporalguard
-      - key: JOB_RETRY_ATTEMPTS
-        value: "5"
-      - key: JOB_STALLED_INTERVAL_MS
-        value: "30000"
-      - key: INVESTIGATION_QUEUE_CONCURRENCY
-        value: "4"
-      - key: INVESTIGATION_MAX_CONCURRENT_PER_COMPANY
-        value: "3"
-      - key: FRONTEND_ORIGIN
-        value: https://temporalguard.oluwadunsin.dev
-      - key: JWT_ACCESS_SECRET
-        fromService:
-          name: temporalguard-api
-          type: pserv
-          envVarKey: JWT_ACCESS_SECRET
-      - key: JWT_REFRESH_SECRET
-        fromService:
-          name: temporalguard-api
-          type: pserv
-          envVarKey: JWT_REFRESH_SECRET
-      - key: JWT_ACCESS_TTL
-        value: 15m
-      - key: JWT_REFRESH_TTL
-        value: 30d
-      - key: ENCRYPTION_KEY
-        fromService:
-          name: temporalguard-api
-          type: pserv
-          envVarKey: ENCRYPTION_KEY
-      - key: COOKIE_SECURE
-        value: "true"
-      - key: COOKIE_SAME_SITE
-        value: lax
-      - key: COOKIE_DOMAIN
-        value: ""
-      - key: CLOUDINARY_CLOUD_NAME
-        fromService:
-          name: temporalguard-api
-          type: pserv
-          envVarKey: CLOUDINARY_CLOUD_NAME
-      - key: CLOUDINARY_API_KEY
-        fromService:
-          name: temporalguard-api
-          type: pserv
-          envVarKey: CLOUDINARY_API_KEY
-      - key: CLOUDINARY_API_SECRET
-        fromService:
-          name: temporalguard-api
-          type: pserv
-          envVarKey: CLOUDINARY_API_SECRET
-      - key: CLOUDINARY_FOLDER
-        value: temporalguard/workspaces
-      - key: OTEL_SERVICE_NAME
-        value: temporalguard-worker
-      - key: OTEL_EXPORTER_OTLP_ENDPOINT
-        fromService:
-          name: temporalguard-signoz-ingester-0
-          type: pserv
-          property: hostport
-      - key: OTEL_EXPORTER_OTLP_PROTOCOL
-        value: http/protobuf
-      - key: OTEL_EXPORTER_OTLP_COMPRESSION
-        value: gzip
-      - key: OTEL_LOGS_EXPORTER
-        value: otlp
-      - key: SIGNOZ_MODE
-        value: self_hosted
-      - key: SIGNOZ_API_URL
-        fromService:
-          name: temporalguard-signoz-signoz-0
-          type: web
-          property: hostport
-      - key: SIGNOZ_UI_URL
-        fromService:
-          name: temporalguard-api
-          type: pserv
-          envVarKey: SIGNOZ_UI_URL
-      - key: SIGNOZ_API_KEY
-        fromService:
-          name: temporalguard-api
-          type: pserv
-          envVarKey: SIGNOZ_API_KEY
-      - key: SIGNOZ_QUERY_TIMEOUT_MS
-        value: "10000"
-      - key: SIGNOZ_QUERY_MAX_RANGE_HOURS
-        value: "24"
-      - key: SIGNOZ_COMPARISON_MAX_RANGE_DAYS
-        value: "30"
-      - key: SIGNOZ_QUERY_MAX_RETRIES
-        value: "2"
-      - key: SIGNOZ_QUERY_CIRCUIT_BREAKER_THRESHOLD
-        value: "5"
-      - key: SIGNOZ_QUERY_CIRCUIT_BREAKER_RESET_MS
-        value: "30000"
-      - key: SIGNOZ_QUERY_RATE_LIMIT_PER_MINUTE
-        value: "120"
-      - key: INVESTIGATION_AGENT_ENABLED
-        value: "false"
-      - key: AI_PROVIDER
-        value: disabled
-      - key: AI_API_KEY
-        fromService:
-          name: temporalguard-api
-          type: pserv
-          envVarKey: AI_API_KEY
-      - key: AI_BASE_URL
-        value: https://api.openai.com/v1
-      - key: AI_MODEL
-        value: gpt-5.6-terra
-      - key: AI_MAX_STEPS
-        value: "8"
-      - key: AI_REQUEST_TIMEOUT_MS
-        value: "30000"
-      - key: AI_MAX_INPUT_CHARS
-        value: "60000"
-      - key: FEATURE_INVESTIGATIONS
-        value: "true"
-      - key: FEATURE_COMPARISONS
-        value: "true"
-      - key: FEATURE_RULE_SIMULATION
-        value: "true"
-      - key: FEATURE_DEPLOYMENT_ANALYSIS
-        value: "true"
-      - key: FEATURE_TELEMETRY_QUALITY
-        value: "true"
-      - key: FEATURE_SIGNOZ_ASSET_PROVISIONING
-        value: "false"
-      - key: FEATURE_DEMO_SYSTEM
-        value: "false"
-      - key: WORKER_HEALTH_PORT
-        value: "3002"
+        value: cloud
 
   - name: temporalguard-redis
     type: keyvalue
-    plan: starter
+    plan: free
     ipAllowList: []
     maxmemoryPolicy: noeviction
-    persistenceMode: journal-snapshot
 
 databases:
   - name: temporalguard-postgres
     databaseName: temporalguard
     user: temporalguard
-    plan: basic-1gb
+    plan: free
     postgresMajorVersion: "16"
     ipAllowList: []

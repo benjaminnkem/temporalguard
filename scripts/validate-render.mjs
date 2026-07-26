@@ -58,42 +58,43 @@ for (const service of services) {
   }
 }
 const required = new Map([
-  ["temporalguard-gateway", "web"],
-  ["temporalguard-web", "pserv"],
-  ["temporalguard-api", "pserv"],
-  ["temporalguard-worker", "worker"],
+  ["temporalguard", "web"],
   ["temporalguard-redis", "keyvalue"],
 ]);
 for (const [name, type] of required) {
   const service = services.find((candidate) => candidate.name === name);
   if (service?.type !== type) throw new Error(`${name} must be type ${type}`);
 }
-if (!databaseNames.has("temporalguard-postgres")) {
+const applicationDatabase = databases.find(
+  (database) => database.name === "temporalguard-postgres",
+);
+if (!applicationDatabase) {
   throw new Error("Managed application PostgreSQL is missing");
+}
+if (
+  services.some((service) => service.plan !== "free") ||
+  databases.some((database) => database.plan !== "free")
+) {
+  throw new Error("The Render demo Blueprint may contain only free plans");
+}
+if (
+  services.some(
+    (service) => service.type === "pserv" || service.type === "worker",
+  )
+) {
+  throw new Error(
+    "The Render demo Blueprint cannot contain private services or workers",
+  );
+}
+if (services.some((service) => service.preDeployCommand)) {
+  throw new Error(
+    "Free Render web services cannot define a pre-deploy command",
+  );
 }
 
 const requiredEnvironment = {
-  "temporalguard-gateway": [
-    "PORT",
-    "WEB_ORIGIN",
-    "API_ORIGIN",
-    "SIGNOZ_PUBLIC_URL",
-  ],
-  "temporalguard-web": [
+  temporalguard: [
     "NODE_ENV",
-    "PORT",
-    "HOSTNAME",
-    "NEXT_PUBLIC_APP_NAME",
-    "NEXT_PUBLIC_API_BASE_URL",
-    "NEXT_PUBLIC_DATA_MODE",
-    "NEXT_PUBLIC_AUTH_MODE",
-    "NEXT_PUBLIC_SIGNOZ_UI_URL",
-    "NEXT_PUBLIC_DEFAULT_ENVIRONMENT",
-    "NEXT_PUBLIC_SIGNOZ_MODE",
-  ],
-  "temporalguard-api": [
-    "NODE_ENV",
-    "PORT",
     "DATABASE_URL",
     "REDIS_URL",
     "DB_SCHEMA",
@@ -103,6 +104,7 @@ const requiredEnvironment = {
     "JOB_STALLED_INTERVAL_MS",
     "INVESTIGATION_QUEUE_CONCURRENCY",
     "INVESTIGATION_MAX_CONCURRENT_PER_COMPANY",
+    "RUN_PROCESSING_WORKER_IN_API",
     "FRONTEND_ORIGIN",
     "JWT_ACCESS_SECRET",
     "JWT_ACCESS_TTL",
@@ -111,16 +113,14 @@ const requiredEnvironment = {
     "COOKIE_SECURE",
     "COOKIE_SAME_SITE",
     "COOKIE_DOMAIN",
-    "CLOUDINARY_CLOUD_NAME",
-    "CLOUDINARY_API_KEY",
-    "CLOUDINARY_API_SECRET",
     "CLOUDINARY_FOLDER",
     "OTEL_SERVICE_NAME",
-    "OTEL_EXPORTER_OTLP_ENDPOINT",
     "OTEL_EXPORTER_OTLP_PROTOCOL",
     "OTEL_EXPORTER_OTLP_COMPRESSION",
     "OTEL_LOGS_EXPORTER",
     "SIGNOZ_MODE",
+    "SIGNOZ_INGESTION_ENDPOINT",
+    "SIGNOZ_INGESTION_KEY",
     "SIGNOZ_API_URL",
     "SIGNOZ_UI_URL",
     "SIGNOZ_API_KEY",
@@ -133,7 +133,6 @@ const requiredEnvironment = {
     "SIGNOZ_QUERY_RATE_LIMIT_PER_MINUTE",
     "INVESTIGATION_AGENT_ENABLED",
     "AI_PROVIDER",
-    "AI_API_KEY",
     "AI_BASE_URL",
     "AI_MODEL",
     "AI_MAX_STEPS",
@@ -146,12 +145,15 @@ const requiredEnvironment = {
     "FEATURE_TELEMETRY_QUALITY",
     "FEATURE_SIGNOZ_ASSET_PROVISIONING",
     "FEATURE_DEMO_SYSTEM",
+    "NEXT_PUBLIC_APP_NAME",
+    "NEXT_PUBLIC_API_BASE_URL",
+    "NEXT_PUBLIC_DATA_MODE",
+    "NEXT_PUBLIC_AUTH_MODE",
+    "NEXT_PUBLIC_SIGNOZ_UI_URL",
+    "NEXT_PUBLIC_DEFAULT_ENVIRONMENT",
+    "NEXT_PUBLIC_SIGNOZ_MODE",
   ],
 };
-requiredEnvironment["temporalguard-worker"] = [
-  ...requiredEnvironment["temporalguard-api"].filter((key) => key !== "PORT"),
-  "WORKER_HEALTH_PORT",
-];
 
 for (const [serviceName, keys] of Object.entries(requiredEnvironment)) {
   const service = services.find((candidate) => candidate.name === serviceName);
@@ -166,11 +168,34 @@ for (const [serviceName, keys] of Object.entries(requiredEnvironment)) {
   }
 }
 
-const gateway = services.find(
-  (service) => service.name === "temporalguard-gateway",
+const application = services.find(
+  (service) => service.name === "temporalguard",
 );
-if (!gateway?.domains?.includes("temporalguard.oluwadunsin.dev")) {
-  throw new Error("TemporalGuard custom domain is missing from the gateway");
+if (!application?.domains?.includes("temporalguard.oluwadunsin.dev")) {
+  throw new Error("TemporalGuard custom domain is missing");
+}
+const applicationEnvironment = new Map(
+  (application?.envVars ?? []).map((variable) => [variable.key, variable]),
+);
+if (applicationEnvironment.get("SIGNOZ_MODE")?.value !== "cloud") {
+  throw new Error("The Render demo must use SigNoz Cloud");
+}
+if (
+  applicationEnvironment.get("RUN_PROCESSING_WORKER_IN_API")?.value !== "true"
+) {
+  throw new Error("The free demo must process queues inside the API");
+}
+for (const secret of [
+  "SIGNOZ_INGESTION_ENDPOINT",
+  "SIGNOZ_INGESTION_KEY",
+  "SIGNOZ_API_URL",
+  "SIGNOZ_UI_URL",
+  "SIGNOZ_API_KEY",
+  "NEXT_PUBLIC_SIGNOZ_UI_URL",
+]) {
+  if (applicationEnvironment.get(secret)?.sync !== false) {
+    throw new Error(`${secret} must be supplied during Blueprint creation`);
+  }
 }
 console.log(
   `Render Blueprint valid: ${services.length} services, ${databases.length} databases`,

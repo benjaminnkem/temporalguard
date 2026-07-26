@@ -110,21 +110,27 @@ The exact lifecycle and validation commands are in
 ## Render custom-domain readiness update
 
 - The source Blueprint now declares `temporalguard.oluwadunsin.dev` on the
-  public gateway and includes the complete production environment contract for
-  the gateway, web build, API, and worker.
-- Render-managed PostgreSQL, Key Value, internal service endpoints, generated
-  authentication/encryption secrets, and the generated SigNoz tokenizer secret
-  require no operator-provided values.
-- `pnpm render:validate` now rejects missing required service environment
-  variables or a missing gateway custom domain.
+  combined public demo service.
+- The free demo uses one web service for the gateway, web application, API,
+  migrations, and core workflow queue processing, plus free Render PostgreSQL
+  and Key Value resources.
+- Self-hosted SigNoz and the separate paid worker are excluded from the free
+  Blueprint. The API conditionally hosts the queue processor in this demo
+  profile, and the telemetry-dependent features use SigNoz Cloud.
+- The Blueprint prompts for the regional SigNoz OTLP endpoint, ingestion key,
+  workspace API/UI URL, service-account API key, and public UI URL. Ingestion
+  and read credentials remain separate and are never committed.
+- Render-managed PostgreSQL and Key Value references plus generated
+  authentication/encryption secrets require no operator-provided values.
+- `pnpm render:validate` rejects non-free plans, private services, background
+  workers, paid-only pre-deploy commands, missing environment variables, or a
+  missing custom domain.
 - A missing root `pnpm-lock.yaml` was discovered by a clean container build and
   corrected; `pnpm install --frozen-lockfile --offline` now passes.
-- `pnpm foundry:forge`, `pnpm render:validate`,
-  `docker compose -f compose.yaml config --quiet`, API/worker type checks, API,
-  worker, and web production builds, focused forbidden-rule tests, and
-  `git diff --check` passed.
-- Clean Docker builds progressed through frozen-lockfile validation but could
-  not finish because repeated npm registry package downloads timed out in the
-  local Docker builder. This was an external network failure, not a compile or
-  lockfile failure.
+- The combined ARM64 Docker image built successfully, compiled `argon2` from
+  local Node headers, ran all migrations, started the gateway/web/API/queue
+  processor processes, and passed gateway plus API database/Redis readiness
+  smoke checks with the SigNoz Cloud production profile.
+- `pnpm foundry:forge`, `pnpm render:validate`, API/web type checks, focused
+  forbidden-rule tests, Compose validation, and `git diff --check` passed.
 - No Render deployment was performed.

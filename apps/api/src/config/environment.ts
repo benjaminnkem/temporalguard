@@ -63,6 +63,7 @@ export const environmentSchema = z
       .min(1)
       .max(65_535)
       .default(3002),
+    RUN_PROCESSING_WORKER_IN_API: booleanFromEnvironment,
     FRONTEND_ORIGIN: z.url().default('http://localhost:3000'),
     JWT_ACCESS_SECRET: z.string().min(16).default('development-access-secret'),
     JWT_ACCESS_TTL: z.string().min(1).default('15m'),

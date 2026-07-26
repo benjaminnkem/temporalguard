@@ -86,7 +86,6 @@ async function mergeRender() {
   const generated = await readYaml(
     "infra/foundry/generated/render/deployment/render.yaml",
   );
-  const app = await readYaml("infra/render/app.yaml");
   const signozService = (generated.services ?? []).find((service) =>
     service.name?.endsWith("-signoz-0"),
   );
@@ -98,12 +97,11 @@ async function mergeRender() {
     ),
     `server_endpoint: ws://${signozService.name}:4320/v1/opamp\n`,
   );
-  const renderIngesterDockerfile = new URL(
-    "infra/foundry/generated/render/deployment/configs/ingester/Dockerfile",
-    root,
-  );
   await writeFile(
-    renderIngesterDockerfile,
+    new URL(
+      "infra/foundry/generated/render/deployment/configs/ingester/Dockerfile",
+      root,
+    ),
     [
       "FROM signoz/signoz-otel-collector:latest",
       "",
@@ -115,23 +113,9 @@ async function mergeRender() {
       "",
     ].join("\n"),
   );
-  signozService.envVars = [
-    ...(signozService.envVars ?? []),
-    { key: "SIGNOZ_TOKENIZER_JWT_SECRET", generateValue: true },
-  ];
-  for (const service of generated.services ?? []) {
-    for (const key of ["dockerContext", "dockerfilePath"]) {
-      if (
-        typeof service[key] === "string" &&
-        !service[key].startsWith("./infra/")
-      ) {
-        service[key] =
-          `./infra/foundry/generated/render/deployment/${service[key]}`;
-      }
-    }
-  }
-  const services = [...(app.services ?? []), ...(generated.services ?? [])];
-  const databases = [...(app.databases ?? []), ...(generated.databases ?? [])];
+  const app = await readYaml("infra/render/app.yaml");
+  const services = app.services ?? [];
+  const databases = app.databases ?? [];
   assertUnique(services, "Render service");
   assertUnique(databases, "Render database");
   const finalBlueprint = { services, databases };

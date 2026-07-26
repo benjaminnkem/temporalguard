@@ -37,6 +37,7 @@ export default () => {
     },
     worker: {
       healthPort: Number(process.env.WORKER_HEALTH_PORT ?? 3002),
+      runProcessingInApi: process.env.RUN_PROCESSING_WORKER_IN_API === 'true',
     },
     nodeEnv: process.env.NODE_ENV ?? 'development',
     telemetry: {

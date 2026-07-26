@@ -1,0 +1,62 @@
+# syntax=docker/dockerfile:1
+
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+WORKDIR /app
+
+FROM base AS deps
+RUN apk add --no-cache python3 make g++
+ENV npm_config_nodedir=/usr/local
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY packages/typescript-config/package.json ./packages/typescript-config/
+RUN --mount=type=cache,id=temporalguard-pnpm,target=/root/.local/share/pnpm/store \
+  pnpm install --frozen-lockfile --filter=api... --filter=web...
+
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY apps/api ./apps/api
+COPY apps/web ./apps/web
+COPY packages ./packages
+ARG NEXT_PUBLIC_APP_NAME=TemporalGuard
+ARG NEXT_PUBLIC_API_BASE_URL=/api
+ARG NEXT_PUBLIC_DATA_MODE=api
+ARG NEXT_PUBLIC_AUTH_MODE=api
+ARG NEXT_PUBLIC_SIGNOZ_UI_URL=
+ARG NEXT_PUBLIC_DEFAULT_ENVIRONMENT=production
+ARG NEXT_PUBLIC_SIGNOZ_MODE=self_hosted
+ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_DATA_MODE=$NEXT_PUBLIC_DATA_MODE
+ENV NEXT_PUBLIC_AUTH_MODE=$NEXT_PUBLIC_AUTH_MODE
+ENV NEXT_PUBLIC_SIGNOZ_UI_URL=$NEXT_PUBLIC_SIGNOZ_UI_URL
+ENV NEXT_PUBLIC_DEFAULT_ENVIRONMENT=$NEXT_PUBLIC_DEFAULT_ENVIRONMENT
+ENV NEXT_PUBLIC_SIGNOZ_MODE=$NEXT_PUBLIC_SIGNOZ_MODE
+RUN pnpm --filter api build && pnpm --filter web build
+
+FROM node:20-alpine AS runtime
+RUN apk add --no-cache wget \
+  && addgroup -S temporalguard \
+  && adduser -S temporalguard -G temporalguard
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build --chown=temporalguard:temporalguard /app/apps/web/.next/standalone ./
+COPY --from=build --chown=temporalguard:temporalguard /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build --chown=temporalguard:temporalguard /app/apps/web/public ./apps/web/public
+COPY --from=build --chown=temporalguard:temporalguard /app/node_modules ./node_modules
+COPY --from=build --chown=temporalguard:temporalguard /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=build --chown=temporalguard:temporalguard /app/apps/api/package.json ./apps/api/package.json
+COPY --from=build --chown=temporalguard:temporalguard /app/apps/api/dist ./apps/api/dist
+COPY --chown=temporalguard:temporalguard apps/gateway/server.mjs ./gateway-server.mjs
+COPY --chown=temporalguard:temporalguard apps/gateway/start-demo.mjs ./start-demo.mjs
+USER temporalguard
+EXPOSE 10000
+HEALTHCHECK --interval=15s --timeout=5s --start-period=45s --retries=5 \
+  CMD wget --spider -q http://127.0.0.1:${PORT:-10000}/healthz || exit 1
+CMD ["node", "start-demo.mjs"]
