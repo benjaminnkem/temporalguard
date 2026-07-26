@@ -39,6 +39,7 @@ temporalguard/
 │   └── web/                 # Next.js product application
 ├── packages/
 │   ├── eslint-config/
+<<<<<<< HEAD
 │   └── typescript-config/
 ├── infra/
 │   ├── foundry/             # SigNoz Foundry inputs and generated artifacts
@@ -47,8 +48,30 @@ temporalguard/
 │   └── signoz/              # Terraform dashboards and alerts
 ├── compose.yaml             # Generated full local stack
 ├── render.yaml              # Generated full Render Blueprint
+=======
+│   ├── typescript-config/
+│   └── node/                # temporalguard-node SDK (npm)
+├── .github/workflows/       # CI + npm publish
+├── deploy/
+│   └── signoz/              # Self-hosted SigNoz configs (official Docker layout)
+├── docker-compose.yml       # Full local stack
+>>>>>>> ef4d0c1d1c5b04ea862e720bbcb24251864e01a9
 └── turbo.json
 ```
+
+## CI/CD
+
+GitHub Actions run on every PR and push to `main` (typecheck, lint, unit tests, build).
+
+Publishing the Node SDK:
+
+```bash
+# after bumping packages/node/package.json version and merging to main
+git tag temporalguard-node-v0.1.1
+git push origin temporalguard-node-v0.1.1
+```
+
+Requires repo secret `NPM_TOKEN`. Full guide: [`docs/CI_CD.md`](./docs/CI_CD.md).
 
 ## Tech Stack
 

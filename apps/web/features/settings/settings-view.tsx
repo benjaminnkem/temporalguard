@@ -39,6 +39,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
@@ -199,7 +203,7 @@ function ApiKeysCard() {
 
   const createForm = useForm<CreateApiKeyInput>({
     resolver: zodResolver(createApiKeySchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", environment: "live" },
   });
 
   const createMutation = useMutation({
@@ -211,7 +215,7 @@ function ApiKeysCard() {
       });
       setCreatedKey(key);
       setShowSecret(true);
-      createForm.reset({ name: "" });
+      createForm.reset({ name: "", environment: "live" });
       setCreateOpen(false);
       toast.success("API key created. Copy it now — it won’t be shown again.");
     },
@@ -252,12 +256,15 @@ function ApiKeysCard() {
                 <div>
                   <CardTitle>API keys</CardTitle>
                   <CardDescription>
-                    Authenticate machine-to-machine event ingestion with the{" "}
+                    Authenticate machine-to-machine event ingestion with{" "}
+                    <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
+                      Authorization: Bearer
+                    </code>{" "}
+                    or{" "}
                     <code className="rounded bg-muted px-1 py-0.5 text-[11px]">
                       X-API-Key
-                    </code>{" "}
-                    header so TemporalGuard can attribute traffic to this
-                    workspace.
+                    </code>
+                    . Live keys map to production; test keys map to staging.
                   </CardDescription>
                 </div>
               </div>
@@ -301,6 +308,7 @@ function ApiKeysCard() {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Name</TableHead>
+                    <TableHead>Environment</TableHead>
                     <TableHead>Prefix</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Last used</TableHead>
@@ -312,6 +320,16 @@ function ApiKeysCard() {
                   {[...activeKeys, ...revokedKeys].map((key) => (
                     <TableRow key={key.id}>
                       <TableCell className="font-medium">{key.name}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            key.environment === "test" ? "secondary" : "outline"
+                          }
+                          className="capitalize"
+                        >
+                          {key.environment === "test" ? "Test" : "Live"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
                           {key.keyPrefix}…
@@ -382,8 +400,8 @@ curl -X POST "$API_BASE/event-logs" \\
           <DialogHeader>
             <DialogTitle>Create API key</DialogTitle>
             <DialogDescription>
-              Give the key a clear name, such as the service or environment that
-              will use it.
+              Choose live for production traffic or test for staging. The secret
+              prefix matches the environment (`tg_live_` / `tg_test_`).
             </DialogDescription>
           </DialogHeader>
           <form
@@ -400,6 +418,29 @@ curl -X POST "$API_BASE/event-logs" \\
                 placeholder="Production ingestion"
                 {...createForm.register("name")}
               />
+            </FormField>
+            <FormField
+              label="Environment"
+              error={createForm.formState.errors.environment?.message}
+            >
+              <NativeSelect
+                className="w-full"
+                value={createForm.watch("environment")}
+                onChange={(event) =>
+                  createForm.setValue(
+                    "environment",
+                    event.target.value as CreateApiKeyInput["environment"],
+                    { shouldValidate: true },
+                  )
+                }
+              >
+                <NativeSelectOption value="live">
+                  Live (production) — tg_live_…
+                </NativeSelectOption>
+                <NativeSelectOption value="test">
+                  Test (staging) — tg_test_…
+                </NativeSelectOption>
+              </NativeSelect>
             </FormField>
             <DialogFooter>
               <DialogClose render={<Button type="button" variant="outline" />}>
@@ -467,11 +508,19 @@ curl -X POST "$API_BASE/event-logs" \\
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Pass it as{" "}
+                Environment:{" "}
+                <span className="font-medium capitalize">
+                  {createdKey.environment}
+                </span>
+                . Pass as{" "}
                 <code className="rounded bg-muted px-1 py-0.5">
-                  X-API-Key: {createdKey.keyPrefix}…
+                  Authorization: Bearer {createdKey.keyPrefix}…
                 </code>{" "}
-                on event ingestion requests.
+                on{" "}
+                <code className="rounded bg-muted px-1 py-0.5">
+                  POST /api/v1/events
+                </code>
+                .
               </p>
             </div>
           ) : null}

@@ -11,6 +11,10 @@ import { WorkflowsService } from '../../workflows/services/workflows.service';
 import { EventLog } from '../entities';
 import { ViolationsService } from '../../violations/services/violations.service';
 import { ViolationSeverity } from '../../violations/enums/violation-severity.enum';
+import {
+  resolveProductEnvironmentFromPayload,
+  ruleMatchesEnvironment,
+} from '../utils/map-public-event';
 
 @Injectable()
 export class WorkflowEngineService {
@@ -26,10 +30,17 @@ export class WorkflowEngineService {
   async processEvent(log: EventLog): Promise<Workflow[]> {
     if (!log.externalWorkflowRecordId || !log.externalWorkflow) return [];
 
+    const productEnvironment = resolveProductEnvironmentFromPayload(
+      log.payload,
+    );
     const affected = new Map<string, Workflow>();
-    const triggerRules = await this.rulesService.findEnabledByTriggerEvent(
-      log.businessId,
-      log.eventId,
+    const triggerRules = (
+      await this.rulesService.findEnabledByTriggerEvent(
+        log.businessId,
+        log.eventId,
+      )
+    ).filter((rule) =>
+      ruleMatchesEnvironment(rule.environments, productEnvironment),
     );
 
     for (const rule of triggerRules) {
@@ -47,7 +58,11 @@ export class WorkflowEngineService {
         );
       if (!workflow) {
         try {
-          workflow = await this.createWorkflowForRule(rule, log);
+          workflow = await this.createWorkflowForRule(
+            rule,
+            log,
+            productEnvironment,
+          );
         } catch (error) {
           if ((error as { code?: string }).code !== '23505') throw error;
           workflow =
@@ -61,9 +76,13 @@ export class WorkflowEngineService {
       affected.set(workflow.id, workflow);
     }
 
-    const expectingRules = await this.rulesService.findEnabledExpectingEvent(
-      log.businessId,
-      log.eventId,
+    const expectingRules = (
+      await this.rulesService.findEnabledExpectingEvent(
+        log.businessId,
+        log.eventId,
+      )
+    ).filter((rule) =>
+      ruleMatchesEnvironment(rule.environments, productEnvironment),
     );
     const waiting =
       await this.workflowsService.findWaitingByExternalWorkflowAndRules(
@@ -133,6 +152,7 @@ export class WorkflowEngineService {
   private async createWorkflowForRule(
     rule: Rule,
     log: EventLog,
+    productEnvironment: string,
   ): Promise<Workflow> {
     // Live enforcement starts when TemporalGuard receives the trigger. Using
     // the producer timestamp here made delayed or replayed events create a
@@ -156,6 +176,9 @@ export class WorkflowEngineService {
       name: rule.name,
       status: WorkflowStatus.WAITING,
       deadline,
+      metadata: {
+        environment: productEnvironment,
+      },
       currentState: {
         receivedEvents: [],
         expectedEvents: rule.expectedEventDefinitions.map(

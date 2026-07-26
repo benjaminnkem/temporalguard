@@ -24,9 +24,12 @@ export type BusinessProfile = {
   updatedAt: string;
 };
 
+export type ApiKeyEnvironment = "live" | "test";
+
 export type ApiKeySummary = {
   id: string;
   name: string;
+  environment: ApiKeyEnvironment;
   keyPrefix: string;
   lastUsedAt: string | null;
   revokedAt: string | null;
@@ -40,6 +43,7 @@ export type CreatedApiKey = ApiKeySummary & {
 
 export const createApiKeySchema = z.object({
   name: z.string().trim().min(2, "Name the key so your team can recognize it"),
+  environment: z.enum(["live", "test"]),
 });
 
 export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
@@ -66,6 +70,7 @@ let mockApiKeys: ApiKeySummary[] = [
   {
     id: "key_demo_1",
     name: "Production ingestion",
+    environment: "live",
     keyPrefix: "tg_live_demo",
     lastUsedAt: new Date(Date.now() - 1000 * 60 * 42).toISOString(),
     revokedAt: null,
@@ -99,10 +104,12 @@ export class MockSettingsClient implements SettingsClient {
 
   async createApiKey(input: CreateApiKeyInput) {
     await delay(400);
-    const secret = `tg_live_${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
+    const prefix = input.environment === "test" ? "tg_test_" : "tg_live_";
+    const secret = `${prefix}${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
     const created: CreatedApiKey = {
       id: `key_${crypto.randomUUID()}`,
       name: input.name,
+      environment: input.environment,
       keyPrefix: secret.slice(0, 12),
       lastUsedAt: null,
       revokedAt: null,

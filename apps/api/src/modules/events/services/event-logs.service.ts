@@ -11,6 +11,11 @@ import { EventLog } from '../entities';
 import { EventsService } from './events.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 
+export type IngestOptions = {
+  traceId?: string | null;
+  spanId?: string | null;
+};
+
 @Injectable()
 export class EventLogsService {
   constructor(
@@ -25,6 +30,7 @@ export class EventLogsService {
   async ingest(
     businessId: string,
     dto: CreateEventLogDto,
+    options?: IngestOptions,
   ): Promise<{ eventLog: EventLog; workflows: Workflow[] }> {
     const event = await this.eventsService.findOrCreateByName(
       businessId,
@@ -45,8 +51,8 @@ export class EventLogsService {
         event,
         timestamp: new Date(dto.timestamp),
         payload: dto.payload ?? {},
-        traceId: spanContext?.traceId ?? null,
-        spanId: spanContext?.spanId ?? null,
+        traceId: options?.traceId ?? spanContext?.traceId ?? null,
+        spanId: options?.spanId ?? spanContext?.spanId ?? null,
         externalWorkflowRecordId: externalWorkflow?.id ?? null,
         externalWorkflow,
       }),

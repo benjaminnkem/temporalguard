@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Reads exact version from package.json "packageManager" (pnpm@9.0.0)
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check types
+        run: pnpm check-types
+
+      - name: Lint (web + ui)
+        run: pnpm --filter web lint && pnpm --filter @repo/ui lint
+
+      - name: Lint (api, non-mutating)
+        run: pnpm --filter api run lint:ci
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Next may read public env at build time; CI uses placeholders.
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:4000/api
+          NEXT_PUBLIC_USE_MOCK_DATA: "true"
