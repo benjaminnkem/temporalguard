@@ -32,9 +32,14 @@ import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 loadEnv({ path: ['../../.env', '.env'], quiet: true });
 
 const serviceName = process.env.OTEL_SERVICE_NAME || 'temporalguard-api';
-const otlpEndpoint =
+const configuredOtlpEndpoint =
   process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
   process.env.SIGNOZ_CLOUD_OTLP_ENDPOINT;
+const otlpEndpoint =
+  configuredOtlpEndpoint &&
+  (/^https?:\/\//.test(configuredOtlpEndpoint)
+    ? configuredOtlpEndpoint
+    : `http://${configuredOtlpEndpoint}`);
 const ingestionKey = process.env.SIGNOZ_INGESTION_KEY;
 const headers = ingestionKey
   ? { 'signoz-ingestion-key': ingestionKey }

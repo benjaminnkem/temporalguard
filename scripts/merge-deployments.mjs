@@ -117,7 +117,7 @@ async function mergeRender() {
   );
   signozService.envVars = [
     ...(signozService.envVars ?? []),
-    { key: "SIGNOZ_TOKENIZER_JWT_SECRET", sync: false },
+    { key: "SIGNOZ_TOKENIZER_JWT_SECRET", generateValue: true },
   ];
   for (const service of generated.services ?? []) {
     for (const key of ["dockerContext", "dockerfilePath"]) {

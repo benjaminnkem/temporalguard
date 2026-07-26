@@ -106,3 +106,25 @@ The exact lifecycle and validation commands are in
 - Foundry's generated Collector config logs an optional unset
   `LOW_CARDINAL_EXCEPTION_GROUPING` warning. It does not prevent readiness or
   ingestion.
+
+## Render custom-domain readiness update
+
+- The source Blueprint now declares `temporalguard.oluwadunsin.dev` on the
+  public gateway and includes the complete production environment contract for
+  the gateway, web build, API, and worker.
+- Render-managed PostgreSQL, Key Value, internal service endpoints, generated
+  authentication/encryption secrets, and the generated SigNoz tokenizer secret
+  require no operator-provided values.
+- `pnpm render:validate` now rejects missing required service environment
+  variables or a missing gateway custom domain.
+- A missing root `pnpm-lock.yaml` was discovered by a clean container build and
+  corrected; `pnpm install --frozen-lockfile --offline` now passes.
+- `pnpm foundry:forge`, `pnpm render:validate`,
+  `docker compose -f compose.yaml config --quiet`, API/worker type checks, API,
+  worker, and web production builds, focused forbidden-rule tests, and
+  `git diff --check` passed.
+- Clean Docker builds progressed through frozen-lockfile validation but could
+  not finish because repeated npm registry package downloads timed out in the
+  local Docker builder. This was an external network failure, not a compile or
+  lockfile failure.
+- No Render deployment was performed.
