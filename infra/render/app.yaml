@@ -61,7 +61,6 @@ services:
     plan: starter
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
-    healthCheckPath: /api/health/ready
     preDeployCommand: node node_modules/typeorm/cli.js -d dist/database/data-source.js migration:run
     maxShutdownDelaySeconds: 60
     autoDeployTrigger: checksPass

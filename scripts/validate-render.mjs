@@ -34,6 +34,11 @@ if (databaseNames.size !== databases.length)
 for (const service of services) {
   if (!service.name || !service.type)
     throw new Error("Every service needs name and type");
+  if (service.type === "pserv" && service.healthCheckPath) {
+    throw new Error(
+      `${service.name} is a private service and cannot define healthCheckPath`,
+    );
+  }
   if (service.type !== "keyvalue" && !service.runtime) {
     throw new Error(`${service.name} is missing runtime`);
   }
