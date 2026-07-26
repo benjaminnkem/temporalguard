@@ -79,7 +79,7 @@ services:
       - key: SIGNOZ_QUERY_TIMEOUT_MS
         value: "10000"
       - key: SIGNOZ_QUERY_MAX_RANGE_HOURS
-        value: "24"
+        value: "168"
       - key: SIGNOZ_COMPARISON_MAX_RANGE_DAYS
         value: "30"
       - key: SIGNOZ_QUERY_MAX_RETRIES
@@ -91,9 +91,11 @@ services:
       - key: SIGNOZ_QUERY_RATE_LIMIT_PER_MINUTE
         value: "30"
       - key: INVESTIGATION_AGENT_ENABLED
-        value: "false"
+        value: "true"
       - key: AI_PROVIDER
-        value: disabled
+        value: openai_compatible
+      - key: AI_API_KEY
+        value: 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
       - key: AI_BASE_URL
         value: https://api.openai.com/v1
       - key: AI_MODEL
@@ -115,7 +117,7 @@ services:
       - key: FEATURE_TELEMETRY_QUALITY
         value: "true"
       - key: FEATURE_SIGNOZ_ASSET_PROVISIONING
-        value: "false"
+        value: "true"
       - key: FEATURE_DEMO_SYSTEM
         value: "false"
       - key: NEXT_PUBLIC_APP_NAME
