@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/main.ts",
-    "start": "node dist/apps/worker/src/main.js",
+    "dev": "node api.js && tsx watch src/main.ts",
+    "start": "node api.js && node dist/apps/worker/src/main.js",
     "check-types": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --max-warnings 0"
   },
