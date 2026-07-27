@@ -178,6 +178,26 @@ describe('SigNozQueryClient', () => {
     });
   });
 
+  it('does not open the circuit for a rejected non-retryable query', async () => {
+    responseStatus = 400;
+    const input = {
+      businessId: '11111111-1111-4111-8111-111111111111',
+      from: new Date(Date.now() - 60_000),
+      to: new Date(),
+      filters: [],
+    };
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await expect(client.queryTraces(input)).rejects.toBeInstanceOf(
+        HttpException,
+      );
+    }
+
+    responseStatus = 200;
+    await expect(client.queryTraces(input)).resolves.toMatchObject({
+      rows: expect.any(Array),
+    });
+  });
+
   it('retries a transient outage and supports cancellation', async () => {
     queryMaxRetries = 1;
     let calls = 0;

@@ -1,4 +1,7 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import type { Workflow } from '../entities';
 import { SigNozObservabilityService } from './signoz-observability.service';
 
@@ -61,6 +64,31 @@ describe('SigNozObservabilityService', () => {
 
     expect(result.configured).toBe(true);
     expect(result.errorCode).toBe('SIGNOZ_CIRCUIT_OPEN');
+  });
+
+  it('returns a structured preview error when SigNoz rejects a query', async () => {
+    const client = {
+      queryTraces: jest.fn().mockRejectedValue(
+        new BadGatewayException({
+          code: 'SIGNOZ_QUERY_FAILED',
+          message: 'SigNoz query failed',
+          details: { status: 400 },
+        }),
+      ),
+    };
+    const service = new SigNozObservabilityService(
+      client as never,
+      { build: jest.fn(() => undefined) } as never,
+    );
+
+    const result = await service.queryTraces(workflow);
+
+    expect(result).toMatchObject({
+      configured: true,
+      errorCode: 'SIGNOZ_QUERY_FAILED',
+      message: 'SigNoz rejected the telemetry query (status 400).',
+      items: [],
+    });
   });
 
   it('uses the safe company-scoped query client and normalizes its result', async () => {

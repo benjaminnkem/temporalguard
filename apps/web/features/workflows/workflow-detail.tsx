@@ -363,6 +363,16 @@ function ObservabilityPanel({
       </p>
     );
   }
+  if (preview.errorCode) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-destructive">
+          {preview.message ?? `Unable to query SigNoz ${label}.`}
+        </p>
+        <Button onClick={() => void query.refetch()}>Retry</Button>
+      </div>
+    );
+  }
   const explorerUrl = preview.explorerUrl ?? fallbackUrl;
   return (
     <div className="grid gap-3">

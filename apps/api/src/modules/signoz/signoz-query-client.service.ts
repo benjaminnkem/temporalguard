@@ -221,7 +221,9 @@ export class SigNozQueryClient implements OnModuleDestroy {
       outcome = 'failed';
       errorCode =
         error instanceof Error ? error.message.slice(0, 120) : 'UNKNOWN';
-      this.recordFailure(connection.id);
+      if (this.shouldRecordFailure(error)) {
+        this.recordFailure(connection.id);
+      }
       this.telemetry.signozQueryFailed(input.signal, input.businessId);
       throw error;
     } finally {
@@ -369,7 +371,7 @@ export class SigNozQueryClient implements OnModuleDestroy {
 
   private literal(value: SafeFilter['value']): string {
     if (Array.isArray(value)) {
-      return `[${value.map((item) => this.literal(item)).join(', ')}]`;
+      return `(${value.map((item) => this.literal(item)).join(', ')})`;
     }
     if (typeof value === 'string') {
       return `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
@@ -528,6 +530,27 @@ export class SigNozQueryClient implements OnModuleDestroy {
     current.failures += 1;
     if (current.failures >= threshold) current.openUntil = Date.now() + resetMs;
     this.breakers.set(connectionId, current);
+  }
+
+  private shouldRecordFailure(error: unknown): boolean {
+    if (!(error instanceof HttpException)) return true;
+    const response = error.getResponse();
+    if (typeof response !== 'object' || response === null) return true;
+    const details =
+      'details' in response &&
+      typeof response.details === 'object' &&
+      response.details !== null
+        ? response.details
+        : undefined;
+    const upstreamStatus =
+      details && 'status' in details && typeof details.status === 'number'
+        ? details.status
+        : undefined;
+    return (
+      upstreamStatus === undefined ||
+      upstreamStatus === 429 ||
+      upstreamStatus >= 500
+    );
   }
 
   private companyHash(businessId: string): string {

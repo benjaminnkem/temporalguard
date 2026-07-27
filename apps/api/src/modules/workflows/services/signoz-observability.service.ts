@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { SigNozLinkBuilder, SigNozQueryClient } from '../../signoz';
 import {
   METRIC_WORKFLOW_COMPLETION_DURATION,
@@ -91,7 +91,7 @@ export class SigNozObservabilityService {
         items: result.rows,
       };
     } catch (error: unknown) {
-      if (!(error instanceof ServiceUnavailableException)) throw error;
+      if (!(error instanceof HttpException)) throw error;
       const response = error.getResponse();
       const errorCode =
         typeof response === 'object' &&
@@ -101,6 +101,18 @@ export class SigNozObservabilityService {
           ? response.code
           : 'SIGNOZ_UNAVAILABLE';
       const notConfigured = errorCode === 'SIGNOZ_NOT_CONFIGURED';
+      const details =
+        typeof response === 'object' &&
+        response !== null &&
+        'details' in response &&
+        typeof response.details === 'object' &&
+        response.details !== null
+          ? response.details
+          : undefined;
+      const upstreamStatus =
+        details && 'status' in details && typeof details.status === 'number'
+          ? details.status
+          : undefined;
       return {
         configured: !notConfigured,
         signal,
@@ -115,7 +127,11 @@ export class SigNozObservabilityService {
             ? 'SigNoz query access is temporarily paused after repeated failures. Try again shortly.'
             : errorCode === 'REDIS_UNAVAILABLE'
               ? 'The telemetry query rate limiter is temporarily unavailable.'
-              : 'SigNoz is temporarily unavailable.',
+              : errorCode === 'SIGNOZ_UNAUTHORIZED'
+                ? 'SigNoz rejected the service-account API key. Check its value and viewer role.'
+                : errorCode === 'SIGNOZ_QUERY_FAILED'
+                  ? `SigNoz rejected the telemetry query${upstreamStatus ? ` (status ${upstreamStatus})` : ''}.`
+                  : 'SigNoz is temporarily unavailable.',
       };
     }
   }

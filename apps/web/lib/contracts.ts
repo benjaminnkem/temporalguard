@@ -194,6 +194,7 @@ export const workflowObservabilityPreviewSchema = z.object({
   end: z.string(),
   explorerUrl: z.string().url().optional(),
   items: z.array(z.record(z.string(), z.unknown())),
+  errorCode: z.string().optional(),
   message: z.string().optional(),
 });
 
