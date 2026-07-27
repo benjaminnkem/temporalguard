@@ -9,7 +9,6 @@ services:
     autoDeployTrigger: checksPass
     domains:
       - temporalguard.oluwadunsin.dev
-    maxShutdownDelaySeconds: 60
     envVars:
       - key: NODE_ENV
         value: production
@@ -95,8 +94,7 @@ services:
       - key: AI_PROVIDER
         value: openai_compatible
       - key: AI_API_KEY
-        value: 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
-      - key: AI_BASE_URL
+        sync: false
         value: https://api.openai.com/v1
       - key: AI_MODEL
         value: gpt-5.6-terra
