@@ -80,7 +80,7 @@ async function ensureRule() {
       timeoutUnit: "seconds",
       severity: "high",
       correlationKey: "workflow.id",
-      environments: ["demo"],
+      environments: ["production"],
       enabled: true,
     }),
   });
