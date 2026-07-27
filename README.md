@@ -1,327 +1,259 @@
 # TemporalGuard
 
-Business process observability engine for monitoring **business invariants**.
+Business-process observability for promises that must become true on time.
 
-Unlike traditional observability tools that monitor infrastructure (CPU, memory, latency, errors), TemporalGuard watches business events and detects workflows that never reach a valid ending.
+[![Agents of SigNoz Hackathon](https://img.shields.io/badge/Agents%20of%20SigNoz-Track%203%3A%20Build%20Your%20Own-111111?style=for-the-badge)](https://www.wemakedevs.org/hackathons/signoz/)
+[![Open the live site](https://img.shields.io/badge/Live%20site-Open%20TemporalGuard-6d28d9?style=for-the-badge)](https://temporalguard.oluwadunsin.dev)
+[![Watch the demo](https://img.shields.io/badge/Demo%20video-Watch%20now-4c1d95?style=for-the-badge)](https://temporalguard.oluwadunsin.dev/video)
 
-**Example invariant**
+TemporalGuard is an entry for the **Agents of SigNoz Hackathon, Track 3:
+Build Your Own**. It detects broken business workflows from OpenTelemetry
+signals, starts durable investigations, and presents the evidence needed to
+understand what happened.
 
-> When a payment is authorized, it must either be captured or reversed within 15 minutes.
+Traditional observability tells you that a request failed or a service became
+slow. TemporalGuard answers a business question:
 
-TemporalGuard does **not** replace SigNoz. SigNoz is the observability platform; TemporalGuard is a rule engine that sits on top of OpenTelemetry and self-hosted SigNoz.
+> When a payment is authorized, was it captured or reversed within 15 minutes?
 
-```
-Application
-    ↓
-Business Events
-    ↓
-TemporalGuard API
-    ↓
-OpenTelemetry SDK
-    ↓
+TemporalGuard does not replace SigNoz. It adds a business-invariant and
+investigation layer on top of OpenTelemetry and a **self-hosted SigNoz
+deployment**.
+
+## What it does
+
+- Defines time-bound business rules and their expected outcomes.
+- Correlates events into workflows.
+- Detects overdue workflows and records violations.
+- Runs durable, queue-backed investigations.
+- Compares periods, explores evidence, and analyzes deployments.
+- Sends application traces, metrics, and logs through OpenTelemetry.
+- Uses self-hosted SigNoz and ClickHouse as the technical telemetry platform.
+
+## Demo
+
+- [Open the live TemporalGuard application](https://temporalguard.oluwadunsin.dev)
+- [Watch the full product demo](https://temporalguard.oluwadunsin.dev/video)
+
+## How it works
+
+```text
+Instrumented application
+        │
+        ▼
+TemporalGuard API ──► PostgreSQL (product and investigation state)
+        │
+        ├────────────► Redis / BullMQ ──► TemporalGuard worker
+        │
+        ▼
 OpenTelemetry Collector
-    ↓
-SigNoz
-    ↓
-ClickHouse
+        │
+        ▼
+Self-hosted SigNoz ──► ClickHouse
 ```
 
-## Architecture
+PostgreSQL is authoritative for product state. Redis supports queues, fan-out,
+locks, and bounded caches. SigNoz stores and queries technical telemetry;
+credentials never reach the browser.
 
-Monorepo powered by [Turborepo](https://turborepo.dev/) + [pnpm](https://pnpm.io/).
+## Repository
 
-```
+```text
 temporalguard/
 ├── apps/
-│   ├── api/                 # NestJS REST API and authentication
+│   ├── api/                 # NestJS API, auth, product APIs, investigations
 │   ├── gateway/             # Public reverse proxy and route boundary
-│   ├── worker/              # BullMQ durable processing worker
-│   └── web/                 # Next.js product application
+│   ├── web/                 # Next.js product application
+│   └── worker/              # BullMQ durable-processing runtime
 ├── packages/
+│   ├── node/                # TemporalGuard Node.js SDK
+│   ├── ui/
 │   ├── eslint-config/
-<<<<<<< HEAD
 │   └── typescript-config/
 ├── infra/
 │   ├── foundry/             # SigNoz Foundry inputs and generated artifacts
 │   ├── docker/              # Application Compose source
-│   ├── render/              # Application Blueprint source
-│   └── signoz/              # Terraform dashboards and alerts
-├── compose.yaml             # Generated full local stack
-├── render.yaml              # Generated full Render Blueprint
-=======
-│   ├── typescript-config/
-│   └── node/                # temporalguard-node SDK (npm)
-├── .github/workflows/       # CI + npm publish
-├── deploy/
-│   └── signoz/              # Self-hosted SigNoz configs (official Docker layout)
-├── docker-compose.yml       # Full local stack
->>>>>>> ef4d0c1d1c5b04ea862e720bbcb24251864e01a9
-└── turbo.json
+│   ├── render/              # Render Blueprint source
+│   └── signoz/              # SigNoz dashboards and alert rules
+├── docs/                    # Product, architecture, contracts, and runbooks
+├── compose.yaml             # Generated local-stack artifact
+└── render.yaml              # Generated Render Blueprint
 ```
 
-## CI/CD
+The self-hosted SigNoz deployment is generated from
+[`infra/foundry`](infra/foundry). The exact resolved installation is captured
+in [`infra/foundry/casting.yaml.lock`](infra/foundry/casting.yaml.lock), making
+the telemetry stack reviewable and reproducible.
 
-GitHub Actions run on every PR and push to `main` (typecheck, lint, unit tests, build).
+## Technology
 
-Publishing the Node SDK:
+| Layer              | Technology                                     |
+| ------------------ | ---------------------------------------------- |
+| Web                | Next.js 16, React 19, TypeScript, Tailwind CSS |
+| API                | NestJS, TypeORM                                |
+| Durable processing | BullMQ worker                                  |
+| Product data       | PostgreSQL 16                                  |
+| Queue and cache    | Redis 7                                        |
+| Telemetry          | OpenTelemetry over OTLP/HTTP                   |
+| Observability      | Self-hosted SigNoz and ClickHouse              |
+| Workspace          | pnpm 9 and Turborepo                           |
 
-```bash
-# after bumping packages/node/package.json version and merging to main
-git tag temporalguard-node-v0.1.1
-git push origin temporalguard-node-v0.1.1
+## Reproduce the project locally
+
+### Requirements
+
+- Git
+- Node.js 20 or newer
+- Corepack
+- Docker Engine with Docker Compose v2
+- At least 6 GB of memory available to Docker
+- Ports `8088`, `3301`, `4317`, `4318`, `5432`, and `6379` available, or
+  corresponding overrides in `.env`
+
+### 1. Clone and install
+
+```sh
+git clone <your-fork-or-repository-url>
+cd temporalguard
+corepack enable
+corepack prepare pnpm@9.0.0 --activate
+pnpm install --frozen-lockfile
 ```
 
-Requires repo secret `NPM_TOKEN`. Full guide: [`docs/CI_CD.md`](./docs/CI_CD.md).
-
-## Tech Stack
-
-| Layer         | Technology                           |
-| ------------- | ------------------------------------ |
-| Runtime       | Node.js ≥ 20                         |
-| Web           | Next.js 16, React 19, Tailwind CSS 4 |
-| API           | NestJS                               |
-| Database      | PostgreSQL 16 (TypeORM)              |
-| Queue / cache | Redis 7 (BullMQ)                     |
-| Telemetry     | OpenTelemetry SDK → OTLP/HTTP        |
-| Observability | Self-hosted SigNoz + ClickHouse      |
-| Language      | TypeScript 5.9                       |
-
-## Prerequisites
-
-- **Docker** Engine 20.10+ and **Docker Compose** v2
-- At least **6 GB** RAM allocated to Docker (SigNoz + ClickHouse)
-- **Node.js ≥ 20** and **pnpm 9** (for host development)
-
-No SigNoz credentials are required for the default app-only mode. Cloudinary
-is required only when real HTTP signup uploads a logo.
-
-## Quick start (full stack)
-
-Start the gateway, web, API, worker, PostgreSQL, Redis, Collector, and SigNoz:
+### 2. Configure the environment
 
 ```sh
 cp .env.example .env
+```
+
+The checked-in defaults target the local, self-hosted stack. Before using the
+project outside local development, replace the sample database, encryption,
+JWT, and cookie values. Cloudinary variables are needed only for real logo
+uploads during signup.
+
+### 3. Generate and start the complete stack
+
+```sh
+pnpm foundry:gauge
+pnpm foundry:forge
 pnpm local:up
 ```
 
-This starts:
+`pnpm local:up` validates the Foundry inputs, regenerates the deterministic
+Compose artifacts, builds the applications, runs migrations, starts all
+services, and waits for health checks. The first run downloads images and can
+take several minutes.
 
-| Service    | Role                               |
-| ---------- | ---------------------------------- |
-| `gateway`  | Public route boundary              |
-| `web`      | Private Next.js application        |
-| `api`      | Private NestJS API                 |
-| `worker`   | Durable BullMQ processing          |
-| `postgres` | Authoritative application database |
-| `redis`    | Queue, cache, locks, and progress  |
-| `ingester` | OTLP Collector                     |
-| SigNoz     | UI, metastore, ClickHouse, Keeper  |
+### 4. Initialize SigNoz
 
-Exact lifecycle, Render, backup, sizing, and verification procedures are in
-[`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md).
+Open [http://localhost:3301](http://localhost:3301) and complete the initial
+local admin setup. This account belongs to your self-hosted instance.
 
-### Service URLs
-
-| Service           | URL                                    |
-| ----------------- | -------------------------------------- |
-| **Web / gateway** | http://localhost:8088                  |
-| **API health**    | http://localhost:8088/api/health/ready |
-| **Explorer**      | http://localhost:8088/explorer         |
-| **SigNoz route**  | http://localhost:8088/signoz           |
-| **SigNoz**        | http://localhost:3301                  |
-| **OTLP gRPC**     | localhost:4317                         |
-| **OTLP HTTP**     | localhost:4318                         |
-
-When running the local profile, complete the local admin signup on the first
-visit to SigNoz. Cloud mode uses the configured SigNoz Cloud workspace.
-
-Once the API receives traffic, the **temporalguard-api** service appears under Services / Traces in the SigNoz UI.
-
-## Docker commands
+If the investigation and explorer views need server-side query access, create
+a least-privilege SigNoz service-account API key, set `SIGNOZ_API_KEY` in
+`.env`, and restart the API and worker:
 
 ```sh
-# Generate, validate, build, migrate, and wait for health
-pnpm local:up
+docker compose -f compose.yaml up -d --force-recreate api worker
+```
 
-# Follow logs
-docker compose -f compose.yaml logs -f
+Never expose the key through a `NEXT_PUBLIC_*` variable or commit it.
 
-# Run successful, failed, investigation, and isolation demo
-pnpm demo
+### 5. Verify and load demo scenarios
 
-# Status / health
-docker compose -f compose.yaml ps --all
+```sh
 pnpm verify:local
+pnpm demo
+```
 
-# Stop containers, retaining volumes
+The demo command creates successful, failed, investigation, and isolation
+scenarios. Once traffic is ingested, `temporalguard-api` appears in the SigNoz
+Services and Traces views.
+
+### Local URLs
+
+| Service                | URL                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| TemporalGuard          | [http://localhost:8088](http://localhost:8088)                                   |
+| API readiness          | [http://localhost:8088/api/health/ready](http://localhost:8088/api/health/ready) |
+| Explorer               | [http://localhost:8088/explorer](http://localhost:8088/explorer)                 |
+| SigNoz through gateway | [http://localhost:8088/signoz](http://localhost:8088/signoz)                     |
+| Self-hosted SigNoz UI  | [http://localhost:3301](http://localhost:3301)                                   |
+| OTLP gRPC              | `localhost:4317`                                                                 |
+| OTLP HTTP              | `localhost:4318`                                                                 |
+
+### Stop or reset
+
+```sh
+# Stop services but retain volumes
 pnpm local:down
 
-# Explicit destructive reset
+# Remove local data only when you intentionally want a clean environment
 pnpm local:reset -- --confirm
 ```
 
-## Environment
+## Application development
 
-Copy the root example for Compose variables:
-
-```sh
-cp .env.example .env
-```
-
-Key variables (self-hosted only — **no** SigNoz Cloud keys):
-
-```env
-NODE_ENV=development
-
-OTEL_SERVICE_NAME=temporalguard-api
-OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-
-# Foundry generation and public ports
-FOUNDRY_VERSION=0.2.16
-SIGNOZ_UI_PORT=3301
-GATEWAY_PORT=8088
-```
-
-Inside Docker, the API talks to other services by **service name**:
-
-| Variable                      | Docker value                 | Host-local value        |
-| ----------------------------- | ---------------------------- | ----------------------- |
-| `DB_HOST`                     | `postgres`                   | `localhost`             |
-| `REDIS_HOST`                  | `redis`                      | `localhost`             |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | `http://localhost:4318` |
-
-## Hybrid mode (API on host)
-
-If you prefer hot-reload on the host while infrastructure runs in Docker:
+For host-side hot reload, install dependencies and run the whole workspace:
 
 ```sh
-# Infrastructure only (exclude the API container)
-docker compose up -d postgres redis clickhouse zookeeper-1 init-clickhouse \
-  signoz-telemetrystore-migrator signoz otel-collector
+pnpm dev
+```
 
-cp apps/api/.env.example apps/api/.env
-pnpm install
+Or run one application:
+
+```sh
+pnpm --filter web dev
 pnpm --filter api start:dev
+pnpm --filter worker dev
 ```
 
-`apps/api/.env` should point at published ports (`localhost:5432`, `localhost:6379`, `http://localhost:4318`).
+When running an application on the host, point its database, Redis, and OTLP
+settings to the published localhost ports. See
+[`docs/ENVIRONMENT_OPERATIONS_AND_TESTING.md`](docs/ENVIRONMENT_OPERATIONS_AND_TESTING.md)
+and [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md) for environment,
+backup, sizing, and lifecycle details.
 
-## OpenTelemetry
+## Useful commands
 
-The NestJS process loads `instrumentation.ts` **before** the application boots (`import './instrumentation'` in `main.ts`).
+| Command                | Purpose                                                 |
+| ---------------------- | ------------------------------------------------------- |
+| `pnpm foundry:gauge`   | Validate local and production Foundry inputs            |
+| `pnpm foundry:forge`   | Regenerate self-hosted SigNoz deployment artifacts      |
+| `pnpm local:up`        | Build, migrate, start, and health-check the local stack |
+| `pnpm verify:local`    | Verify application and infrastructure readiness         |
+| `pnpm demo`            | Generate representative business-workflow scenarios     |
+| `pnpm format`          | Format TypeScript, TSX, and Markdown                    |
+| `pnpm lint`            | Run workspace lint checks                               |
+| `pnpm check-types`     | Run workspace type checks                               |
+| `pnpm test`            | Run workspace test tasks                                |
+| `pnpm build`           | Build every application and package                     |
+| `pnpm signoz:validate` | Validate SigNoz Terraform assets                        |
+| `pnpm render:validate` | Validate the generated Render Blueprint                 |
 
-- **Traces** → `POST {OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`
-- **Metrics** → `POST {OTEL_EXPORTER_OTLP_ENDPOINT}/v1/metrics`
-- Protocol: **OTLP/HTTP protobuf** (`http/protobuf`)
-- Collector service name: `otel-collector` (Docker network)
+## Verification before contributing
 
-Business-level spans and metrics (workflows, violations, rules) are emitted by the in-app `TelemetryService` on top of auto-instrumentation.
+Run the narrow check for the application you changed, followed by the
+repository checks:
 
-## Data model
-
-### Entities
-
-```
-BusinessEvent ──< EventLog >── ExternalWorkflow ──< Workflow >── Rule
-      │                                                   │         │
-      └──────── trigger / expected event definitions ─────┘         │
-                                                                  Violation
-```
-
-| Entity               | Table                | Description                                                         |
-| -------------------- | -------------------- | ------------------------------------------------------------------- |
-| **BusinessEvent**    | `business_events`    | Reusable event definition identified by a unique name               |
-| **EventLog**         | `event_logs`         | Independent record that a business event occurred                   |
-| **ExternalWorkflow** | `external_workflows` | External business-process identity used to correlate logs           |
-| **Rule**             | `rules`              | Temporal invariant linked to trigger and expected event definitions |
-| **Workflow**         | `workflows`          | Evaluation of one rule for an external business process             |
-| **Violation**        | `violations`         | Recorded breach when a workflow fails its rule                      |
-
-### Enums
-
-| Enum                | Values                                         |
-| ------------------- | ---------------------------------------------- |
-| `RuleSeverity`      | `low`, `medium`, `high`, `critical`            |
-| `RuleOperator`      | `any`, `all`                                   |
-| `TimeoutUnit`       | `seconds`, `minutes`, `hours`, `days`          |
-| `WorkflowStatus`    | `waiting`, `completed`, `overdue`, `cancelled` |
-| `EventType`         | `business`, `system`                           |
-| `ViolationSeverity` | `low`, `medium`, `high`, `critical`            |
-
-## API reference
-
-Base path: `/api`
-
-### Rules
-
-| Method   | Endpoint         | Description      |
-| -------- | ---------------- | ---------------- |
-| `POST`   | `/api/rules`     | Create a rule    |
-| `GET`    | `/api/rules`     | List all rules   |
-| `GET`    | `/api/rules/:id` | Get a rule by ID |
-| `PATCH`  | `/api/rules/:id` | Update a rule    |
-| `DELETE` | `/api/rules/:id` | Delete a rule    |
-
-#### Create rule — example payload
-
-```json
-{
-  "name": "payment-must-resolve-within-15m",
-  "description": "Payment must be captured or reversed within 15 minutes",
-  "triggerEvent": "payment.authorized",
-  "expectedEvents": ["payment.captured", "payment.reversed"],
-  "operator": "any",
-  "timeoutValue": 15,
-  "timeoutUnit": "minutes",
-  "severity": "high",
-  "enabled": true
-}
+```sh
+pnpm format
+pnpm lint
+pnpm check-types
+pnpm --filter api test -- --runInBand
+pnpm --filter api test:e2e --runInBand
+pnpm --filter web test
+pnpm --filter web test:e2e
+pnpm build
+docker compose -f compose.yaml config --quiet
 ```
 
-**Required fields**: `name`, `triggerEvent`, `expectedEvents`, `timeoutValue`
+## API and SDK
 
-**Optional fields** (with defaults): `description`, `operator` (`all`), `timeoutUnit` (`minutes`), `severity` (`medium`), `enabled` (`true`)
-
-### Workflows
-
-| Method   | Endpoint             | Description          |
-| -------- | -------------------- | -------------------- |
-| `POST`   | `/api/workflows`     | Create a workflow    |
-| `GET`    | `/api/workflows`     | List all workflows   |
-| `GET`    | `/api/workflows/:id` | Get a workflow by ID |
-| `PATCH`  | `/api/workflows/:id` | Update a workflow    |
-| `DELETE` | `/api/workflows/:id` | Delete a workflow    |
-
-### Events
-
-| Method   | Endpoint          | Description                         |
-| -------- | ----------------- | ----------------------------------- |
-| `POST`   | `/api/events`     | Create or reuse an event definition |
-| `GET`    | `/api/events`     | List event definitions              |
-| `GET`    | `/api/events/:id` | Get an event definition             |
-| `PATCH`  | `/api/events/:id` | Update an event definition          |
-| `DELETE` | `/api/events/:id` | Delete an event definition          |
-
-#### Create event definition
-
-```json
-{
-  "name": "payment.authorized",
-  "type": "business",
-  "description": "A payment authorization was approved"
-}
-```
-
-Rules continue to accept `triggerEvent` and `expectedEvents` as names. The API
-resolves those names to event-definition UUIDs and creates missing definitions
-automatically.
-
-### Event logs
-
-| Method | Endpoint          | Description                            |
-| ------ | ----------------- | -------------------------------------- |
-| `POST` | `/api/event-logs` | Record and process an event occurrence |
+The current public API prefix is `/api`. Rules describe a trigger event,
+expected outcomes, an operator, a time limit, and severity. Applications can
+submit occurrences to `POST /api/event-logs`; TemporalGuard correlates them
+with external workflows and evaluates matching rules.
 
 ```json
 {
@@ -335,47 +267,38 @@ automatically.
 }
 ```
 
-`externalWorkflowId` is optional. Without it, the occurrence is stored as a
-standalone log. With it, TemporalGuard finds or creates the external process,
-then matches or creates rule workflows and applies expected events to active
-workflows. Event logs are never owned by an individual TemporalGuard workflow.
+See [`docs/API_AND_DATA_CONTRACTS.md`](docs/API_AND_DATA_CONTRACTS.md) for the
+product API and data contracts, and
+[`docs/PUBLIC_API_AND_SDK.md`](docs/PUBLIC_API_AND_SDK.md) for SDK integration.
 
-### Violations
+## Further documentation
 
-| Method   | Endpoint              | Description           |
-| -------- | --------------------- | --------------------- |
-| `POST`   | `/api/violations`     | Create a violation    |
-| `GET`    | `/api/violations`     | List all violations   |
-| `GET`    | `/api/violations/:id` | Get a violation by ID |
-| `PATCH`  | `/api/violations/:id` | Update a violation    |
-| `DELETE` | `/api/violations/:id` | Delete a violation    |
-
-## Development scripts
-
-```sh
-# API watch mode (host)
-pnpm --filter api start:dev
-
-# Type check
-pnpm check-types
-
-# Lint
-pnpm lint
-
-# Format
-pnpm format
-```
+- [Product requirements](docs/PRD.md)
+- [System architecture](docs/SYSTEM_ARCHITECTURE.md)
+- [SigNoz and OpenTelemetry integration](docs/SIGNOZ_AND_OTEL_INTEGRATION.md)
+- [Realtime and agent processing](docs/REALTIME_AND_AGENT_PROCESSING.md)
+- [Local Docker and Render architecture](docs/LOCAL_DOCKER_AND_RENDER.md)
+- [Operations runbook](docs/OPERATIONS_RUNBOOK.md)
+- [Design system](docs/DESIGN.MD)
 
 ## Troubleshooting
 
-| Symptom                          | What to check                                                                                              |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| SigNoz UI not loading            | `docker compose ps` — wait until `signoz` is healthy; allow ~1–2 minutes on first start                    |
-| No `temporalguard-api` in SigNoz | Hit any API endpoint, then refresh Services; confirm collector is up: `docker compose logs otel-collector` |
-| API unhealthy                    | `docker compose logs api` — usually waiting on Postgres/Redis                                              |
-| Out of memory / restarts         | Give Docker ≥ 4 GB RAM                                                                                     |
-| Port already in use              | Change `API_HOST_PORT`, `POSTGRES_PORT`, `SIGNOZ_UI_PORT`, etc. in `.env`                                  |
+| Problem                        | Check                                                                                                                 |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| SigNoz is not ready            | Allow several minutes on first boot, then inspect `docker compose -f compose.yaml logs temporalguard-signoz-signoz-0` |
+| No `temporalguard-api` service | Call an API endpoint and inspect `docker compose -f compose.yaml logs ingester`                                       |
+| API is unhealthy               | Inspect `docker compose -f compose.yaml logs api`; PostgreSQL or Redis may still be starting                          |
+| Containers restart             | Increase Docker memory to at least 6 GB                                                                               |
+| A port is occupied             | Override the corresponding port in `.env`, then regenerate and restart                                                |
+| Generated files drift          | Run `pnpm foundry:gauge`, `pnpm foundry:forge`, and `pnpm render:validate`                                            |
+
+## Security
+
+- Store password and refresh-token hashes only.
+- Keep SigNoz, JWT, database, Cloudinary, and AI credentials server-side.
+- Do not commit `.env`, generated secrets, Terraform plans, or raw tokens.
+- Use least-privilege service accounts and rotate production secrets.
 
 ## License
 
-Private
+Private.
